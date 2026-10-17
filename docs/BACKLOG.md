@@ -28,7 +28,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 
 | ID | Story | Acceptance | Status |
 | --- | --- | --- | --- |
-| S3.1 | Article list with `j`/`k`, unread styling, mark read on open | 10k rows scroll at 60 fps; only visible rows render | todo |
+| S3.1 | Article list with `j`/`k`, unread styling, mark read on open | 10k rows scroll at 60 fps on a 4K monitor; only visible rows render. Risk: S1.2 moved to iced's tiny-skia CPU renderer for cold start; if 4K scroll misses 60 fps, revisit wgpu with a deferred GPU init | todo |
 | S3.2 | Article pane renders the feed's HTML summary as styled text | Headings, links, lists, images, code, blockquotes; nothing escapes the pane | todo |
 | S3.3 | Reader view extracts the full page | Works on 9 of 10 outlets in `tests/reader_sites.txt`; falls back to the summary | todo |
 | S3.4 | Star, mark unread, mark folder read, open in browser, copy link | Each has a key and a palette entry | todo |
