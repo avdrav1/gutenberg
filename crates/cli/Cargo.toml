@@ -1,0 +1,10 @@
+[package]
+name = "gutenberg-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+[[bin]]
+name = "gutenberg"
+path = "src/main.rs"
