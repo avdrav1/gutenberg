@@ -8,3 +8,4 @@ license.workspace = true
 gutenberg-core.workspace = true
 gutenberg-store.workspace = true
 gutenberg-theme.workspace = true
+iced.workspace = true

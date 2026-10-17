@@ -20,7 +20,7 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 feed-rs = "2"
 rusqlite = { version = "0.32", features = ["bundled", "fts5"] }
 rmcp = { version = "3", features = ["client", "transport-child-process", "transport-streamable-http-client"] }
-iced = { version = "0.13", features = ["tokio", "image", "svg", "advanced"] }
+iced = { version = "0.14", features = ["tokio", "image", "svg", "advanced"] }
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 notify = "6"
