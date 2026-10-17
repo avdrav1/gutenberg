@@ -1,1 +1,3 @@
-fn main() { println!("gutenberg 0.1.0"); }
+fn main() {
+    println!("gutenberg {}", env!("CARGO_PKG_VERSION"));
+}

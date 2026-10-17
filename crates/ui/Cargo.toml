@@ -5,3 +5,6 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+gutenberg-core.workspace = true
+gutenberg-store.workspace = true
+gutenberg-theme.workspace = true
