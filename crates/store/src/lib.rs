@@ -75,6 +75,15 @@ impl Store {
         migrate::version(&self.conn)
     }
 
+    /// Changes when another connection commits, such as the background
+    /// refresh or `gutenberg --add` in a terminal. Poll it to know when to
+    /// reload; this connection's own writes don't change it.
+    pub fn data_version(&self) -> Result<i64> {
+        Ok(self
+            .conn
+            .pragma_query_value(None, "data_version", |row| row.get(0))?)
+    }
+
     pub fn add_folder(&self, name: &str) -> Result<Folder> {
         let position = self.next_position("folder")?;
         self.conn.execute(
