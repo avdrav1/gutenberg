@@ -40,7 +40,7 @@ pub enum Error {
         path: PathBuf,
         source: std::io::Error,
     },
-    #[error("{}: {}", path.display(), source.message().trim())]
+    #[error("{}: {}", path.display(), one_line(source.message()))]
     Parse {
         path: PathBuf,
         source: toml::de::Error,
@@ -52,6 +52,17 @@ pub enum Error {
         path: PathBuf,
         source: notify::Error,
     },
+}
+
+/// toml's messages span lines ("invalid table header\nexpected ..."); the
+/// error is shown as one.
+fn one_line(message: &str) -> String {
+    message
+        .trim()
+        .lines()
+        .map(str::trim)
+        .collect::<Vec<_>>()
+        .join("; ")
 }
 
 impl Config {
@@ -189,6 +200,7 @@ mod tests {
         let err = parse("[layout\n").unwrap_err();
         let msg = err.to_string();
         assert!(msg.starts_with("config.toml: "), "{msg}");
+        assert!(!msg.contains('\n'), "{msg}");
     }
 
     #[test]
