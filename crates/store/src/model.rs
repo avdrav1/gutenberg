@@ -83,3 +83,31 @@ pub struct ArticleRow {
     pub read: bool,
     pub starred: bool,
 }
+
+/// HTTP validators sent back on the next fetch.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Validators {
+    pub etag: Option<String>,
+    pub last_modified: Option<String>,
+}
+
+/// A feed due for refresh, with what the last fetch left behind.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DueFeed {
+    pub source_id: i64,
+    pub url: String,
+    pub validators: Validators,
+    /// Failed refreshes in a row; drives backoff.
+    pub failures: i64,
+}
+
+/// How a source's last refresh went.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct FetchState {
+    pub validators: Validators,
+    pub checked_at: Option<i64>,
+    /// One line; `None` when the last refresh worked.
+    pub error: Option<String>,
+    pub failures: i64,
+    pub retry_at: Option<i64>,
+}

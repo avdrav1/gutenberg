@@ -3,7 +3,10 @@ use rusqlite::Connection;
 use crate::{Error, Result};
 
 /// Applied in order; `PRAGMA user_version` records how many have run.
-const MIGRATIONS: &[&str] = &[include_str!("../migrations/0001_init.sql")];
+const MIGRATIONS: &[&str] = &[
+    include_str!("../migrations/0001_init.sql"),
+    include_str!("../migrations/0002_fetch_state.sql"),
+];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;
 

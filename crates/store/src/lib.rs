@@ -8,7 +8,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusqlite::{params, Connection, OptionalExtension};
 
-pub use model::{ArticleRow, Folder, NewArticle, NewSource, Source, SourceKind};
+pub use migrate::LATEST as SCHEMA_VERSION;
+pub use model::{
+    ArticleRow, DueFeed, FetchState, Folder, NewArticle, NewSource, Source, SourceKind, Validators,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -167,29 +170,7 @@ impl Store {
     /// starred flags included.
     pub fn insert_articles(&mut self, articles: &[NewArticle]) -> Result<usize> {
         let tx = self.conn.transaction()?;
-        let mut inserted = 0;
-        {
-            let mut stmt = tx.prepare_cached(
-                "INSERT INTO article
-                   (source_id, guid, url, title, author, summary_html,
-                    published_at, fetched_at, sort_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
-                 ON CONFLICT (source_id, guid) DO NOTHING",
-            )?;
-            for a in articles {
-                inserted += stmt.execute(params![
-                    a.source_id,
-                    a.guid,
-                    a.url,
-                    a.title,
-                    a.author,
-                    a.summary_html,
-                    a.published_at,
-                    a.fetched_at,
-                    a.published_at.unwrap_or(a.fetched_at),
-                ])?;
-            }
-        }
+        let inserted = insert_articles(&tx, articles)?;
         tx.commit()?;
         Ok(inserted)
     }
@@ -238,6 +219,94 @@ impl Store {
         Ok(())
     }
 
+    /// Feeds whose backoff, if any, has passed by `now`.
+    pub fn feeds_due(&self, now: i64) -> Result<Vec<DueFeed>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT id, url, etag, last_modified, failures FROM source
+             WHERE kind = 'feed' AND url IS NOT NULL AND (retry_at IS NULL OR retry_at <= ?1)
+             ORDER BY position",
+        )?;
+        let rows = stmt.query_map([now], |row| {
+            Ok(DueFeed {
+                source_id: row.get(0)?,
+                url: row.get(1)?,
+                validators: Validators {
+                    etag: row.get(2)?,
+                    last_modified: row.get(3)?,
+                },
+                failures: row.get(4)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    pub fn fetch_state(&self, source_id: i64) -> Result<FetchState> {
+        Ok(self.conn.query_row(
+            "SELECT etag, last_modified, checked_at, error, failures, retry_at
+             FROM source WHERE id = ?1",
+            [source_id],
+            |row| {
+                Ok(FetchState {
+                    validators: Validators {
+                        etag: row.get(0)?,
+                        last_modified: row.get(1)?,
+                    },
+                    checked_at: row.get(2)?,
+                    error: row.get(3)?,
+                    failures: row.get(4)?,
+                    retry_at: row.get(5)?,
+                })
+            },
+        )?)
+    }
+
+    /// A 200: new articles and the validators to send next time, in one
+    /// transaction. Returns how many articles were new.
+    pub fn record_fetched(
+        &mut self,
+        source_id: i64,
+        articles: &[NewArticle],
+        validators: &Validators,
+        now: i64,
+    ) -> Result<usize> {
+        let tx = self.conn.transaction()?;
+        let inserted = insert_articles(&tx, articles)?;
+        tx.execute(
+            "UPDATE source SET etag = ?2, last_modified = ?3, checked_at = ?4,
+                    error = NULL, failures = 0, retry_at = NULL
+             WHERE id = ?1",
+            params![source_id, validators.etag, validators.last_modified, now],
+        )?;
+        tx.commit()?;
+        Ok(inserted)
+    }
+
+    /// A 304: nothing new, and the source is healthy.
+    pub fn record_not_modified(&self, source_id: i64, now: i64) -> Result<()> {
+        self.conn.execute(
+            "UPDATE source SET checked_at = ?2, error = NULL, failures = 0, retry_at = NULL
+             WHERE id = ?1",
+            params![source_id, now],
+        )?;
+        Ok(())
+    }
+
+    /// A failed refresh: one line of why, and when to try again.
+    pub fn record_failure(
+        &self,
+        source_id: i64,
+        error: &str,
+        retry_at: i64,
+        now: i64,
+    ) -> Result<()> {
+        self.conn.execute(
+            "UPDATE source SET checked_at = ?2, error = ?3, failures = failures + 1, retry_at = ?4
+             WHERE id = ?1",
+            params![source_id, now, error, retry_at],
+        )?;
+        Ok(())
+    }
+
     fn next_position(&self, table: &str) -> Result<i64> {
         Ok(self.conn.query_row(
             &format!("SELECT COALESCE(MAX(position), -1) + 1 FROM {table}"),
@@ -245,6 +314,31 @@ impl Store {
             |row| row.get(0),
         )?)
     }
+}
+
+fn insert_articles(tx: &rusqlite::Transaction, articles: &[NewArticle]) -> Result<usize> {
+    let mut stmt = tx.prepare_cached(
+        "INSERT INTO article
+           (source_id, guid, url, title, author, summary_html,
+            published_at, fetched_at, sort_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+         ON CONFLICT (source_id, guid) DO NOTHING",
+    )?;
+    let mut inserted = 0;
+    for a in articles {
+        inserted += stmt.execute(params![
+            a.source_id,
+            a.guid,
+            a.url,
+            a.title,
+            a.author,
+            a.summary_html,
+            a.published_at,
+            a.fetched_at,
+            a.published_at.unwrap_or(a.fetched_at),
+        ])?;
+    }
+    Ok(inserted)
 }
 
 fn now() -> i64 {
