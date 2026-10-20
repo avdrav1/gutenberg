@@ -9,6 +9,12 @@ license = "MIT"
 repository = "https://github.com/avdrav1/gutenberg"
 
 [workspace.dependencies]
+gutenberg-core = { path = "crates/core" }
+gutenberg-store = { path = "crates/store" }
+gutenberg-sources = { path = "crates/sources" }
+gutenberg-theme = { path = "crates/theme" }
+gutenberg-ui = { path = "crates/ui" }
+
 tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "brotli", "json"] }
 feed-rs = "2"
