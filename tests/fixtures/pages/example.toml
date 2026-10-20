@@ -1,0 +1,4 @@
+# SOURCE https://example.com/ fetched 2026-10-20
+url = "https://example.com/"
+fetched = 2026-10-20
+covers = "a page with no feed links: discovery falls back to /feed, /rss, /atom.xml"

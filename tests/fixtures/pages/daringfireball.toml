@@ -1,0 +1,4 @@
+# SOURCE https://daringfireball.net/ fetched 2026-10-20
+url = "https://daringfireball.net/"
+fetched = 2026-10-20
+covers = "Atom and JSON Feed (application/json) alternate links, extra spaces, relative hrefs"
