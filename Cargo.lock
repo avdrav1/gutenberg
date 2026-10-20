@@ -1423,10 +1423,12 @@ version = "0.1.0"
 name = "gutenberg-ui"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "gutenberg-core",
  "gutenberg-store",
  "gutenberg-theme",
  "iced",
+ "tempfile",
 ]
 
 [[package]]
