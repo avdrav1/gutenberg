@@ -1,6 +1,7 @@
 //! See CLAUDE.md for what this crate owns.
 
 mod list;
+mod sidebar;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -8,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use gutenberg_core::config::{self, Config};
 use gutenberg_core::sync::unix_now;
-use gutenberg_store::{ArticleRow, Store};
+use gutenberg_store::{ArticleRow, Filter, Folder, Source, Store};
 use gutenberg_theme::{Rgb, Tokens};
 use iced::futures::Stream;
 use iced::keyboard;
@@ -17,6 +18,7 @@ use iced::widget::{column, container, mouse_area, scrollable, text, Column, Row,
 use iced::{border, font, window, Border, Color, Element, Font, Length, Size, Subscription, Task};
 
 use list::Action;
+use sidebar::{Entry, Move};
 
 /// Most articles kept in the list; the PRD plans for 100k.
 const LIST_LIMIT: u32 = 100_000;
@@ -57,9 +59,17 @@ struct App {
     config: Config,
     config_path: Option<PathBuf>,
     store: Result<Store, String>,
+    /// Which articles the list shows; picked in the sources pane.
+    filter: Filter,
     /// What the store held at the last reload, newest first.
     rows: Vec<ArticleRow>,
     source_titles: HashMap<i64, String>,
+    folders: Vec<Folder>,
+    sources: Vec<Source>,
+    /// Unread articles per source.
+    unread: HashMap<i64, i64>,
+    /// A press in the sources pane, which becomes a drag once it moves.
+    drag: Option<Drag>,
     data_version: i64,
     selected: usize,
     /// First row on screen.
@@ -69,6 +79,12 @@ struct App {
     opened: Option<Opened>,
     pending_g: bool,
     bench: Option<Bench>,
+}
+
+/// A press on a sources-pane row and where the pointer is now.
+struct Drag {
+    origin: Entry,
+    over: Entry,
 }
 
 /// The article shown in the article pane.
@@ -94,6 +110,12 @@ enum Message {
     Resized(Size),
     Frame(Instant),
     ConfigChanged(Config),
+    /// Mouse down on a sources-pane row.
+    Press(Entry),
+    /// The pointer entered a sources-pane row during a press.
+    Over(Entry),
+    /// Mouse up anywhere: a click if it never left the row, else a drop.
+    Release,
 }
 
 impl App {
@@ -127,8 +149,13 @@ impl App {
             config,
             config_path,
             store,
+            filter: Filter::All,
             rows: Vec::new(),
             source_titles: HashMap::new(),
+            folders: Vec::new(),
+            sources: Vec::new(),
+            unread: HashMap::new(),
+            drag: None,
             data_version: 0,
             selected: 0,
             top: 0,
@@ -146,12 +173,23 @@ impl App {
     fn reload(&mut self) {
         let Ok(store) = &self.store else { return };
         let selected_id = self.rows.get(self.selected).map(|r| r.id);
-        match (store.list_articles(None, LIST_LIMIT), store.sources()) {
-            (Ok(rows), Ok(sources)) => {
+        let read = (|| {
+            Ok::<_, gutenberg_store::Error>((
+                store.list_articles_in(self.filter, LIST_LIMIT)?,
+                store.sources()?,
+                store.folders()?,
+                store.unread_counts()?,
+            ))
+        })();
+        match read {
+            Ok((rows, sources, folders, unread)) => {
                 self.rows = rows;
-                self.source_titles = sources.into_iter().map(|s| (s.id, s.title)).collect();
+                self.source_titles = sources.iter().map(|s| (s.id, s.title.clone())).collect();
+                self.sources = sources;
+                self.folders = folders;
+                self.unread = unread;
             }
-            (Err(e), _) | (_, Err(e)) => eprintln!("gutenberg: reading the store: {e}"),
+            Err(e) => eprintln!("gutenberg: reading the store: {e}"),
         }
         if let Some(id) = selected_id {
             if let Some(i) = self.rows.iter().position(|r| r.id == id) {
@@ -203,8 +241,52 @@ impl App {
             }
             Message::Frame(at) => return self.bench_frame(at),
             Message::ConfigChanged(config) => self.config = config,
+            Message::Press(entry) => {
+                self.drag = Some(Drag {
+                    origin: entry,
+                    over: entry,
+                })
+            }
+            Message::Over(entry) => {
+                if let Some(drag) = &mut self.drag {
+                    drag.over = entry;
+                }
+            }
+            Message::Release => {
+                if let Some(drag) = self.drag.take() {
+                    if drag.over == drag.origin {
+                        self.choose(drag.origin);
+                    } else if let Some(change) = sidebar::drop_on(drag.origin, drag.over) {
+                        self.apply(change);
+                    }
+                }
+            }
         }
         Task::none()
+    }
+
+    /// Shows the articles a sources-pane row stands for.
+    fn choose(&mut self, entry: Entry) {
+        let Some(filter) = entry.filter() else { return };
+        if filter != self.filter {
+            self.filter = filter;
+            self.selected = 0;
+            self.top = 0;
+            self.reload();
+        }
+    }
+
+    /// Moves a source or folder in the store, then shows the new order.
+    fn apply(&mut self, change: Move) {
+        let Ok(store) = &mut self.store else { return };
+        let moved = match change {
+            Move::Source(id, target) => store.move_source(id, target),
+            Move::Folder(id, before) => store.move_folder(id, before),
+        };
+        if let Err(e) = moved {
+            eprintln!("gutenberg: moving: {e}");
+        }
+        self.reload();
     }
 
     fn select(&mut self, i: usize) {
@@ -223,7 +305,12 @@ impl App {
         if !row.read {
             if let Ok(store) = &self.store {
                 match store.set_read(row.id, true) {
-                    Ok(()) => row.read = true,
+                    Ok(()) => {
+                        row.read = true;
+                        if let Some(n) = self.unread.get_mut(&row.source_id) {
+                            *n = (*n - 1).max(0);
+                        }
+                    }
                     Err(e) => eprintln!("gutenberg: marking read: {e}"),
                 }
             }
@@ -285,6 +372,14 @@ impl App {
         if self.bench.is_some() {
             subscriptions.push(window::frames().map(Message::Frame));
         }
+        if self.drag.is_some() {
+            subscriptions.push(iced::event::listen_with(|event, _, _| match event {
+                iced::Event::Mouse(iced::mouse::Event::ButtonReleased(
+                    iced::mouse::Button::Left,
+                )) => Some(Message::Release),
+                _ => None,
+            }));
+        }
         Subscription::batch(subscriptions)
     }
 
@@ -292,7 +387,7 @@ impl App {
         let t = &self.tokens;
         let layout = self.config.layout;
         let panes: [(u16, Element<'_, Message>, Rgb); 3] = [
-            (layout.sources, Space::new().into(), t.background),
+            (layout.sources, self.sidebar_view(), t.background),
             (layout.list, self.list_view(), t.background),
             (layout.article, self.article_view(), t.lighter_background),
         ];
@@ -304,6 +399,102 @@ impl App {
         )
         .height(Length::Fill)
         .into()
+    }
+
+    fn sidebar_view(&self) -> Element<'_, Message> {
+        let t = &self.tokens;
+        if self.store.is_err() {
+            return Space::new().into();
+        }
+        let rows = sidebar::entries(&self.folders, &self.sources)
+            .into_iter()
+            .map(|entry| self.sidebar_row(entry));
+        // The space below the rows is a drop target too: out of any folder.
+        let rest = mouse_area(Space::new().width(Length::Fill).height(Length::Fill))
+            .on_enter(Message::Over(Entry::Unfiled));
+        let rest: Element<'_, Message> = if self.drop_line_at(Entry::Unfiled) {
+            column![drop_line(t.accent), rest].into()
+        } else {
+            rest.into()
+        };
+        Column::with_children(rows)
+            .push(rest)
+            .padding([8, 0])
+            .height(Length::Fill)
+            .into()
+    }
+
+    /// Whether a drag is over `entry` and dropping there would do something.
+    fn drop_line_at(&self, entry: Entry) -> bool {
+        self.drag.as_ref().is_some_and(|d| {
+            d.over == entry && d.over != d.origin && sidebar::drop_on(d.origin, entry).is_some()
+        })
+    }
+
+    fn sidebar_row(&self, entry: Entry) -> Element<'_, Message> {
+        let t = &self.tokens;
+        let (name, bold, indent) = match entry {
+            Entry::All => ("All articles".to_owned(), true, 12),
+            Entry::Folder(id) => (
+                self.folders
+                    .iter()
+                    .find(|f| f.id == id)
+                    .map_or_else(String::new, |f| f.name.clone()),
+                true,
+                12,
+            ),
+            Entry::Source { id, filed } => (
+                self.source_titles.get(&id).cloned().unwrap_or_default(),
+                false,
+                if filed { 28 } else { 12 },
+            ),
+            Entry::Unfiled => (String::new(), false, 12),
+        };
+        let count = sidebar::count(entry, &self.sources, &self.unread);
+        // The row being dragged dims until it's dropped.
+        let dragged = self
+            .drag
+            .as_ref()
+            .is_some_and(|d| d.origin == entry && d.over != entry);
+        let weight = if bold {
+            font::Weight::Bold
+        } else {
+            font::Weight::Normal
+        };
+        let label = text(name)
+            .size(14)
+            .color(color(if dragged { t.muted } else { t.foreground }))
+            .font(Font {
+                weight,
+                ..Font::DEFAULT
+            })
+            .wrapping(text::Wrapping::None)
+            .width(Length::Fill);
+        let count = text(if count > 0 {
+            count.to_string()
+        } else {
+            String::new()
+        })
+        .size(12)
+        .color(color(t.muted));
+        let chosen = entry.filter() == Some(self.filter);
+        let background = chosen.then(|| color(t.selection).into());
+        let row = container(Row::new().push(label).push(count).spacing(8))
+            .padding(iced::Padding::from([6, 12]).left(indent as f32))
+            .width(Length::Fill)
+            .clip(true)
+            .style(move |_| container::Style {
+                background,
+                ..Default::default()
+            });
+        let row = mouse_area(row)
+            .on_press(Message::Press(entry))
+            .on_enter(Message::Over(entry));
+        if self.drop_line_at(entry) {
+            column![drop_line(t.accent), row].into()
+        } else {
+            row.into()
+        }
     }
 
     fn list_view(&self) -> Element<'_, Message> {
@@ -475,6 +666,18 @@ fn watch_config(path: &PathBuf) -> impl Stream<Item = Message> + use<> {
     })
 }
 
+/// Where a dragged row will land.
+fn drop_line<'a>(accent: Rgb) -> Element<'a, Message> {
+    container(Space::new())
+        .width(Length::Fill)
+        .height(Length::Fixed(2.0))
+        .style(move |_| container::Style {
+            background: Some(color(accent).into()),
+            ..Default::default()
+        })
+        .into()
+}
+
 fn note<'a>(message: String, muted: Rgb) -> Element<'a, Message> {
     container(text(message).size(14).color(color(muted)))
         .padding(16)
@@ -609,5 +812,122 @@ mod tests {
         let _ = app.update(Message::PollStore);
         assert_eq!(app.rows.len(), 2);
         assert_eq!(app.rows[app.selected].title, "old");
+    }
+
+    /// Two folders' worth: Tech holds "a" (2 articles), "b" is unfiled (1).
+    fn app_with_folders() -> (App, i64, i64, i64) {
+        let mut store = Store::open_in_memory().unwrap();
+        let tech = store.folder_named("Tech").unwrap().id;
+        let add = |store: &Store, name: &str, folder| {
+            store
+                .add_source(&NewSource {
+                    folder_id: folder,
+                    kind: SourceKind::Feed,
+                    title: name.into(),
+                    url: Some(format!("https://{name}.example/feed")),
+                    config: "{}".into(),
+                })
+                .unwrap()
+                .id
+        };
+        let a = add(&store, "a", Some(tech));
+        let b = add(&store, "b", None);
+        let article = |source_id, guid: &str, at| NewArticle {
+            source_id,
+            guid: guid.into(),
+            url: None,
+            title: guid.into(),
+            author: None,
+            summary_html: None,
+            published_at: Some(at),
+            fetched_at: 1,
+        };
+        store
+            .insert_articles(&[
+                article(a, "a1", 3),
+                article(a, "a2", 2),
+                article(b, "b1", 1),
+            ])
+            .unwrap();
+        let mut app = App::with_store(Config::default(), None, Ok(store));
+        app.height = 520.0;
+        (app, tech, a, b)
+    }
+
+    fn counts(app: &App, entry: Entry) -> i64 {
+        sidebar::count(entry, &app.sources, &app.unread)
+    }
+
+    #[test]
+    fn counts_drop_as_articles_are_read() {
+        let (mut app, tech, a, _) = app_with_folders();
+        let a_row = Entry::Source { id: a, filed: true };
+        assert_eq!(
+            (
+                counts(&app, Entry::All),
+                counts(&app, Entry::Folder(tech)),
+                counts(&app, a_row)
+            ),
+            (3, 2, 2)
+        );
+        let _ = app.update(Message::Key(Action::Open)); // a1, newest
+        assert_eq!(
+            (
+                counts(&app, Entry::All),
+                counts(&app, Entry::Folder(tech)),
+                counts(&app, a_row)
+            ),
+            (2, 1, 1)
+        );
+        // Opening it again doesn't count twice.
+        let _ = app.update(Message::Key(Action::Open));
+        assert_eq!(counts(&app, Entry::All), 2);
+        // And a reload from the store agrees.
+        app.reload();
+        assert_eq!(counts(&app, Entry::Folder(tech)), 1);
+    }
+
+    #[test]
+    fn a_click_filters_the_list() {
+        let (mut app, tech, _, b) = app_with_folders();
+        let b_row = Entry::Source {
+            id: b,
+            filed: false,
+        };
+        let _ = app.update(Message::Press(b_row));
+        let _ = app.update(Message::Release);
+        assert_eq!(app.filter, Filter::Source(b));
+        assert_eq!(app.rows.len(), 1);
+        let _ = app.update(Message::Press(Entry::Folder(tech)));
+        let _ = app.update(Message::Release);
+        assert_eq!(app.rows.len(), 2);
+        let _ = app.update(Message::Press(Entry::All));
+        let _ = app.update(Message::Release);
+        assert_eq!(app.rows.len(), 3);
+    }
+
+    #[test]
+    fn dragging_a_source_onto_a_folder_files_it_in_the_store() {
+        let (mut app, tech, a, b) = app_with_folders();
+        let b_row = Entry::Source {
+            id: b,
+            filed: false,
+        };
+        let _ = app.update(Message::Press(b_row));
+        let _ = app.update(Message::Over(Entry::Folder(tech)));
+        let _ = app.update(Message::Release);
+        // No filter change: it was a drag, not a click.
+        assert_eq!(app.filter, Filter::All);
+        let stored = app.store.as_ref().unwrap().sources().unwrap();
+        let ids: Vec<_> = stored.iter().map(|s| (s.id, s.folder_id)).collect();
+        assert_eq!(ids, [(a, Some(tech)), (b, Some(tech))]);
+        assert_eq!(counts(&app, Entry::Folder(tech)), 3);
+
+        // Back out of the folder, by dropping below the rows.
+        let _ = app.update(Message::Press(Entry::Source { id: a, filed: true }));
+        let _ = app.update(Message::Over(Entry::Unfiled));
+        let _ = app.update(Message::Release);
+        let stored = app.store.as_ref().unwrap().sources().unwrap();
+        assert_eq!(stored.iter().find(|s| s.id == a).unwrap().folder_id, None);
     }
 }
