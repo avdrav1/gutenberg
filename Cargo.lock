@@ -1398,6 +1398,7 @@ dependencies = [
  "html-escape",
  "reqwest",
  "thiserror 1.0.69",
+ "url",
 ]
 
 [[package]]

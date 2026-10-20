@@ -5,6 +5,8 @@ use std::time::Duration;
 
 use feed_rs::model;
 
+use crate::discover;
+
 /// A parsed feed. Text fields are ready to show; `summary_html` is HTML.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Feed {
@@ -39,6 +41,18 @@ pub enum FeedError {
     Timeout,
     #[error("{0}")]
     Http(String),
+    #[error(
+        "no feed found ({} /feed, /rss, /atom.xml didn't parse)",
+        if *.page_had_links { "the page's feed links," } else { "no <link rel=\"alternate\"> on the page;" }
+    )]
+    NoFeedFound { page_had_links: bool },
+}
+
+/// A feed and the URL it was actually found at.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Found {
+    pub url: String,
+    pub feed: Feed,
 }
 
 const TIMEOUT: Duration = Duration::from_secs(15);
@@ -46,6 +60,42 @@ const ACCEPT: &str = "application/rss+xml, application/atom+xml, application/fee
                       application/xml;q=0.9, text/xml;q=0.9, */*;q=0.8";
 /// Titles made from an untitled entry's text are cut to this many characters.
 const TITLE_FROM_TEXT: usize = 80;
+
+/// Fetches `url` as a feed. If it's a web page instead, tries the feeds it
+/// links to, then `/feed`, `/rss` and `/atom.xml` on its site, and returns
+/// the first that parses.
+pub async fn find(url: &str) -> Result<Found, FeedError> {
+    let bytes = fetch(url).await?;
+    let not_a_feed = match parse(&bytes, url) {
+        Ok(feed) => {
+            return Ok(Found {
+                url: url.to_owned(),
+                feed,
+            })
+        }
+        Err(err) => err,
+    };
+    if !discover::looks_like_html(&bytes) {
+        return Err(not_a_feed);
+    }
+    let links = discover::feed_links(&String::from_utf8_lossy(&bytes), url);
+    let page_had_links = !links.is_empty();
+    for candidate in links.into_iter().chain(discover::fallbacks(url)) {
+        if candidate == url {
+            continue;
+        }
+        let Ok(bytes) = fetch(&candidate).await else {
+            continue;
+        };
+        if let Ok(feed) = parse(&bytes, &candidate) {
+            return Ok(Found {
+                url: candidate,
+                feed,
+            });
+        }
+    }
+    Err(FeedError::NoFeedFound { page_had_links })
+}
 
 /// Downloads a feed document.
 pub async fn fetch(url: &str) -> Result<Vec<u8>, FeedError> {
