@@ -1,68 +1,121 @@
 //! See CLAUDE.md for what this crate owns.
 
+use std::path::PathBuf;
+
+use gutenberg_core::config::{self, Config};
 use gutenberg_theme::{Rgb, Tokens};
+use iced::futures::Stream;
 use iced::keyboard::{self, Key, Modifiers};
-use iced::widget::{container, row, Space};
+use iced::widget::{container, Row, Space};
 use iced::{border, window, Border, Color, Element, Length, Subscription, Task};
 
-/// Opens the window and blocks until it closes.
-pub fn run() -> iced::Result {
-    iced::application(App::new, App::update, App::view)
-        .title("Gutenberg")
-        .subscription(App::subscription)
-        .window(window::Settings {
-            // Hyprland draws the borders; no client-side decorations.
-            decorations: false,
-            #[cfg(target_os = "linux")]
-            platform_specific: window::settings::PlatformSpecific {
-                // Hyprland matches window rules on this class.
-                application_id: "gutenberg".to_owned(),
-                ..Default::default()
-            },
+/// Opens the window and blocks until it closes. When `config_path` is set,
+/// edits to that file apply while the window is open.
+pub fn run(config: Config, config_path: Option<PathBuf>) -> iced::Result {
+    iced::application(
+        move || App::new(config.clone(), config_path.clone()),
+        App::update,
+        App::view,
+    )
+    .title("Gutenberg")
+    .subscription(App::subscription)
+    .window(window::Settings {
+        // Hyprland draws the borders; no client-side decorations.
+        decorations: false,
+        #[cfg(target_os = "linux")]
+        platform_specific: window::settings::PlatformSpecific {
+            // Hyprland matches window rules on this class.
+            application_id: "gutenberg".to_owned(),
             ..Default::default()
-        })
-        .run()
+        },
+        ..Default::default()
+    })
+    .run()
 }
 
 struct App {
     tokens: Tokens,
+    config: Config,
+    config_path: Option<PathBuf>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum Message {
     Quit,
+    ConfigChanged(Config),
 }
 
 impl App {
-    fn new() -> Self {
+    fn new(config: Config, config_path: Option<PathBuf>) -> Self {
         Self {
             tokens: Tokens::fallback(),
+            config,
+            config_path,
         }
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Quit => iced::exit(),
+            Message::ConfigChanged(config) => {
+                self.config = config;
+                Task::none()
+            }
         }
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        keyboard::listen().filter_map(|event| match event {
+        let keys = keyboard::listen().filter_map(|event| match event {
             keyboard::Event::KeyPressed { key, modifiers, .. } => action_for(&key, modifiers),
             _ => None,
-        })
+        });
+        match &self.config_path {
+            Some(path) => {
+                Subscription::batch([keys, Subscription::run_with(path.clone(), watch_config)])
+            }
+            None => keys,
+        }
     }
 
     fn view(&self) -> Element<'_, Message> {
         let t = &self.tokens;
-        row![
-            pane(t.background, t.border, 2),
-            pane(t.background, t.border, 4),
-            pane(t.lighter_background, t.border, 6),
-        ]
+        let layout = self.config.layout;
+        let panes = [
+            (layout.sources, t.background),
+            (layout.list, t.background),
+            (layout.article, t.lighter_background),
+        ];
+        Row::with_children(
+            panes
+                .into_iter()
+                .filter(|&(width, _)| width > 0)
+                .map(|(width, background)| pane(background, t.border, width)),
+        )
         .height(Length::Fill)
         .into()
     }
+}
+
+/// Reloads arrive as messages; a config that fails to load is reported on
+/// stderr and the window keeps the last good one.
+#[allow(clippy::ptr_arg, reason = "Subscription::run_with passes &PathBuf")]
+fn watch_config(path: &PathBuf) -> impl Stream<Item = Message> + use<> {
+    let path = path.clone();
+    iced::stream::channel(8, async move |output| {
+        let watching = config::watch(&path, move |loaded| match loaded {
+            Ok(config) => {
+                let _ = output.clone().try_send(Message::ConfigChanged(config));
+            }
+            Err(err) => eprintln!("gutenberg: {err}"),
+        });
+        match watching {
+            Ok(handle) => {
+                std::future::pending::<()>().await;
+                drop(handle);
+            }
+            Err(err) => eprintln!("gutenberg: {err}"),
+        }
+    })
 }
 
 /// Maps a key press to an action. Keys are listed in `docs/KEYS.md`.
