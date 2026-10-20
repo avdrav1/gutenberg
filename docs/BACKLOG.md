@@ -9,7 +9,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | ID | Story | Acceptance | Status |
 | --- | --- | --- | --- |
 | S1.1 | Cargo workspace with `core`, `store`, `sources`, `theme`, `ui`, `cli` crates | `cargo build` and `cargo test` pass in CI on Arch and Ubuntu | done |
-| S1.2 | iced window opens under Hyprland with three empty panes and `q` quits | Window has no CSD; Hyprland tiles it; cold start under 100 ms | done |
+| S1.2 | iced window opens under Hyprland with three empty panes and `q` quits | Window has no CSD; Hyprland tiles it; cold start under 100 ms (met on tiny-skia; superseded by the 250 ms budget when S3.1 moved to wgpu) | done |
 | S1.3 | SQLite store with migrations and `Article`, `Source`, `Folder` tables | Migration runs on a fresh and an existing file; a test inserts 10k rows and lists them in under 20 ms | done |
 | S1.4 | Config file loads with defaults and hot-reloads on change | Edit `config.toml`; the change applies within 1 s with no restart | done |
 
@@ -28,7 +28,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 
 | ID | Story | Acceptance | Status |
 | --- | --- | --- | --- |
-| S3.1 | Article list with `j`/`k`, unread styling, mark read on open | 10k rows scroll at 60 fps on a 4K monitor; only visible rows render. Risk: S1.2 moved to iced's tiny-skia CPU renderer for cold start; if 4K scroll misses 60 fps, revisit wgpu with a deferred GPU init | doing |
+| S3.1 | Article list with `j`/`k`, unread styling, mark read on open | 10k rows scroll at 60 fps on a 4K monitor; only visible rows render. tiny-skia managed ~10 fps at 4K, so this moves to wgpu (Vulkan) and the cold-start budget to 250 ms | doing |
 | S3.2 | Article pane renders the feed's HTML summary as styled text | Headings, links, lists, images, code, blockquotes; nothing escapes the pane | todo |
 | S3.3 | Reader view extracts the full page | Works on 9 of 10 outlets in `tests/reader_sites.txt`; falls back to the summary | todo |
 | S3.4 | Star, mark unread, mark folder read, open in browser, copy link | Each has a key and a palette entry | todo |
