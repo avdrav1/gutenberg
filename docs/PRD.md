@@ -82,7 +82,7 @@ A Cargo workspace of six crates. Sources implement one trait (`fetch() -> Vec<Ar
 
 | Choice | Pick | Why, and the alternative |
 | --- | --- | --- |
-| UI toolkit | iced 0.14 | Elm-style, wgpu-rendered, runs on Wayland through winit; System76 builds the COSMIC desktop on it, so Wayland bugs get fixed. Alternative: gpui (Zed), faster text and lists but a moving API. Decide after the E1 spike |
+| UI toolkit | iced 0.14 | Elm-style, rendered on the CPU with tiny-skia (wgpu cost ~170 ms of cold start, see S1.2), runs on Wayland through winit; System76 builds the COSMIC desktop on it, so Wayland bugs get fixed. Alternative: gpui (Zed), faster text and lists but a moving API. Decide after the E1 spike |
 | Async | tokio | Sync engine, HTTP, MCP transports all run on it; the UI thread stays free |
 | HTTP | reqwest with rustls | Conditional GET, gzip, per-host semaphores |
 | Feed parsing | feed-rs | Handles RSS 0.9 through 2.0, Atom and JSON Feed in one type |
