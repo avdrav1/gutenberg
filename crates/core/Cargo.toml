@@ -6,6 +6,10 @@ license.workspace = true
 
 [dependencies]
 gutenberg-store.workspace = true
+gutenberg-sources.workspace = true
+tokio.workspace = true
+futures.workspace = true
+url.workspace = true
 serde.workspace = true
 toml.workspace = true
 notify.workspace = true
