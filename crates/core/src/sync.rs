@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use futures::stream::{self, StreamExt};
+use futures::stream::{FuturesUnordered, StreamExt};
 use gutenberg_sources::feed::{self, Feed, Fetched};
 use gutenberg_store::{DueFeed, NewArticle, Store, Validators};
 use tokio::sync::Semaphore;
@@ -101,7 +101,10 @@ pub async fn refresh(
         }
     };
     let hosts = Hosts::new(limits);
-    let mut results = stream::iter(due)
+    // Every feed waits at once: one stuck behind its host's limit must not
+    // hold a slot that another host could use. `Hosts` caps what's sent.
+    let mut results: FuturesUnordered<_> = due
+        .into_iter()
         .map(|due| {
             let (client, hosts) = (&client, &hosts);
             async move {
@@ -109,7 +112,7 @@ pub async fn refresh(
                 (due, outcome)
             }
         })
-        .buffer_unordered(limits.total.max(1));
+        .collect();
 
     while let Some((due, outcome)) = results.next().await {
         match outcome {
@@ -170,8 +173,9 @@ enum Outcome {
 
 async fn fetch_one(client: &feed::Client, hosts: &Hosts, due: &DueFeed, now: i64) -> Outcome {
     let host = hosts.get(&due.url);
-    let _permit = host.in_flight.acquire().await;
+    let _host = host.in_flight.acquire().await;
     host.wait_turn(hosts.spacing).await;
+    let _sending = hosts.sending.acquire().await;
 
     let fetched = feed::fetch_conditional(
         client,
@@ -209,8 +213,10 @@ async fn fetch_one(client: &feed::Client, hosts: &Hosts, due: &DueFeed, now: i64
     }
 }
 
-/// Per-host limits, created on first use.
+/// The overall limit, and per-host limits created on first use.
 struct Hosts {
+    /// Requests in flight across all hosts.
+    sending: Semaphore,
     per_host: usize,
     spacing: Duration,
     hosts: Mutex<HashMap<String, Arc<Host>>>,
@@ -225,6 +231,7 @@ struct Host {
 impl Hosts {
     fn new(limits: &Limits) -> Self {
         Self {
+            sending: Semaphore::new(limits.total.max(1)),
             per_host: limits.per_host.max(1),
             spacing: limits.spacing,
             hosts: Mutex::new(HashMap::new()),
