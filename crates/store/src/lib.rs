@@ -3,6 +3,7 @@
 mod migrate;
 mod model;
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -10,7 +11,8 @@ use rusqlite::{params, Connection, OptionalExtension};
 
 pub use migrate::LATEST as SCHEMA_VERSION;
 pub use model::{
-    ArticleRow, DueFeed, FetchState, Folder, NewArticle, NewSource, Source, SourceKind, Validators,
+    ArticleRow, DueFeed, FetchState, Filter, Folder, NewArticle, NewSource, Source, SourceKind,
+    SourceTarget, Validators,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -208,6 +210,126 @@ impl Store {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
+    /// Newest first, for everything, one source or one folder.
+    pub fn list_articles_in(&self, filter: Filter, limit: u32) -> Result<Vec<ArticleRow>> {
+        let (source, folder) = match filter {
+            Filter::All => (None, None),
+            Filter::Source(id) => (Some(id), None),
+            Filter::Folder(id) => (None, Some(id)),
+        };
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT id, source_id, title, url, author, sort_at, read, starred
+             FROM article
+             WHERE (?1 IS NULL OR source_id = ?1)
+               AND (?2 IS NULL OR source_id IN (SELECT id FROM source WHERE folder_id = ?2))
+             ORDER BY sort_at DESC, id DESC
+             LIMIT ?3",
+        )?;
+        let rows = stmt.query_map(params![source, folder, limit], |row| {
+            Ok(ArticleRow {
+                id: row.get(0)?,
+                source_id: row.get(1)?,
+                title: row.get(2)?,
+                url: row.get(3)?,
+                author: row.get(4)?,
+                sort_at: row.get(5)?,
+                read: row.get(6)?,
+                starred: row.get(7)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Unread articles per source; sources with none are absent.
+    pub fn unread_counts(&self) -> Result<HashMap<i64, i64>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT source_id, count(*) FROM article WHERE read = 0 GROUP BY source_id",
+        )?;
+        let rows = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// The folder with this name, made at the end if there isn't one.
+    pub fn folder_named(&self, name: &str) -> Result<Folder> {
+        let found = self
+            .conn
+            .query_row(
+                "SELECT id, name, position FROM folder WHERE name = ?1 ORDER BY position LIMIT 1",
+                [name],
+                |row| {
+                    Ok(Folder {
+                        id: row.get(0)?,
+                        name: row.get(1)?,
+                        position: row.get(2)?,
+                    })
+                },
+            )
+            .optional()?;
+        match found {
+            Some(folder) => Ok(folder),
+            None => self.add_folder(name),
+        }
+    }
+
+    /// Moves a source and renumbers every source's position, in one
+    /// transaction. Sources keep one global order; a folder shows its own
+    /// in that order.
+    pub fn move_source(&mut self, id: i64, target: SourceTarget) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        let order: Vec<(i64, Option<i64>)> = {
+            let mut stmt = tx.prepare("SELECT id, folder_id FROM source ORDER BY position, id")?;
+            let rows = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?;
+            rows.collect::<rusqlite::Result<_>>()?
+        };
+        let mut ids: Vec<i64> = order.iter().map(|&(i, _)| i).filter(|&i| i != id).collect();
+        let (folder, at) = match target {
+            SourceTarget::Before(other) => {
+                let folder = order
+                    .iter()
+                    .find(|&&(i, _)| i == other)
+                    .and_then(|&(_, f)| f);
+                (
+                    folder,
+                    ids.iter().position(|&i| i == other).unwrap_or(ids.len()),
+                )
+            }
+            SourceTarget::EndOf(folder) => {
+                let last = order
+                    .iter()
+                    .filter(|&&(i, f)| f == folder && i != id)
+                    .filter_map(|&(i, _)| ids.iter().position(|&x| x == i))
+                    .max();
+                (folder, last.map_or(ids.len(), |p| p + 1))
+            }
+        };
+        ids.insert(at, id);
+        tx.execute(
+            "UPDATE source SET folder_id = ?2 WHERE id = ?1",
+            params![id, folder],
+        )?;
+        renumber(&tx, "source", &ids)?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Moves a folder just before another, or to the end with `None`.
+    pub fn move_folder(&mut self, id: i64, before: Option<i64>) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        let mut ids: Vec<i64> = {
+            let mut stmt = tx.prepare("SELECT id FROM folder ORDER BY position, id")?;
+            let rows = stmt.query_map([], |row| row.get(0))?;
+            rows.collect::<rusqlite::Result<_>>()?
+        };
+        ids.retain(|&i| i != id);
+        let at = before
+            .and_then(|b| ids.iter().position(|&i| i == b))
+            .unwrap_or(ids.len());
+        ids.insert(at, id);
+        renumber(&tx, "folder", &ids)?;
+        tx.commit()?;
+        Ok(())
+    }
+
     pub fn summary(&self, article_id: i64) -> Result<Option<String>> {
         Ok(self
             .conn
@@ -323,6 +445,15 @@ impl Store {
             |row| row.get(0),
         )?)
     }
+}
+
+/// Positions 0, 1, 2… in the given order.
+fn renumber(tx: &rusqlite::Transaction, table: &str, ids: &[i64]) -> Result<()> {
+    let mut stmt = tx.prepare(&format!("UPDATE {table} SET position = ?2 WHERE id = ?1"))?;
+    for (position, id) in ids.iter().enumerate() {
+        stmt.execute(params![id, position as i64])?;
+    }
+    Ok(())
 }
 
 fn insert_articles(tx: &rusqlite::Transaction, articles: &[NewArticle]) -> Result<usize> {
