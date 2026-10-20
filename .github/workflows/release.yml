@@ -75,14 +75,14 @@ jobs:
       - name: Install with install.sh
         run: |
           (cd dist && sha256sum gutenberg-*.tar.gz > SHA256SUMS && cat SHA256SUMS)
-          (cd dist && python3 -m http.server 8000 >/dev/null 2>&1 &)
+          (cd dist && python3 -m http.server 8000 --bind 127.0.0.1 </dev/null >/dev/null 2>&1 &)
           sleep 1
           GUTENBERG_BASE_URL=http://127.0.0.1:8000 GUTENBERG_INSTALL_DIR="$RUNNER_TEMP/bin" sh site/install.sh
           "$RUNNER_TEMP/bin/gutenberg" --version
       - name: A tampered tarball is refused
         run: |
           printf 'tampered' >> dist/gutenberg-x86_64-unknown-linux-gnu.tar.gz
-          (cd dist && python3 -m http.server 8001 >/dev/null 2>&1 &)
+          (cd dist && python3 -m http.server 8001 --bind 127.0.0.1 </dev/null >/dev/null 2>&1 &)
           sleep 1
           if GUTENBERG_BASE_URL=http://127.0.0.1:8001 GUTENBERG_INSTALL_DIR="$RUNNER_TEMP/bin2" sh site/install.sh; then
             echo "::error::install.sh accepted a tarball that does not match SHA256SUMS"
