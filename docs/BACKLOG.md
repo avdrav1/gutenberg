@@ -20,7 +20,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | S2.1 | Add a feed by URL; parse RSS, Atom and JSON Feed | 20 fixture feeds from `tests/fixtures/` parse; bad XML shows one line of error | done |
 | S2.2 | Autodiscover a feed from a site URL | Pasting `https://example.com` finds `<link rel="alternate">`; falls back to `/feed`, `/rss`, `/atom.xml` | review |
 | S2.3 | Background refresh with conditional GET and per-host rate limits | A second refresh of an unchanged feed sends `If-None-Match` and gets 304; 100 feeds finish in under 10 s | review |
-| S2.4 | Folders, drag to reorder, unread counts per source and folder (after S3.1; folders from `--add --folder`, sources moved by drag) | Counts update as items are read; order persists | todo |
+| S2.4 | Folders, drag to reorder, unread counts per source and folder (after S3.1; folders from `--add --folder`, sources moved by drag) | Counts update as items are read; order persists | doing |
 | S2.5 | OPML import and export | Round-trips the user's Feedly export without losing a feed or folder | todo |
 | S2.6 | Favicons cached to disk | Shown in the source list; no network call after the first fetch | todo |
 
