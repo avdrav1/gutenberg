@@ -10,10 +10,14 @@ fn main() -> std::process::ExitCode {
     }
     match std::env::args().nth(1).as_deref() {
         Some("--add") => {
-            return match std::env::args().nth(2) {
-                Some(url) => add::run(&url),
-                None => usage(),
-            }
+            let rest: Vec<String> = std::env::args().skip(2).collect();
+            return match rest.as_slice() {
+                [url] => add::run(url, None),
+                [url, flag, folder] | [flag, folder, url] if flag == "--folder" => {
+                    add::run(url, Some(folder))
+                }
+                _ => usage(),
+            };
         }
         Some("--refresh") => return refresh::run(),
         Some(_) => return usage(),
@@ -43,6 +47,6 @@ fn main() -> std::process::ExitCode {
 }
 
 fn usage() -> std::process::ExitCode {
-    eprintln!("usage: gutenberg [--version | --add <url> | --refresh]");
+    eprintln!("usage: gutenberg [--version | --add <url> [--folder <name>] | --refresh]");
     std::process::ExitCode::from(2)
 }
