@@ -2,10 +2,9 @@
 //! save it and its articles.
 
 use std::process::ExitCode;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use gutenberg_sources::feed::{self, Feed};
-use gutenberg_store::{NewArticle, NewSource, SourceKind, Store};
+use gutenberg_store::{NewSource, SourceKind, Store};
 
 pub fn run(url: &str) -> ExitCode {
     match add(url) {
@@ -43,7 +42,13 @@ fn add(url: &str) -> Result<String, String> {
         }
         message = format!("Found {}\n", found.url);
     }
-    message += &save(&mut store, &found.url, &found.feed, now()).map_err(|e| e.to_string())?;
+    message += &save(
+        &mut store,
+        &found.url,
+        &found.feed,
+        gutenberg_core::sync::unix_now(),
+    )
+    .map_err(|e| e.to_string())?;
     Ok(message)
 }
 
@@ -60,29 +65,10 @@ fn save(
         url: Some(url.to_owned()),
         config: "{}".to_owned(),
     })?;
-    let articles: Vec<NewArticle> = feed
-        .entries
-        .iter()
-        .map(|e| NewArticle {
-            source_id: source.id,
-            guid: e.guid.clone(),
-            url: e.url.clone(),
-            title: e.title.clone(),
-            author: e.author.clone(),
-            summary_html: e.summary_html.clone(),
-            published_at: e.published_at,
-            fetched_at,
-        })
-        .collect();
+    let articles = gutenberg_core::sync::articles(feed, source.id, fetched_at);
     let added = store.insert_articles(&articles)?;
     let noun = if added == 1 { "article" } else { "articles" };
     Ok(format!("Added {}: {added} {noun}", feed.title))
-}
-
-fn now() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs() as i64)
 }
 
 #[cfg(test)]
