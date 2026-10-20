@@ -1,0 +1,4 @@
+# SOURCE https://planet.debian.org/rss10.xml fetched 2026-10-20
+url = "https://planet.debian.org/rss10.xml"
+fetched = 2026-10-20
+covers = "RSS 1.0 (RDF) aggregator with content:encoded"

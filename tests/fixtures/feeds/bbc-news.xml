@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+    <channel>
+        <title><![CDATA[BBC News]]></title>
+        <description><![CDATA[BBC News - News Front Page]]></description>
+        <link>https://www.bbc.co.uk/news</link>
+        <image>
+            <url>https://news.bbcimg.co.uk/nol/shared/img/bbc_news_120x60.gif</url>
+            <title>BBC News</title>
+            <link>https://www.bbc.co.uk/news</link>
+        </image>
+        <generator>RSS for Node</generator>
+        <lastBuildDate>Tue, 20 Oct 2026 08:17:48 GMT</lastBuildDate>
+        <atom:link href="https://feeds.bbci.co.uk/news/rss.xml" rel="self" type="application/rss+xml"/>
+        <copyright><![CDATA[Copyright: (C) British Broadcasting Corporation, see https://www.bbc.co.uk/usingthebbc/terms-of-use/#15metadataandrssfeeds for terms and conditions of reuse.]]></copyright>
+        <language><![CDATA[en-gb]]></language>
+        <ttl>15</ttl>
+        <item>
+            <title><![CDATA[Chancellor rejects calls to raise Capital Gains Tax in Budget]]></title>
+            <description><![CDATA[Influential Labour figures had been pushing for equalising CGT and income tax, but critics have said this could drive wealthy people out of Britain.]]></description>
+            <link>https://www.bbc.co.uk/news/articles/c50me4w4x1vyo?at_medium=RSS&amp;at_campaign=rss</link>
+            <guid isPermaLink="false">https://www.bbc.co.uk/news/articles/c50me4w4x1vyo#1</guid>
+            <pubDate>Tue, 20 Oct 2026 08:06:17 GMT</pubDate>
+            <media:thumbnail width="240" height="135" url="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/95e7/live/6cd357a0-cc17-11f1-b7d0-7f346cefa9a9.jpg"/>
+        </item>
+        <item>
+            <title><![CDATA[We asked teens what schools should teach them about work. This is what they said]]></title>
+            <description><![CDATA[Teenagers say they want more work experience at school and opportunities to improve their communication skills.]]></description>
+            <link>https://www.bbc.co.uk/news/articles/c6m2dmdxgz2xo?at_medium=RSS&amp;at_campaign=rss</link>
+            <guid isPermaLink="false">https://www.bbc.co.uk/news/articles/c6m2dmdxgz2xo#1</guid>
+            <pubDate>Tue, 20 Oct 2026 05:00:14 GMT</pubDate>
+            <media:thumbnail width="240" height="135" url="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/fe60/live/acc28bb0-c645-11f1-bc2e-018d645d8d21.png"/>
+        </item>
+        <item>
+            <title><![CDATA[French cities calm overnight after curfews imposed to quell violence, PM says]]></title>
+            <description><![CDATA[Sébastien Lecornu said new curfews for Tuesday night would be decided where necessary.]]></description>
+            <link>https://www.bbc.co.uk/news/articles/cw5yn5e8mezvo?at_medium=RSS&amp;at_campaign=rss</link>
+            <guid isPermaLink="false">https://www.bbc.co.uk/news/articles/cw5yn5e8mezvo#1</guid>
+            <pubDate>Tue, 20 Oct 2026 06:35:57 GMT</pubDate>
+            <media:thumbnail width="240" height="135" url="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/b1f5/live/422c9320-cc55-11f1-9b08-37acac6be953.jpg"/>
+        </item>
+        <item>
+            <title><![CDATA[Criminals detained in hospital set to lose benefits]]></title>
+            <description><![CDATA[The families of the victims of Nottingham killer Valdo Calocane had been campaigning for the change.]]></description>
+            <link>https://www.bbc.co.uk/news/articles/cv62yzddy6dpo?at_medium=RSS&amp;at_campaign=rss</link>
+            <guid isPermaLink="false">https://www.bbc.co.uk/news/articles/cv62yzddy6dpo#1</guid>
+            <pubDate>Tue, 20 Oct 2026 07:35:38 GMT</pubDate>
+            <media:thumbnail width="240" height="134" url="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/afb8/live/3a87a300-cbdb-11f1-bc2e-018d645d8d21.jpg"/>
+        </item>
+        <item>
+            <title><![CDATA[Burnham vows end to 'rip-off parking charges' under new rules]]></title>
+            <description><![CDATA[Penalties are seen as too harsh on motorists who are penalised for parking on private land.]]></description>
+            <link>https://www.bbc.co.uk/news/articles/ck87ze7wl4qno?at_medium=RSS&amp;at_campaign=rss</link>
+            <guid isPermaLink="false">https://www.bbc.co.uk/news/articles/ck87ze7wl4qno#1</guid>
+            <pubDate>Tue, 20 Oct 2026 07:44:52 GMT</pubDate>
+            <media:thumbnail width="240" height="135" url="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/b840/live/85d53a60-cbe1-11f1-9a39-31b474234113.jpg"/>
+        </item>
+        <item>
+            <title><![CDATA[US church on front line of battle against drug known as 'tranq']]></title>
+            <description><![CDATA[Synthetic opioids like fentanyl are more powerful and in plentiful supply, and they have transformed the drugs landscape.]]></description>
+            <link>https://www.bbc.co.uk/news/videos/cqd097z3epvno?at_medium=RSS&amp;at_campaign=rss</link>
+            <guid isPermaLink="false">https://www.bbc.co.uk/news/videos/cqd097z3epvno#1</guid>
+            <pubDate>Tue, 20 Oct 2026 00:02:32 GMT</pubDate>
+            <media:thumbnail width="240" height="135" url="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/483d/live/f2db5f30-cbdd-11f1-9a39-31b474234113.jpg"/>
+        </item>
+        <item>
+            <title><![CDATA[Job vacancies fall as small firms cut back on recruitment]]></title>
+            <description><![CDATA[Small firms cite labour costs as a key factor in scaling back hiring, the Office for National Statistics says.]]></description>
+            <link>https://www.bbc.co.uk/news/articles/c6eq327pzr53o?at_medium=RSS&amp;at_campaign=rss</link>
+            <guid isPermaLink="false">https://www.bbc.co.uk/news/articles/c6eq327pzr53o#1</guid>
+            <pubDate>Tue, 20 Oct 2026 07:44:14 GMT</pubDate>
+            <media:thumbnail width="240" height="134" url="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/c778/live/bb751480-cc48-11f1-9a30-cb277859b43a.jpg"/>
+        </item>
+        <item>
+            <title><![CDATA[Can a simple photo of your face reveal how ill you are?]]></title>
+            <description><![CDATA[AI may help doctors judge how ill a patient is using a single photograph of their face, say US researchers.]]></description>
+            <link>https://www.bbc.co.uk/news/articles/c6lyexv93pkdo?at_medium=RSS&amp;at_campaign=rss</link>
+            <guid isPermaLink="false">https://www.bbc.co.uk/news/articles/c6lyexv93pkdo#1</guid>
+            <pubDate>Tue, 20 Oct 2026 07:29:01 GMT</pubDate>
+            <media:thumbnail width="240" height="134" url="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/56c3/live/041be760-c945-11f1-9357-bdb8a3cad3e4.jpg"/>
+        </item>
+        <item>
+            <title><![CDATA[Ukrainians dying because US restricting intelligence sharing, Zelensky adviser tells BBC]]></title>
+            <description><![CDATA[Serhii Beskrestnov says there has not been enough time to warn people about incoming missile attacks. The White House said there had been no changes to intelligence sharing.]]></description>
+            <link>https://www.bbc.co.uk/news/articles/cmj47yx572z5o?at_medium=RSS&amp;at_campaign=rss</link>
+            <guid isPermaLink="false">https://www.bbc.co.uk/news/articles/cmj47yx572z5o#1</guid>
+            <pubDate>Mon, 19 Oct 2026 20:49:00 GMT</pubDate>
+            <media:thumbnail width="240" height="134" url="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/fd6e/live/09c582e0-cc13-11f1-b0fa-5b9abd1bf87b.png"/>
+        </item>
+        <item>
+            <title><![CDATA[Watch: Ukraine says it carried out first drone airlift of wounded soldier from front line]]></title>
+            <description><![CDATA[The serviceman was surrounded by landmines and enemy drones so a ground rescue was not possible, Ukraine's military says.]]></description>
+            <link>https://www.bbc.co.uk/news/videos/c3vgx05p149wo?at_medium=RSS&amp;at_campaign=rss</link>
+            <guid isPermaLink="false">https://www.bbc.co.uk/news/videos/c3vgx05p149wo#1</guid>
+            <pubDate>Mon, 19 Oct 2026 20:00:43 GMT</pubDate>
+            <media:thumbnail width="240" height="134" url="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/9ffd/live/9535d5d0-cbf7-11f1-9a39-31b474234113.jpg"/>
+        </item>
+    </channel>
+</rss>

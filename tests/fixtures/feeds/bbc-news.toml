@@ -1,0 +1,4 @@
+# SOURCE https://feeds.bbci.co.uk/news/rss.xml fetched 2026-10-20
+url = "https://feeds.bbci.co.uk/news/rss.xml"
+fetched = 2026-10-20
+covers = "RSS 2.0 with media:thumbnail and CDATA titles"

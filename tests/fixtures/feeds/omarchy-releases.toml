@@ -1,0 +1,4 @@
+# SOURCE https://github.com/basecamp/omarchy/releases.atom fetched 2026-10-20
+url = "https://github.com/basecamp/omarchy/releases.atom"
+fetched = 2026-10-20
+covers = "GitHub releases Atom with large HTML content; 5 entries to stay under 200 KB"

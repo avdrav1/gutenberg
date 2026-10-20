@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<rdf:RDF
+ xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+ xmlns="http://purl.org/rss/1.0/"
+ xmlns:admin="http://webns.net/mvcb/"
+ xmlns:content="http://purl.org/rss/1.0/modules/content/"
+ xmlns:dc="http://purl.org/dc/elements/1.1/"
+ xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+ xmlns:syn="http://purl.org/rss/1.0/modules/syndication/"
+ xmlns:taxo="http://purl.org/rss/1.0/modules/taxonomy/"
+>
+
+<channel rdf:about="https://slashdot.org/">
+<title>Slashdot</title>
+<link>https://slashdot.org/</link>
+<description>News for nerds, stuff that matters</description>
+<dc:language>en-us</dc:language>
+<dc:rights>Copyright Slashdot Media. All Rights Reserved.</dc:rights>
+<dc:date>2026-10-20T08:05:28+00:00</dc:date>
+<dc:publisher>Slashdot Media</dc:publisher>
+<dc:creator>feedback@slashdot.org</dc:creator>
+<dc:subject>Technology</dc:subject>
+<syn:updateBase>1970-01-01T00:00+00:00</syn:updateBase>
+<syn:updateFrequency>1</syn:updateFrequency>
+<syn:updatePeriod>hourly</syn:updatePeriod>
+<items>
+ <rdf:Seq>
+  <rdf:li rdf:resource="https://science.slashdot.org/story/26/10/20/0522251/japan-launches-historic-mmx-sample-return-mission-to-mars-moon-phobos" />
+  <rdf:li rdf:resource="https://hardware.slashdot.org/story/26/10/19/2133234/amazon-to-fund-12-small-nuclear-reactors-at-former-indiana-coal-plant" />
+  <rdf:li rdf:resource="https://news.slashdot.org/story/26/10/19/2126207/professor-calls-to-abolish-business-schools-for-failing-society" />
+  <rdf:li rdf:resource="https://mobile.slashdot.org/story/26/10/19/211219/tp-link-moves-to-assemble-routers-in-the-us-following-import-ban" />
+  <rdf:li rdf:resource="https://politics.slashdot.org/story/26/10/19/2055248/trump-dhs-officials-asked-cisa-to-secretly-aquire-and-hack-a-voting-machine" />
+  <rdf:li rdf:resource="https://it.slashdot.org/story/26/10/19/1746204/a-hacker-broke-into-john-deere-sharkninja-with-an-army-of-ai-agents" />
+  <rdf:li rdf:resource="https://hardware.slashdot.org/story/26/10/19/1737252/apple-announces-october-28-pro-and-tell-event" />
+  <rdf:li rdf:resource="https://yro.slashdot.org/story/26/10/19/1726218/florida-dmv-hacked-after-police-dept-insecurely-stored-login-info" />
+  <rdf:li rdf:resource="https://news.slashdot.org/story/26/10/19/1721258/elon-musk-vows-to-give-a-spacex-share-to-every-kid-in-america" />
+  <rdf:li rdf:resource="https://tech.slashdot.org/story/26/10/19/176251/wine-ported-to-openbsd" />
+  <rdf:li rdf:resource="https://entertainment.slashdot.org/story/26/10/19/1451201/elizabeth-holmes-doc-you-can-see-everything-shocks-with-massive-opening" />
+  <rdf:li rdf:resource="https://hardware.slashdot.org/story/26/10/19/0448253/america-tries-reviving-shuttered-nuclear-plants---partly-to-help-power-data-centers" />
+  <rdf:li rdf:resource="https://tech.slashdot.org/story/26/10/19/0655217/mozilla-is-calling-out-microsoft-for-forcing-edge-on-users" />
+  <rdf:li rdf:resource="https://it.slashdot.org/story/26/10/19/0252201/anthropic-announces-public-benefit-fund-committing-5-of-its-shares" />
+  <rdf:li rdf:resource="https://hardware.slashdot.org/story/26/10/19/0055210/human-vs-robot-cage-match-was-illegal-says-california" />
+ </rdf:Seq>
+</items>
+<image rdf:resource="https://a.fsdn.com/sd/topics/topicslashdot.gif" />
+<textinput rdf:resource="https://slashdot.org/search.pl" />
+</channel>
+<image rdf:about="https://a.fsdn.com/sd/topics/topicslashdot.gif">
+<title>Slashdot</title>
+<url>https://a.fsdn.com/sd/topics/topicslashdot.gif</url>
+<link>https://slashdot.org/</link>
+</image>
+<item rdf:about="https://science.slashdot.org/story/26/10/20/0522251/japan-launches-historic-mmx-sample-return-mission-to-mars-moon-phobos">
+<title>Japan Launches Historic MMX Sample-Return Mission to Mars' Moon Phobos</title>
+<link>https://science.slashdot.org/story/26/10/20/0522251/japan-launches-historic-mmx-sample-return-mission-to-mars-moon-phobos</link>
+<description>Japan has successfully launched its Martian Moons eXploration (MMX) mission to study Mars' two moons, Phobos and Deimos. Scheduled to arrive in August 2027, "MMX will become the first spacecraft to land on and return samples from Phobos for study back on Earth, which scientists think could shed light on a decades-old mystery about the moons' origins" and resolve whether they were formed from a giant impact or were captured asteroids, reports Space.com. From the report: It was the 10th liftoff of Japan's expendable, two-stage H3 rocket, which was jointly developed by JAXA and Mitsubishi Heavy Industries. After clearing its launch pad today, the 207-foot-tall (63 meters) launch vehicle flew a nominal trajectory through its ascent corridor over the Pacific Ocean, jettisoning its four solid boosters in pairs just before the flight clock reached two minutes. The rocket shed its payload fairings about one minute and 20 seconds later, exposing MMX to the vacuum of space for the first time. [...] MMX is now under its own power, and on course for Mars.
+ 
+The interplanetary transit will last about 10 months, with the spacecraft scheduled to arrive at the Red Planet in August 2027. When it does, MMX's propulsion module will execute an orbital insertion burn to place itself in a quasi-satellite orbit (QSO) around Phobos, which places MMX within the space around the moon as both circle Mars. MMX will spend about three years in the Martian system, devoting much of that time to studying the 14-mile-wide (22 km) Phobos with its science instruments. The spacecraft also carries the IDEFIX rover, a joint effort of the space agencies of France and Germany, which is scheduled to deploy to the surface of Phobos in late 2028 or early 2029.
+ 
+After a mapping campaign to select suitable landing sites, MMX will perform two separate touchdowns on Phobos to collect and stow samples in the spacecraft's return capsule. Following its second landing and sample collection, MMX will briefly return to QSO with Phobos before transferring to a more elongated orbit around Mars that intersects with the planet's smaller moon, Deimos, which is just 8 miles (14 km) in diameter. During the last several months of its time around Mars, MMX will perform a series of Deimos flybys before departing for Earth in November 2030. If all goes according to plan, the MMX sample-return capsule will land in Australia in 2031. You can watch a recording of the launch on YouTube.&lt;p&gt;&lt;div class="share_submission" style="position:relative;"&gt;
+&lt;a class="slashpop" href="http://twitter.com/home?status=Japan+Launches+Historic+MMX+Sample-Return+Mission+to+Mars'+Moon+Phobos%3A+https%3A%2F%2Fscience.slashdot.org%2Fstory%2F26%2F10%2F20%2F0522251%2F%3Futm_source%3Dtwitter%26utm_medium%3Dtwitter"&gt;&lt;img src="https://a.fsdn.com/sd/twitter_icon_large.png"&gt;&lt;/a&gt;
+&lt;a class="slashpop" href="http://www.facebook.com/sharer.php?u=https%3A%2F%2Fscience.slashdot.org%2Fstory%2F26%2F10%2F20%2F0522251%2Fjapan-launches-historic-mmx-sample-return-mission-to-mars-moon-phobos%3Futm_source%3Dslashdot%26utm_medium%3Dfacebook"&gt;&lt;img src="https://a.fsdn.com/sd/facebook_icon_large.png"&gt;&lt;/a&gt;
+
+
+
+&lt;/div&gt;&lt;/p&gt;&lt;p&gt;&lt;a href="https://science.slashdot.org/story/26/10/20/0522251/japan-launches-historic-mmx-sample-return-mission-to-mars-moon-phobos?amp;"&gt;Read more of this story&lt;/a&gt; at Slashdot.&lt;/p&gt;&lt;iframe src="https://slashdot.org/slashdot-it.pl?op=discuss&amp;amp;id=24128770&amp;amp;smallembed=1" style="height: 300px; width: 100%; border: none;"&gt;&lt;/iframe&gt;</description>
+<dc:creator>BeauHD</dc:creator>
+<dc:date>2026-10-20T07:00:00+00:00</dc:date>
+<dc:subject>mars</dc:subject>
+<slash:department>now-we-wait</slash:department>
+<slash:section>science</slash:section>
+<slash:comments>1</slash:comments>
+<slash:hit_parade>1,1,1,1,0,0,0</slash:hit_parade>
+</item>
+<item rdf:about="https://hardware.slashdot.org/story/26/10/19/2133234/amazon-to-fund-12-small-nuclear-reactors-at-former-indiana-coal-plant">
+<title>Amazon To Fund 12 Small Nuclear Reactors At Former Indiana Coal Plant</title>
+<link>https://hardware.slashdot.org/story/26/10/19/2133234/amazon-to-fund-12-small-nuclear-reactors-at-former-indiana-coal-plant</link>
+<description>An anonymous reader quotes a report from TechCrunch: Amazon is funding development of a proposed 960-megawatt nuclear plant in Indiana and would be the first customer to buy its power, the companies announced Monday. Utility company American Electric Power (AEP) would operate the plant. X-energy, which designs small modular nuclear reactors and went public in April, would supply the reactors. The new power plant would consist of 12 Xe-100 small modular reactors and be located on the site of a demolished coal power plant just south of Terre Haute. The deal is the second commercial agreement between Amazon and X-energy, and it's three times larger than the first, which was announced two years ago.
+ 
+Amazon has invested heavily in X-energy, leading a $700 million Series C-1 round in October 2024. The two companies have said they ultimately plan to build 5 gigawatts of new nuclear generating capacity in the U.S. by 2039. Unlike many newly announced power plants, these reactors would be connected to the public electric grid, though Amazon says the power would also serve its data centers.
+ 
+The companies' aggressive timeline still depends on X-energy successfully delivering its first power plant at a Dow Chemical plant southeast of Houston, Texas. The site, called Seadrift, has recently been at the center of a lawsuit filed by the state of Texas, which accuses the plant of "habitual non-compliance" with water and solid-waste regulations and permits. X-energy has yet to break ground at Seadrift, which will host four Xe-100 reactors to provide the chemical plant with heat and electricity. The company said its construction permit is in the final phases of the U.S. Nuclear Regulatory Commission's review process.&lt;p&gt;&lt;div class="share_submission" style="position:relative;"&gt;
+&lt;a class="slashpop" href="http://twitter.com/home?status=Amazon+To+Fund+12+Small+Nuclear+Reactors+At+Former+Indiana+Coal+Plant%3A+https%3A%2F%2Fhardware.slashdot.org%2Fstory%2F26%2F10%2F19%2F2133234%2F%3Futm_source%3Dtwitter%26utm_medium%3Dtwitter"&gt;&lt;img src="https://a.fsdn.com/sd/twitter_icon_large.png"&gt;&lt;/a&gt;
+&lt;a class="slashpop" href="http://www.facebook.com/sharer.php?u=https%3A%2F%2Fhardware.slashdot.org%2Fstory%2F26%2F10%2F19%2F2133234%2Famazon-to-fund-12-small-nuclear-reactors-at-former-indiana-coal-plant%3Futm_source%3Dslashdot%26utm_medium%3Dfacebook"&gt;&lt;img src="https://a.fsdn.com/sd/facebook_icon_large.png"&gt;&lt;/a&gt;
+
+
+
+&lt;/div&gt;&lt;/p&gt;&lt;p&gt;&lt;a href="https://hardware.slashdot.org/story/26/10/19/2133234/amazon-to-fund-12-small-nuclear-reactors-at-former-indiana-coal-plant?amp;"&gt;Read more of this story&lt;/a&gt; at Slashdot.&lt;/p&gt;&lt;iframe src="https://slashdot.org/slashdot-it.pl?op=discuss&amp;amp;id=24128490&amp;amp;smallembed=1" style="height: 300px; width: 100%; border: none;"&gt;&lt;/iframe&gt;</description>
+<dc:creator>BeauHD</dc:creator>
+<dc:date>2026-10-20T03:30:00+00:00</dc:date>
+<dc:subject>power</dc:subject>
+<slash:department>what-to-expect</slash:department>
+<slash:section>hardware</slash:section>
+<slash:comments>25</slash:comments>
+<slash:hit_parade>25,23,22,22,2,1,0</slash:hit_parade>
+</item>
+<item rdf:about="https://news.slashdot.org/story/26/10/19/2126207/professor-calls-to-abolish-business-schools-for-failing-society">
+<title>Professor Calls To Abolish Business Schools For Failing Society</title>
+<link>https://news.slashdot.org/story/26/10/19/2126207/professor-calls-to-abolish-business-schools-for-failing-society</link>
+<description>joshuark writes: Professor Christopher Marquis makes a provocative argument about business schools: "We need to abolish them." A 20-year business educator at Harvard, Cornell and Cambridge, Marquis argues in The New York Times and on LinkedIn that MBA programs sanctify profit-driven dealmaking at the expense of public life. "That's not the institution failing," he writes. "Sadly, it's the institution working." "Business school doesn't just hand out skills and a network," argues Marquis, "it quietly reshapes how people see the world, rewarding dealmaking, simplification, and optimization for financial metrics, while workers and communities become afterthoughts."
+ 
+Marquis points to research suggesting that business-school-trained CEOs often benefit shareholders at the expense of workers, without delivering measurable improvements in company performance... "[W]hen a business-school-trained CEO takes over a firm, wages fall and labor's share of income drops, with no gain in productivity," writes Marquis. "In both the U.S. and Denmark, what passes for the 'managerial skill' of business-school graduates turns out to be a transfer of wealth away from workers and toward shareholders. Students deserve better than a machine that narrows their sense of what's possible."&lt;p&gt;&lt;div class="share_submission" style="position:relative;"&gt;
+&lt;a class="slashpop" href="http://twitter.com/home?status=Professor+Calls+To+Abolish+Business+Schools+For+Failing+Society%3A+https%3A%2F%2Fnews.slashdot.org%2Fstory%2F26%2F10%2F19%2F2126207%2F%3Futm_source%3Dtwitter%26utm_medium%3Dtwitter"&gt;&lt;img src="https://a.fsdn.com/sd/twitter_icon_large.png"&gt;&lt;/a&gt;
+&lt;a class="slashpop" href="http://www.facebook.com/sharer.php?u=https%3A%2F%2Fnews.slashdot.org%2Fstory%2F26%2F10%2F19%2F2126207%2Fprofessor-calls-to-abolish-business-schools-for-failing-society%3Futm_source%3Dslashdot%26utm_medium%3Dfacebook"&gt;&lt;img src="https://a.fsdn.com/sd/facebook_icon_large.png"&gt;&lt;/a&gt;
+
+
+
+&lt;/div&gt;&lt;/p&gt;&lt;p&gt;&lt;a href="https://news.slashdot.org/story/26/10/19/2126207/professor-calls-to-abolish-business-schools-for-failing-society?amp;"&gt;Read more of this story&lt;/a&gt; at Slashdot.&lt;/p&gt;&lt;iframe src="https://slashdot.org/slashdot-it.pl?op=discuss&amp;amp;id=24128470&amp;amp;smallembed=1" style="height: 300px; width: 100%; border: none;"&gt;&lt;/iframe&gt;</description>
+<dc:creator>BeauHD</dc:creator>
+<dc:date>2026-10-19T23:00:00+00:00</dc:date>
+<dc:subject>business</dc:subject>
+<slash:department>provocative-essays</slash:department>
+<slash:section>news</slash:section>
+<slash:comments>76</slash:comments>
+<slash:hit_parade>76,74,69,59,18,8,4</slash:hit_parade>
+</item>
+<item rdf:about="https://mobile.slashdot.org/story/26/10/19/211219/tp-link-moves-to-assemble-routers-in-the-us-following-import-ban">
+<title>TP-Link Moves to Assemble Routers In the US Following Import Ban</title>
+<link>https://mobile.slashdot.org/story/26/10/19/211219/tp-link-moves-to-assemble-routers-in-the-us-following-import-ban</link>
+<description>TP-Link plans to begin assembling routers in Mississippi as early as 2027 after the FCC banned imports of new foreign-made consumer routers over security concerns. Engadget reports: The company has signed a letter of intent with manufacturer Key Tronic and, pending approval from regulators, TP-Link says stateside assembly of its routers could start at a Mississippi production line as soon as early 2027.
+ 
+Once things are up and running, Wi-Fi 8 routers are expected to be among the first TP-Link products that Key Tronic assembles. TP-Link claims that the agreement is part of its "long-term effort to accelerate US investment in high-tech manufacturing and job creation, designing and assembling next-generation products for American consumers here on American soil."
+ 
+The company said it will still have to source components from outside the US. "Many [components] are just not available from a domestic source, and this is not a TP-Link issue," TP-Link's corporate affairs officer Steve Kovsky told PC Mag. "This is an issue for all manufacturers that are trying to onshore manufacturing."&lt;p&gt;&lt;div class="share_submission" style="position:relative;"&gt;
+&lt;a class="slashpop" href="http://twitter.com/home?status=TP-Link+Moves+to+Assemble+Routers+In+the+US+Following+Import+Ban%3A+https%3A%2F%2Fmobile.slashdot.org%2Fstory%2F26%2F10%2F19%2F211219%2F%3Futm_source%3Dtwitter%26utm_medium%3Dtwitter"&gt;&lt;img src="https://a.fsdn.com/sd/twitter_icon_large.png"&gt;&lt;/a&gt;
+&lt;a class="slashpop" href="http://www.facebook.com/sharer.php?u=https%3A%2F%2Fmobile.slashdot.org%2Fstory%2F26%2F10%2F19%2F211219%2Ftp-link-moves-to-assemble-routers-in-the-us-following-import-ban%3Futm_source%3Dslashdot%26utm_medium%3Dfacebook"&gt;&lt;img src="https://a.fsdn.com/sd/facebook_icon_large.png"&gt;&lt;/a&gt;
+
+
+
+&lt;/div&gt;&lt;/p&gt;&lt;p&gt;&lt;a href="https://mobile.slashdot.org/story/26/10/19/211219/tp-link-moves-to-assemble-routers-in-the-us-following-import-ban?amp;"&gt;Read more of this story&lt;/a&gt; at Slashdot.&lt;/p&gt;&lt;iframe src="https://slashdot.org/slashdot-it.pl?op=discuss&amp;amp;id=24128450&amp;amp;smallembed=1" style="height: 300px; width: 100%; border: none;"&gt;&lt;/iframe&gt;</description>
+<dc:creator>BeauHD</dc:creator>
+<dc:date>2026-10-19T22:00:00+00:00</dc:date>
+<dc:subject>wireless</dc:subject>
+<slash:department>what-to-expect</slash:department>
+<slash:section>mobile</slash:section>
+<slash:comments>59</slash:comments>
+<slash:hit_parade>59,57,53,45,11,4,1</slash:hit_parade>
+</item>
+<item rdf:about="https://politics.slashdot.org/story/26/10/19/2055248/trump-dhs-officials-asked-cisa-to-secretly-aquire-and-hack-a-voting-machine">
+<title>Trump DHS Officials Asked CISA To Secretly Aquire and Hack a Voting Machine</title>
+<link>https://politics.slashdot.org/story/26/10/19/2055248/trump-dhs-officials-asked-cisa-to-secretly-aquire-and-hack-a-voting-machine</link>
+<description>Longtime Slashdot reader fahrbot-bot shares a report from ProPublica: A few months into President Donald Trump's second term, political appointees at the Department of Homeland Security (DHS) wanted Cybersecurity and Infrastructure Security Agency (CISA) to secretly acquire a voting machine and hack it. The appointees wanted the Cybersecurity and Infrastructure Security Agency to procure the machine, examine it and report back the findings so they could be given to the White House, according to two former administration officials with knowledge of the request.
+ 
+The proposition was shocking to CISA's career staffers, according to one of the former officials. CISA typically worked to thwart hackers. Moreover, the agency had been directed not to alert the voting machine company if it uncovered flaws, contrary to its standard practices. The request made the CISA employees fear they were being asked to take part in political interference. "My thought was they could keep it in their back pocket to invalidate any [election] results they don't like," one of the former officials said. "This goes against everything CISA represents." [Or, perhaps do something worse?]
+ 
+The CISA employees repeatedly told the political appointees that their request was impossible, in part because the agents capable of pulling off such an operation had just been laid off by Elon Musk's Department of Government Efficiency (DOGE) initiative. The appointees eventually stopped pressing CISA. Though not acted on, the request shows how the Trump administration has tried to use the agency for its own ends while draining it of resources for one of its critical missions: protecting the nation's voting systems.&lt;p&gt;&lt;div class="share_submission" style="position:relative;"&gt;
+&lt;a class="slashpop" href="http://twitter.com/home?status=Trump+DHS+Officials+Asked+CISA+To+Secretly+Aquire+and+Hack+a+Voting+Machine%3A+https%3A%2F%2Fpolitics.slashdot.org%2Fstory%2F26%2F10%2F19%2F2055248%2F%3Futm_source%3Dtwitter%26utm_medium%3Dtwitter"&gt;&lt;img src="https://a.fsdn.com/sd/twitter_icon_large.png"&gt;&lt;/a&gt;
+&lt;a class="slashpop" href="http://www.facebook.com/sharer.php?u=https%3A%2F%2Fpolitics.slashdot.org%2Fstory%2F26%2F10%2F19%2F2055248%2Ftrump-dhs-officials-asked-cisa-to-secretly-aquire-and-hack-a-voting-machine%3Futm_source%3Dslashdot%26utm_medium%3Dfacebook"&gt;&lt;img src="https://a.fsdn.com/sd/facebook_icon_large.png"&gt;&lt;/a&gt;
+
+
+
+&lt;/div&gt;&lt;/p&gt;&lt;p&gt;&lt;a href="https://politics.slashdot.org/story/26/10/19/2055248/trump-dhs-officials-asked-cisa-to-secretly-aquire-and-hack-a-voting-machine?amp;"&gt;Read more of this story&lt;/a&gt; at Slashdot.&lt;/p&gt;&lt;iframe src="https://slashdot.org/slashdot-it.pl?op=discuss&amp;amp;id=24128448&amp;amp;smallembed=1" style="height: 300px; width: 100%; border: none;"&gt;&lt;/iframe&gt;</description>
+<dc:creator>BeauHD</dc:creator>
+<dc:date>2026-10-19T21:00:00+00:00</dc:date>
+<dc:subject>government</dc:subject>
+<slash:department>unusual-requests</slash:department>
+<slash:section>politics</slash:section>
+<slash:comments>98</slash:comments>
+<slash:hit_parade>98,94,83,71,30,18,13</slash:hit_parade>
+</item>
+<item rdf:about="https://it.slashdot.org/story/26/10/19/1746204/a-hacker-broke-into-john-deere-sharkninja-with-an-army-of-ai-agents">
+<title>A Hacker Broke Into John Deere, SharkNinja With an Army of AI Agents</title>
+<link>https://it.slashdot.org/story/26/10/19/1746204/a-hacker-broke-into-john-deere-sharkninja-with-an-army-of-ai-agents</link>
+<description>An anonymous reader quotes a report from The Verge: A hacker broke into more than 100 websites using an army of AI agents that mostly operated on their own, according to findings from the AI security firm Norforge. Though Norforge doesn't name the targets, Reuters reports that the victims included companies like John Deere, SharkNinja, and Cummins.
+ 
+[...] Researchers at Norforge uncovered the attacks through exposed work on Cairn, an open-source AI platform that describes itself as a "general-purpose problem-solving engine." With Cairn, users set a start and end point for the AI agents, which document their progress as they move forward with the task. However, as noted by Norforge, hackers can also use the tool to orchestrate cyberattacks using AI agents.
+ 
+The hacker who broke into more than 100 sites was the "most active" among the exposed Cairn instances discovered by Norforge, waging attacks on companies based in the US, Canada, Australia, and Japan, as reported by Reuters. This attacker laid out "preferred intrusion tactics" using fewer than 100 Chinese characters, with successful breaches taking about 23 hours, according to Reuters. Overall, Nordforge found more than 20 exposed Cairn instances that are "likely malicious." A John Deere spokesperson said there is "no indication that sensitive information was accessed" as a result of the attack, while Cummins said it's "investigating the report of a potential cyber-attack on a website operated by one of our third-party vendors."
+ 
+Meanwhile, SharkNinja says the breach impacted a standalone site with product support information, and that it has contained the threat.&lt;p&gt;&lt;div class="share_submission" style="position:relative;"&gt;
+&lt;a class="slashpop" href="http://twitter.com/home?status=A+Hacker+Broke+Into+John+Deere%2C+SharkNinja+With+an+Army+of+AI+Agents%3A+https%3A%2F%2Fit.slashdot.org%2Fstory%2F26%2F10%2F19%2F1746204%2F%3Futm_source%3Dtwitter%26utm_medium%3Dtwitter"&gt;&lt;img src="https://a.fsdn.com/sd/twitter_icon_large.png"&gt;&lt;/a&gt;
+&lt;a class="slashpop" href="http://www.facebook.com/sharer.php?u=https%3A%2F%2Fit.slashdot.org%2Fstory%2F26%2F10%2F19%2F1746204%2Fa-hacker-broke-into-john-deere-sharkninja-with-an-army-of-ai-agents%3Futm_source%3Dslashdot%26utm_medium%3Dfacebook"&gt;&lt;img src="https://a.fsdn.com/sd/facebook_icon_large.png"&gt;&lt;/a&gt;
+
+
+
+&lt;/div&gt;&lt;/p&gt;&lt;p&gt;&lt;a href="https://it.slashdot.org/story/26/10/19/1746204/a-hacker-broke-into-john-deere-sharkninja-with-an-army-of-ai-agents?amp;"&gt;Read more of this story&lt;/a&gt; at Slashdot.&lt;/p&gt;&lt;iframe src="https://slashdot.org/slashdot-it.pl?op=discuss&amp;amp;id=24128288&amp;amp;smallembed=1" style="height: 300px; width: 100%; border: none;"&gt;&lt;/iframe&gt;</description>
+<dc:creator>BeauHD</dc:creator>
+<dc:date>2026-10-19T20:00:00+00:00</dc:date>
+<dc:subject>security</dc:subject>
+<slash:department>automated-hacking</slash:department>
+<slash:section>it</slash:section>
+<slash:comments>17</slash:comments>
+<slash:hit_parade>17,17,16,16,5,3,3</slash:hit_parade>
+</item>
+<item rdf:about="https://hardware.slashdot.org/story/26/10/19/1737252/apple-announces-october-28-pro-and-tell-event">
+<title>Apple Announces October 28 'Pro and Tell' Event</title>
+<link>https://hardware.slashdot.org/story/26/10/19/1737252/apple-announces-october-28-pro-and-tell-event</link>
+<description>Following its October 13 HomeView launch, Apple is gearing up for its second hardware event of the month. The event is scheduled for October 28 in Los Angeles and carries the tagline "Pro and tell." 9to5Mac reports: Rumors say Apple has a slew of new products to announce at its next event, headlining by its first MacBook Pro with a touchscreen and OLED. According to Bloomberg's Mark Gurman, here's what's on the docket: 
+- New 14-inch and 16-inch touchscreen MacBook Pro models with OLED displays. They will also have a Dynamic Island for the first time and will be "significantly lighter" than the current models. The new MacBook Pro models are expected to be powered by the M5 Pro and M5 Max chips.
+- A revamped iPad mini with an OLED screen, a "revamped speaker system," and a relocated FaceTime camera
+- New iMac and entry-level 14-inch MacBook Pro models powered by the M6 chip, which will "look like their current versions."&lt;p&gt;&lt;div class="share_submission" style="position:relative;"&gt;
+&lt;a class="slashpop" href="http://twitter.com/home?status=Apple+Announces+October+28+'Pro+and+Tell'+Event%3A+https%3A%2F%2Fhardware.slashdot.org%2Fstory%2F26%2F10%2F19%2F1737252%2F%3Futm_source%3Dtwitter%26utm_medium%3Dtwitter"&gt;&lt;img src="https://a.fsdn.com/sd/twitter_icon_large.png"&gt;&lt;/a&gt;
+&lt;a class="slashpop" href="http://www.facebook.com/sharer.php?u=https%3A%2F%2Fhardware.slashdot.org%2Fstory%2F26%2F10%2F19%2F1737252%2Fapple-announces-october-28-pro-and-tell-event%3Futm_source%3Dslashdot%26utm_medium%3Dfacebook"&gt;&lt;img src="https://a.fsdn.com/sd/facebook_icon_large.png"&gt;&lt;/a&gt;
+
+
+
+&lt;/div&gt;&lt;/p&gt;&lt;p&gt;&lt;a href="https://hardware.slashdot.org/story/26/10/19/1737252/apple-announces-october-28-pro-and-tell-event?amp;"&gt;Read more of this story&lt;/a&gt; at Slashdot.&lt;/p&gt;&lt;iframe src="https://slashdot.org/slashdot-it.pl?op=discuss&amp;amp;id=24128284&amp;amp;smallembed=1" style="height: 300px; width: 100%; border: none;"&gt;&lt;/iframe&gt;</description>
+<dc:creator>BeauHD</dc:creator>
+<dc:date>2026-10-19T19:30:00+00:00</dc:date>
+<dc:subject>macbook</dc:subject>
+<slash:department>what-to-expect</slash:department>
+<slash:section>hardware</slash:section>
+<slash:comments>14</slash:comments>
+<slash:hit_parade>14,14,13,10,5,1,1</slash:hit_parade>
+</item>
+<item rdf:about="https://yro.slashdot.org/story/26/10/19/1726218/florida-dmv-hacked-after-police-dept-insecurely-stored-login-info">
+<title>Florida DMV Hacked After Police Dept Insecurely Stored Login Info</title>
+<link>https://yro.slashdot.org/story/26/10/19/1726218/florida-dmv-hacked-after-police-dept-insecurely-stored-login-info</link>
+<description>Florida's DMV says a September 4 breach exposed driver's license and motor vehicle records after attackers obtained credentials that a local law-enforcement employee had "improperly stored on an electronic device." The ShinyHunters group has been linked to the intrusion. Ars Technica reports: In a notice posted Friday, [Florida Department of Highway Safety and Motor Vehicles (FLHSMV)] confirmed that it took "immediate steps" after discovering that "a malicious actor accessed certain department records on September 4, 2026, using compromised credentials." There's "no evidence" that data has yet been misused, the department said, but law enforcement "determined the information potentially affected includes driver license and motor vehicle data, to include document images, and other personal information."
+ 
+[...] On a webpage describing the security incident, FLHSMV confirmed that an "international cybercriminal organization" was behind the breach but did not specify which group or how long they had access. Instead, officials claimed to have "promptly mitigated the breach, launched an investigation, and issued required notification to state authorities." Mitigations included "blocking unauthorized access, resetting relevant user credentials, engaging cybersecurity professionals, and implementing additional safeguards to protect sensitive information," FLHSMV said. Florida's investigation is "ongoing," officials said, but a cybercriminal group called ShinyHunters -- which recently claimed credit for hacking the FBI -- may have stolen the data. Florida residents affected by the breach will receive a letter offering one year of free credit monitoring through Sontiq, Inc. Those whose contact information is outdated can email the FLHSMV at customerinquiry@flhsmv.gov to determine whether their data was compromised.&lt;p&gt;&lt;div class="share_submission" style="position:relative;"&gt;
+&lt;a class="slashpop" href="http://twitter.com/home?status=Florida+DMV+Hacked+After+Police+Dept+Insecurely+Stored+Login+Info%3A+https%3A%2F%2Fyro.slashdot.org%2Fstory%2F26%2F10%2F19%2F1726218%2F%3Futm_source%3Dtwitter%26utm_medium%3Dtwitter"&gt;&lt;img src="https://a.fsdn.com/sd/twitter_icon_large.png"&gt;&lt;/a&gt;
+&lt;a class="slashpop" href="http://www.facebook.com/sharer.php?u=https%3A%2F%2Fyro.slashdot.org%2Fstory%2F26%2F10%2F19%2F1726218%2Fflorida-dmv-hacked-after-police-dept-insecurely-stored-login-info%3Futm_source%3Dslashdot%26utm_medium%3Dfacebook"&gt;&lt;img src="https://a.fsdn.com/sd/facebook_icon_large.png"&gt;&lt;/a&gt;
+
+
+
+&lt;/div&gt;&lt;/p&gt;&lt;p&gt;&lt;a href="https://yro.slashdot.org/story/26/10/19/1726218/florida-dmv-hacked-after-police-dept-insecurely-stored-login-info?amp;"&gt;Read more of this story&lt;/a&gt; at Slashdot.&lt;/p&gt;&lt;iframe src="https://slashdot.org/slashdot-it.pl?op=discuss&amp;amp;id=24128270&amp;amp;smallembed=1" style="height: 300px; width: 100%; border: none;"&gt;&lt;/iframe&gt;</description>
+<dc:creator>BeauHD</dc:creator>
+<dc:date>2026-10-19T19:00:00+00:00</dc:date>
+<dc:subject>privacy</dc:subject>
+<slash:department>PSA</slash:department>
+<slash:section>yro</slash:section>
+<slash:comments>11</slash:comments>
+<slash:hit_parade>11,11,11,9,3,2,0</slash:hit_parade>
+</item>
+<item rdf:about="https://news.slashdot.org/story/26/10/19/1721258/elon-musk-vows-to-give-a-spacex-share-to-every-kid-in-america">
+<title>Elon Musk Vows To Give a SpaceX Share To 'Every Kid In America'</title>
+<link>https://news.slashdot.org/story/26/10/19/1721258/elon-musk-vows-to-give-a-spacex-share-to-every-kid-in-america</link>
+<description>An anonymous reader quotes a report from CNN: Elon Musk has said he will give every child in America a stake in SpaceX, his $2 trillion aerospace and artificial intelligence company, as tech firms face intensifying scrutiny over their impact on society. "Next year, I will give one of my SpaceX shares to every kid in America," he wrote on X on Monday. "This will be the first of many."
+ 
+SpaceX only began trading publicly in June (and after the biggest initial public offering in history). The company's shares were trading for about $146 when the market closed on Friday. Musk's proposal was thin on detail. It is not clear how those shares would be distributed to the tens of millions of American children or whether all of them would even be eligible. According to the United States Census Bureau, there are roughly 73 million people under the age of 18, making Musk's potential giveaway worth about $10.7 billion at SpaceX's current share price. The move came in response to Anthropic's announcement on Sunday that it will commit at least 5% of its shares to a "Public Benefit Fund" that will donate money to social causes. "I recommend giving the shares directly to the public," Musk said in a reply to Anthropic's announcement. "This is what I will be doing."&lt;p&gt;&lt;div class="share_submission" style="position:relative;"&gt;
+&lt;a class="slashpop" href="http://twitter.com/home?status=Elon+Musk+Vows+To+Give+a+SpaceX+Share+To+'Every+Kid+In+America'%3A+https%3A%2F%2Fnews.slashdot.org%2Fstory%2F26%2F10%2F19%2F1721258%2F%3Futm_source%3Dtwitter%26utm_medium%3Dtwitter"&gt;&lt;img src="https://a.fsdn.com/sd/twitter_icon_large.png"&gt;&lt;/a&gt;
+&lt;a class="slashpop" href="http://www.facebook.com/sharer.php?u=https%3A%2F%2Fnews.slashdot.org%2Fstory%2F26%2F10%2F19%2F1721258%2Felon-musk-vows-to-give-a-spacex-share-to-every-kid-in-america%3Futm_source%3Dslashdot%26utm_medium%3Dfacebook"&gt;&lt;img src="https://a.fsdn.com/sd/facebook_icon_large.png"&gt;&lt;/a&gt;
+
+
+
+&lt;/div&gt;&lt;/p&gt;&lt;p&gt;&lt;a href="https://news.slashdot.org/story/26/10/19/1721258/elon-musk-vows-to-give-a-spacex-share-to-every-kid-in-america?amp;"&gt;Read more of this story&lt;/a&gt; at Slashdot.&lt;/p&gt;&lt;iframe src="https://slashdot.org/slashdot-it.pl?op=discuss&amp;amp;id=24128268&amp;amp;smallembed=1" style="height: 300px; width: 100%; border: none;"&gt;&lt;/iframe&gt;</description>
+<dc:creator>BeauHD</dc:creator>
+<dc:date>2026-10-19T18:00:00+00:00</dc:date>
+<dc:subject>business</dc:subject>
+<slash:department>you-get-a-share-and-you-get-a-share</slash:department>
+<slash:section>news</slash:section>
+<slash:comments>86</slash:comments>
+<slash:hit_parade>86,85,75,65,23,12,7</slash:hit_parade>
+</item>
+<item rdf:about="https://tech.slashdot.org/story/26/10/19/176251/wine-ported-to-openbsd">
+<title>Wine Ported to OpenBSD</title>
+<link>https://tech.slashdot.org/story/26/10/19/176251/wine-ported-to-openbsd</link>
+<description>Wine has been successfully ported to OpenBSD, with developers reporting that dozens of 64-bit Windows applications now run on the operating system. "Even the Remaster of The Witcher 3 which released just last month runs, and runs well," writes Thomas Frohwein, OpenBSD developer and ports maintainer. OSnews reports: The biggest limitation seems to be the lack of support for WoW64, so 32bit Windows software won't work. Still, this is a massive milestone for OpenBSD, and makes especially gaming a somewhat viable option on OpenBSD.&lt;p&gt;&lt;div class="share_submission" style="position:relative;"&gt;
+&lt;a class="slashpop" href="http://twitter.com/home?status=Wine+Ported+to+OpenBSD%3A+https%3A%2F%2Ftech.slashdot.org%2Fstory%2F26%2F10%2F19%2F176251%2F%3Futm_source%3Dtwitter%26utm_medium%3Dtwitter"&gt;&lt;img src="https://a.fsdn.com/sd/twitter_icon_large.png"&gt;&lt;/a&gt;
+&lt;a class="slashpop" href="http://www.facebook.com/sharer.php?u=https%3A%2F%2Ftech.slashdot.org%2Fstory%2F26%2F10%2F19%2F176251%2Fwine-ported-to-openbsd%3Futm_source%3Dslashdot%26utm_medium%3Dfacebook"&gt;&lt;img src="https://a.fsdn.com/sd/facebook_icon_large.png"&gt;&lt;/a&gt;
+
+
+
+&lt;/div&gt;&lt;/p&gt;&lt;p&gt;&lt;a href="https://tech.slashdot.org/story/26/10/19/176251/wine-ported-to-openbsd?amp;"&gt;Read more of this story&lt;/a&gt; at Slashdot.&lt;/p&gt;&lt;iframe src="https://slashdot.org/slashdot-it.pl?op=discuss&amp;amp;id=24128254&amp;amp;smallembed=1" style="height: 300px; width: 100%; border: none;"&gt;&lt;/iframe&gt;</description>
+<dc:creator>BeauHD</dc:creator>
+<dc:date>2026-10-19T17:10:00+00:00</dc:date>
+<dc:subject>wine</dc:subject>
+<slash:department>toss-a-coin-to-your-developer</slash:department>
+<slash:section>technology</slash:section>
+<slash:comments>14</slash:comments>
+<slash:hit_parade>14,14,13,11,4,1,0</slash:hit_parade>
+</item>
+<textinput rdf:about="https://slashdot.org/search.pl">
+<title>Search Slashdot</title>
+<description>Search Slashdot stories</description>
+<name>query</name>
+<link>https://slashdot.org/search.pl</link>
+</textinput>
+</rdf:RDF>

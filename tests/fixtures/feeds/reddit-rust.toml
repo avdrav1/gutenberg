@@ -1,0 +1,4 @@
+# SOURCE https://www.reddit.com/r/rust/.rss fetched 2026-10-20
+url = "https://www.reddit.com/r/rust/.rss"
+fetched = 2026-10-20
+covers = "Atom from Reddit, author URIs, HTML content"

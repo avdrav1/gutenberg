@@ -1,0 +1,4 @@
+# SOURCE https://blog.rust-lang.org/feed.xml fetched 2026-10-20
+url = "https://blog.rust-lang.org/feed.xml"
+fetched = 2026-10-20
+covers = "Atom with full HTML content"

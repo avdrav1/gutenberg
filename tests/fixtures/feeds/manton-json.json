@@ -1,0 +1,84 @@
+{
+  "version": "https://jsonfeed.org/version/1",
+  "title": "Manton Reece",
+  "icon": "https://avatars.micro.blog/avatars/2025/22/3.jpg",
+  "home_page_url": "https://www.manton.org/",
+  "feed_url": "https://www.manton.org/feed.json",
+  "items": [
+    {
+      "id": "http://manton.micro.blog/2026/10/19/yet-more-views-from-the.html",
+      "content_html": "<p>Yet more views from the train, earlier today going across a bay on the Hudson River. 🚂</p>\n<p><video controls src=\"https://cdn.uploads.micro.mov/10/2026/img-5601/playlist.m3u8\" width=\"1982\" height=\"1982\" poster=\"https://cdn.uploads.micro.blog/10/2026/frames/1880915-0-ea3d78.jpg\"></video></p>\n",
+      "date_published": "2026-10-19T23:26:35-04:00",
+      "url": "https://www.manton.org/2026/10/19/yet-more-views-from-the.html",
+      "tags": [
+        "Videos"
+      ]
+    },
+    {
+      "id": "http://manton.micro.blog/2026/10/19/stopped-for-a-while-in.html",
+      "content_html": "<p>Stopped for a while in Albany. 🚂</p>\n<img src=\"https://cdn.uploads.micro.blog/10/2026/d242fd1d-e415-4daf-8e14-517ebb45769a.jpg\" width=\"600\" height=\"600\" alt=\"Two trains are parked at a railway station with platforms on either side under a clear blue sky.\">\n",
+      "date_published": "2026-10-19T15:25:46-04:00",
+      "url": "https://www.manton.org/2026/10/19/stopped-for-a-while-in.html",
+      "tags": [
+        "Photos"
+      ]
+    },
+    {
+      "id": "http://manton.micro.blog/2026/10/19/mohawk-river-in-schenectady.html",
+      "content_html": "<p>Mohawk River in Schenectady. 🚂</p>\n<img src=\"https://cdn.uploads.micro.blog/10/2026/2f205886-266d-45dd-bd0a-d6f0af4be1ef.jpg\" alt=\"A calm river reflects the clear blue sky, autumn-colored trees, and distant buildings.\">\n",
+      "date_published": "2026-10-19T14:25:56-04:00",
+      "url": "https://www.manton.org/2026/10/19/mohawk-river-in-schenectady.html",
+      "tags": [
+        "Photos"
+      ]
+    },
+    {
+      "id": "http://manton.micro.blog/2026/10/19/a-few-more-details-in.html",
+      "content_html": "<p>A few more details in <a href=\"https://fortune.com/2026/10/19/inside-the-33-hour-failed-boardroom-coup-to-overthrow-wordpress-founder-matt-mullenweg/\">this Fortune story about the short-lived coup against Matt Mullenweg</a>, but still no real explanation for why it happened:</p>\n<blockquote>\n<p>A remarkable level of secrecy surrounded the drama. None of the board members have publicly explained why they suddenly wanted him out of the company. Mullenweg has declined to describe why he was all but fired, or how he quickly got back control of the company.</p>\n</blockquote>\n<p>You come at <a href=\"https://www.manton.org/2024/12/21/i-support-the.html\">the mad king</a>, you best not miss.</p>\n",
+      "date_published": "2026-10-19T12:15:40-04:00",
+      "url": "https://www.manton.org/2026/10/19/a-few-more-details-in.html"
+    },
+    {
+      "id": "http://manton.micro.blog/2026/10/19/matthias-pfefferle-blogs-about-a.html",
+      "content_html": "<p>Matthias Pfefferle blogs about a clever way <a href=\"https://notiz.blog/2026/10/19/xslt-js/\">to render OPML in browsers using JavaScript</a>, via <a href=\"https://micro.blog/jlelse\">@jlelse</a>. I&rsquo;m going to look into doing this for Micro.blog&rsquo;s OPML too.</p>\n",
+      "date_published": "2026-10-19T11:34:53-04:00",
+      "url": "https://www.manton.org/2026/10/19/matthias-pfefferle-blogs-about-a.html"
+    },
+    {
+      "id": "http://manton.micro.blog/2026/10/19/working-on-more-layout-fixes.html",
+      "content_html": "<p>Working on more layout fixes for the iPhone Duo. I&rsquo;m not sure Apple made the right trade-offs with the design of this thing. Vertical nav controls still feel weird. And with the device backordered for months, hard to justify the time to rethink everything.</p>\n",
+      "date_published": "2026-10-19T10:51:34-04:00",
+      "url": "https://www.manton.org/2026/10/19/working-on-more-layout-fixes.html"
+    },
+    {
+      "id": "http://manton.micro.blog/2026/10/19/last-morning-on-the-train.html",
+      "content_html": "<p>Last morning on the train, along Lake Erie. 🚂</p>\n<p><video controls src=\"https://cdn.uploads.micro.mov/10/2026/img-5563/playlist.m3u8\" width=\"2120\" height=\"2120\" poster=\"https://cdn.uploads.micro.blog/10/2026/frames/1880591-0-29b157.jpg\"></video></p>\n",
+      "date_published": "2026-10-19T08:32:51-04:00",
+      "url": "https://www.manton.org/2026/10/19/last-morning-on-the-train.html",
+      "tags": [
+        "Videos"
+      ]
+    },
+    {
+      "id": "http://manton.micro.blog/2026/10/18/chicago-union-station.html",
+      "content_html": "<p>Chicago Union Station. 🚂</p>\n<img src=\"https://cdn.uploads.micro.blog/10/2026/d8399baf-126a-4d56-bcf9-202c29316442.jpg\" alt=\"A grand architectural interior features classical columns, two statues draped in red robes, intricate archways, and a glass-paneled ceiling with warm lighting.\">\n",
+      "date_published": "2026-10-18T22:00:00-04:00",
+      "url": "https://www.manton.org/2026/10/18/chicago-union-station.html",
+      "tags": [
+        "Photos"
+      ]
+    },
+    {
+      "id": "http://manton.micro.blog/2026/10/18/in-other-anthropic-news-today.html",
+      "content_html": "<p>In other Anthropic news today, I’ve been thinking about <a href=\"https://www.reuters.com/legal/litigation/anthropic-quietly-pitches-its-own-ai-safety-bill-lawmakers-politico-reports-2026-10-16/\">this bill that Anthropic proposed</a> where it’s not a show-stopper if only 50 people might be killed or seriously injured:</p>\n<blockquote>\n<p>The bill would let the government block a model&rsquo;s release or use only if it poses a foreseeable, imminent risk of more than $1 billion in damages, or of killing or seriously injuring more than 50 people, according to the report.</p>\n</blockquote>\n<p>It&rsquo;s weird to even put a number on this. But also, if gun manufacturers had to meet a similar standard before putting semi-automatic rifles on the market, the world would be a better place.</p>\n",
+      "date_published": "2026-10-18T20:55:00-04:00",
+      "url": "https://www.manton.org/2026/10/18/in-other-anthropic-news-today.html"
+    },
+    {
+      "id": "http://manton.micro.blog/2026/10/18/anthropic-announces-a-new-public.html",
+      "content_html": "<p>Anthropic <a href=\"https://www.anthropic.com/news/public-benefit-fund\">announces a new public benefit fund</a>, beyond what the existing b-corp can do:</p>\n<blockquote>\n<p>The Anthropic Public Benefit Fund will have increased flexibility and scale, enabling us to pursue our mission in new ways: for example, we might explore large donations to traditional nonprofits or direct distributions to specific populations.</p>\n</blockquote>\n<p>A little mysterious. I wonder what they have in mind (or if they know).</p>\n",
+      "date_published": "2026-10-18T15:43:08-04:00",
+      "url": "https://www.manton.org/2026/10/18/anthropic-announces-a-new-public.html"
+    }
+  ]
+}
