@@ -69,7 +69,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | ID | Story | Acceptance | Status |
 | --- | --- | --- | --- |
 | S7.1 | `.desktop` file, icon, Walker entry, `gutenberg --unread` for Waybar | Appears in Walker; Waybar module shows the count | todo |
-| S7.2 | GitHub release workflow and an install page on GitHub Pages with a `curl` one-liner | `curl -fsSL https://avdrav1.github.io/gutenberg/install.sh \| sh` installs a checksum-verified, attested binary; `gutenberg --version` prints the release | doing |
+| S7.2 | GitHub release workflow and an install page on GitHub Pages with a `curl` one-liner | `curl -fsSL https://avdrav1.github.io/gutenberg/install.sh \| sh` installs a checksum-verified, attested binary; `gutenberg --version` prints the release | done |
 | S7.3 | Single-instance: a second launch focuses the first | Unix socket; `gutenberg --reload-theme` and `--refresh` work from scripts | todo |
 | S7.4 | Image cache on disk with size cap | Under 150 MB RAM with 10k articles | todo |
 | S7.5 | Crash-free week: panic handler writes a report; fuzz the parsers | `cargo fuzz` runs on feed and HTML inputs in CI | todo |
