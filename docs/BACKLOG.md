@@ -17,7 +17,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 
 | ID | Story | Acceptance | Status |
 | --- | --- | --- | --- |
-| S2.1 | Add a feed by URL; parse RSS, Atom and JSON Feed | 20 fixture feeds from `tests/fixtures/` parse; bad XML shows one line of error | todo |
+| S2.1 | Add a feed by URL; parse RSS, Atom and JSON Feed | 20 fixture feeds from `tests/fixtures/` parse; bad XML shows one line of error | review |
 | S2.2 | Autodiscover a feed from a site URL | Pasting `https://example.com` finds `<link rel="alternate">`; falls back to `/feed`, `/rss`, `/atom.xml` | todo |
 | S2.3 | Background refresh with conditional GET and per-host rate limits | A second refresh of an unchanged feed sends `If-None-Match` and gets 304; 100 feeds finish in under 10 s | todo |
 | S2.4 | Folders, drag to reorder, unread counts per source and folder | Counts update as items are read; order persists | todo |

@@ -1,0 +1,55 @@
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Hacker News: Front Page</title><link>https://news.ycombinator.com/</link><description>Hacker News RSS</description><docs>https://hnrss.org/</docs><generator>hnrss v2.1.1</generator><lastBuildDate>Tue, 20 Oct 2026 08:08:43 +0000</lastBuildDate><atom:link href="https://hnrss.org/frontpage" rel="self" type="application/rss+xml"></atom:link><item><title><![CDATA[Show HN: Death Plan Switch, a self-hosted dead man's switch for solo devs]]></title><description><![CDATA[
+<p>Hi HN,<p>I'm Peter Bishop and I've been working in graphics and web tech for over 25yrs.<p>I've recently launched Death Plan Switch to solve a major problem in my succession plan. What if I go missing or die? The right people are told and my business can continue to operate for my clients.<p>There's a backstory to this project, I was hospitalised in 2012 and lost my business back then and I couldn't get the data to my technical 2IC in time without frustrating my clients.<p>Death Plan Switch solves this problem, it's free to download and use or study under the MIT license.<p>I've been using it for the last few weeks. It was authored with the help of Claude Code after writing an extensive MD document and it passed 42 unit tests.<p>I hope you get some use out of it, or it inspires your own succession plans. My clients are telling me this is a strong sales feature when they trust me with their hosting and technology accounts.<p>Happy to answer any questions.<p>Kind regards,
+Peter Bishop.</p>
+<hr>
+<p>Comments URL: <a href="https://news.ycombinator.com/item?id=50161408">https://news.ycombinator.com/item?id=50161408</a></p>
+<p>Points: 55</p>
+<p># Comments: 45</p>
+]]></description><pubDate>Tue, 20 Oct 2026 04:37:43 +0000</pubDate><link>https://deathplanswitch.com/</link><dc:creator>romeo19361</dc:creator><comments>https://news.ycombinator.com/item?id=50161408</comments><guid isPermaLink="false">https://news.ycombinator.com/item?id=50161408</guid></item><item><title><![CDATA[Go will reject certificate chains containing eight distrusted SPKIs]]></title><description><![CDATA[
+<p>Article URL: <a href="https://github.com/golang/go/issues/82345">https://github.com/golang/go/issues/82345</a></p>
+<p>Comments URL: <a href="https://news.ycombinator.com/item?id=50160877">https://news.ycombinator.com/item?id=50160877</a></p>
+<p>Points: 81</p>
+<p># Comments: 25</p>
+]]></description><pubDate>Tue, 20 Oct 2026 03:05:07 +0000</pubDate><link>https://github.com/golang/go/issues/82345</link><dc:creator>mendym</dc:creator><comments>https://news.ycombinator.com/item?id=50160877</comments><guid isPermaLink="false">https://news.ycombinator.com/item?id=50160877</guid></item><item><title><![CDATA[OpenBSD 8.0]]></title><description><![CDATA[
+<p>Article URL: <a href="https://www.openbsd.org/80.html">https://www.openbsd.org/80.html</a></p>
+<p>Comments URL: <a href="https://news.ycombinator.com/item?id=50160494">https://news.ycombinator.com/item?id=50160494</a></p>
+<p>Points: 245</p>
+<p># Comments: 68</p>
+]]></description><pubDate>Tue, 20 Oct 2026 02:06:40 +0000</pubDate><link>https://www.openbsd.org/80.html</link><dc:creator>privong</dc:creator><comments>https://news.ycombinator.com/item?id=50160494</comments><guid isPermaLink="false">https://news.ycombinator.com/item?id=50160494</guid></item><item><title><![CDATA[France's supermarket fridges were vulnerable online for months]]></title><description><![CDATA[
+<p>Related: <i>Hackers activate automatic defrosting in supermarket fridges across Europe</i> - <a href="https://news.ycombinator.com/item?id=50055304">https://news.ycombinator.com/item?id=50055304</a> - Oct 2026 (1007 comments)</p>
+<hr>
+<p>Comments URL: <a href="https://news.ycombinator.com/item?id=50159616">https://news.ycombinator.com/item?id=50159616</a></p>
+<p>Points: 150</p>
+<p># Comments: 118</p>
+]]></description><pubDate>Tue, 20 Oct 2026 00:00:49 +0000</pubDate><link>https://ipinfo.io/blog/france-fridges-hack</link><dc:creator>emot</dc:creator><comments>https://news.ycombinator.com/item?id=50159616</comments><guid isPermaLink="false">https://news.ycombinator.com/item?id=50159616</guid></item><item><title><![CDATA[WhatsApp's help pages hid LLM instructions: dont recommend a regulator]]></title><description><![CDATA[
+<p>Article URL: <a href="https://redact.dev/blog/whatsapp-help-pages-hidden-ai-instructions">https://redact.dev/blog/whatsapp-help-pages-hidden-ai-instructions</a></p>
+<p>Comments URL: <a href="https://news.ycombinator.com/item?id=50159341">https://news.ycombinator.com/item?id=50159341</a></p>
+<p>Points: 360</p>
+<p># Comments: 88</p>
+]]></description><pubDate>Mon, 19 Oct 2026 23:22:18 +0000</pubDate><link>https://redact.dev/blog/whatsapp-help-pages-hidden-ai-instructions</link><dc:creator>ds</dc:creator><comments>https://news.ycombinator.com/item?id=50159341</comments><guid isPermaLink="false">https://news.ycombinator.com/item?id=50159341</guid></item><item><title><![CDATA[How abliterated models can get you pwned]]></title><description><![CDATA[
+<p>Article URL: <a href="https://projectdiscovery.io/research/how-abliterated-models-can-get-you-pwned">https://projectdiscovery.io/research/how-abliterated-models-can-get-you-pwned</a></p>
+<p>Comments URL: <a href="https://news.ycombinator.com/item?id=50159245">https://news.ycombinator.com/item?id=50159245</a></p>
+<p>Points: 107</p>
+<p># Comments: 64</p>
+]]></description><pubDate>Mon, 19 Oct 2026 23:08:52 +0000</pubDate><link>https://projectdiscovery.io/research/how-abliterated-models-can-get-you-pwned</link><dc:creator>chatmasta</dc:creator><comments>https://news.ycombinator.com/item?id=50159245</comments><guid isPermaLink="false">https://news.ycombinator.com/item?id=50159245</guid></item><item><title><![CDATA[An ad-free Android TV]]></title><description><![CDATA[
+<p>Article URL: <a href="https://cretezy.com/2026/ad-free-android-tv">https://cretezy.com/2026/ad-free-android-tv</a></p>
+<p>Comments URL: <a href="https://news.ycombinator.com/item?id=50158942">https://news.ycombinator.com/item?id=50158942</a></p>
+<p>Points: 173</p>
+<p># Comments: 50</p>
+]]></description><pubDate>Mon, 19 Oct 2026 22:32:37 +0000</pubDate><link>https://cretezy.com/2026/ad-free-android-tv</link><dc:creator>CraftThatBlock</dc:creator><comments>https://news.ycombinator.com/item?id=50158942</comments><guid isPermaLink="false">https://news.ycombinator.com/item?id=50158942</guid></item><item><title><![CDATA[OpenBSD 8.0 release will have inteldrm/radeondrm/amdgpu drivers from Linux 6.18]]></title><description><![CDATA[
+<p>Article URL: <a href="https://bsd.network/@brynet/117407035545900963">https://bsd.network/@brynet/117407035545900963</a></p>
+<p>Comments URL: <a href="https://news.ycombinator.com/item?id=50158138">https://news.ycombinator.com/item?id=50158138</a></p>
+<p>Points: 151</p>
+<p># Comments: 32</p>
+]]></description><pubDate>Mon, 19 Oct 2026 21:11:45 +0000</pubDate><link>https://bsd.network/@brynet/117407035545900963</link><dc:creator>doener</dc:creator><comments>https://news.ycombinator.com/item?id=50158138</comments><guid isPermaLink="false">https://news.ycombinator.com/item?id=50158138</guid></item><item><title><![CDATA[Putting Linux on my RTX Spark laptop because I don't have a Microsoft account]]></title><description><![CDATA[
+<p>Article URL: <a href="https://josie.lol/blog/linux-rtx-spark">https://josie.lol/blog/linux-rtx-spark</a></p>
+<p>Comments URL: <a href="https://news.ycombinator.com/item?id=50158100">https://news.ycombinator.com/item?id=50158100</a></p>
+<p>Points: 224</p>
+<p># Comments: 117</p>
+]]></description><pubDate>Mon, 19 Oct 2026 21:08:18 +0000</pubDate><link>https://josie.lol/blog/linux-rtx-spark</link><dc:creator>pfeifferj</dc:creator><comments>https://news.ycombinator.com/item?id=50158100</comments><guid isPermaLink="false">https://news.ycombinator.com/item?id=50158100</guid></item><item><title><![CDATA[One Hash Bloom Filters]]></title><description><![CDATA[
+<p>Article URL: <a href="https://calabro.io/ohbf">https://calabro.io/ohbf</a></p>
+<p>Comments URL: <a href="https://news.ycombinator.com/item?id=50157865">https://news.ycombinator.com/item?id=50157865</a></p>
+<p>Points: 96</p>
+<p># Comments: 11</p>
+]]></description><pubDate>Mon, 19 Oct 2026 20:50:08 +0000</pubDate><link>https://calabro.io/ohbf</link><dc:creator>jcalabro</dc:creator><comments>https://news.ycombinator.com/item?id=50157865</comments><guid isPermaLink="false">https://news.ycombinator.com/item?id=50157865</guid></item>
+</channel></rss>

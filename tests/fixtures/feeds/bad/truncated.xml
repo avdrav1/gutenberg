@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+	xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+	>
+
+<channel>
+	<title>OMG! Ubuntu</title>
+	<atom:link href="https://www.omgubuntu.co.uk/feed" rel="self" type="application/rss+xml" />
+	<link>https://www.omgubuntu.co.uk/</link>
+	<description>Ubuntu news, apps, tips &#38; opinion</description>
+	<lastBuildDate>Tue, 20 Oct 2026 00:22:29 +0000</lastBuildDate>
+	<language>en-GB</language>
+	<sy:updatePeriod>
+	hourly	</sy:updatePeriod>
+	<sy:updateFrequency>
+	1	</sy:updateFrequency>
+	
+<site xmlns="com-wordpress:feed-additions:1">15653409</site>	<item>
+		<title>BleachBit 6.0.6 released with fixes for admin cleaning on Linux</title>
+		<link>https://www.omgubuntu.co.uk/2026/10/bleachbit-606-update-speed-boost</link>
+					<comments>https://www.omgubuntu.co.uk/2026/10/bleachbit-606-update-speed-boost#disqus_thread</comments>
+		
+		<dc:creator><![CDATA[Joey Sneddon]]></dc:creator>
+		<pubDate>Mon, 19 Oct 2026 23:57:44 +0000</pubDate>
+				<category><![CDATA[News]]></category>
+		<category><![CDATA[App Updates]]></category>
+		<category><![CDATA[BleachBit]]></category>
+		<guid isPermaLink="false">https://www.omgubuntu.co.uk/?p=342734</guid>
+
+					<description><![CDATA[<p><img width="406" height="232" src="https://www.omgubuntu.co.uk/wp-content/uploads/2025/05/bleachbit-logo-on-graphic-406x232.jpg" class="attachment-post-list size-post-list wp-post-image" alt="BleachBit app logo." decoding="async" fetchpriority="high" srcset="https://www.omgubuntu.co.uk/wp-content/uploads/2025/05/bleachbit-logo-on-graphic-406x232.jpg 406w, https://www.omgubuntu.co.uk/wp-content/uploads/2025/05/bleachbit-logo-on-graphic-350x200.jpg 350w, https://www.omgubuntu.co.uk/wp-content/uploads/2025/05/bleachbit-logo-on-graphic-840x480.jpg 840w" sizes="(max-width: 406px) 100vw, 406px" />BleachBit, the free, open-source and cross-platform system cleaning utility has a new maintenance release out – with support for Ubuntu 26.10. BleachBit 6.0.6 introduces cleaners for the Helium browser and Docker Desktop (including its AI assistant). This update also boosts app startup times, and makes deep scan, file deletion and file wiping faster, the latter now wiping in 512 KiB blocks rather than 4 KiB. A few preexisting cleaners now extend to more areas. Stale crash reports, GPU caches and session files for Claude, VS Code-based editors and Chromium can (optionally; variously) be expunged with this update. LibreWolf cleaning now [&#8230;]</p>
+<p>You're reading <a href="https://www.omgubuntu.co.uk/2026/10/bleachbit-606-update-speed-boost">BleachBit 6.0.6 released with fixes for admin cleaning on Linux</a>, a blog post from <a href="https://www.omgubuntu.co.uk">OMG! Ubuntu</a>. Do not reproduce elsewhere without permission.</p>
+]]></description>
+		
+					<wfw:commentRss>https://www.omgubuntu.co.uk/2026/10/bleachbit-606-update-speed-boost/feed</wfw:commentRss>
+			<slash:comments>0</slash:comments>
+		
+		
+		<post-id xmlns="com-wordpress:feed-additions:1">342734</post-id>	</item>
+		<item>
+		<title>Audacious 4.6.2 fills the last gaps in its Qt Winamp mode</title>
+		<link>https://www.omgubuntu.co.uk/2026/10/audacious-update-qt-winamp-skins</link>
+					<comments>https://www.omgubuntu.co.uk/2026/10/audacious-update-qt-winamp-skins#disqus_thread</comments>
+		
+		<dc:creator><![CDATA[Joey Sneddon]]></dc:creator>
+		<pubDate>Mon, 19 Oct 2026 22:38:14 +0000</pubDate>
+				<category><![CDATA[News]]></category>
+		<category><![CDATA[App Updates]]></category>
+		<category><![CDATA[audacious]]></category>
+		<guid isPermaLink="false">https://www.omgubuntu.co.uk/?p=342712</guid>
+
+					<description><![CDATA[<p><img width="406" height="232" src="https://www.omgubuntu.co.uk/wp-content/uploads/2024/07/audacious-406x232.jpg" class="attachment-post-list size-post-list wp-post-image" alt="" decoding="async" srcset="https://www.omgubuntu.co.uk/wp-content/uploads/2024/07/audacious-406x232.jpg 406w, https://www.omgubuntu.co.uk/wp-content/uploads/2024/07/audacious-300x172.jpg 300w, https://www.omgubuntu.co.uk/wp-content/uploads/2024/07/audacious-840x480.jpg 840w, https://www.omgubuntu.co.uk/wp-content/uploads/2024/07/audacious-350x200.jpg 350w, https://www.omgubuntu.co.uk/wp-content/uploads/2024/07/audacious-768x440.jpg 768w, https://www.omgubuntu.co.uk/wp-content/uploads/2024/07/audacious.jpg 1280w" sizes="(max-width: 406px) 100vw, 406px" />Audacious 4.6.2 lets you drop Winamp skin files onto the Qt window to install them, and adds keyboard navigation for toolbar buttons.</p>
+<p>You're reading <a href="https://www.omgubuntu.co.uk/2026/10/audacious-update-qt-winamp-skins">Audacious 4.6.2 fills the last gaps in its Qt Winamp mode</a>, a blog post from <a href="https://www.omgubuntu.co.uk">OMG! Ubuntu</a>. Do not reproduce elsewhere without permission.</p>
+]]></description>
+		
+					<wfw:commentRss>https://www.omgubuntu.co.uk/2026/10/audacious-update-qt-winamp-skins/feed</wfw:commentRss>
+			<slash:comments>0</slash:comments>
+		
+		
+		<post-id xmlns="com-wordpress:feed-additions:1">342712</post-id>	</item>
+		<item>
+		<title>NordVPN 6.0 for Linux will feature &#8216;breaking changes&#8217;</title>
+		<link>https://www.omgubuntu.co.uk/2026/10/nordvpn-6-0-linux-cli-changes</link>
+					<comments>https://www.omgubuntu.co.uk/2026/10/nordvpn-6-0-linux-cli-changes#disqus_thread</comments>
+		
+		<dc:creator><![CDATA[Joey Sneddon]]></dc:creator>
+		<pubDate>Mon, 19 Oct 2026 15:17:45 +0000</pubDate>
+				<category><![CDATA[News]]></category>
+		<category><![CDATA[CLI Tools]]></category>
+		<category><![CDATA[NordVPN]]></category>
+		<category><![CDATA[VPN]]></category>
+		<guid isPermaLink="false">https://www.omgubuntu.co.uk/?p=342685</guid>
+
+					<description><![CDATA[<p><img width="406" height="232" src="https://www.omgubuntu.co.uk/wp-content/uploads/2025/05/nordvpn-406x232.jpg" class="attachment-post-list size-post-list wp-post-image" alt="NordVPN logo overlaid on the Linux penguin mascot." decoding="async" srcset="https://www.omgubuntu.co.uk/wp-content/uploads/2025/05/nordvpn-406x232.jpg 406w, https://www.omgubuntu.co.uk/wp-content/uploads/2025/05/nordvpn-350x200.jpg 350w, https://www.omgubuntu.co.uk/wp-content/uploads/2025/05/nordvpn-840x480.jpg 840w" sizes="(max-width: 406px) 100vw, 406px" />NordVPN are updating their Linux app to offer a &#8220;cleaner, simpler way to manage VPN connections&#8221; from the command line. The NordVPN 6.0 update, which is coming soon (so not out yet), &#8220;cuts down&#8221; the number of commands that &#8220;overlap&#8221;. The company say this will make it easier for users to enable and configure VPN settings. Among the changes, NordVPN 6.0 combines protocol and technology settings in a nordvpn set protocol command, while obfuscation is now handled by NordWhisper, rather than a separate setting. And now that standard servers support P2P traffic, there&#8217;s no longer any need to create a [&#8230;]</p>
+<p>You're reading <a href="https://www.omgubuntu.co.uk/2026/10/nordvpn-6-0-linux-cli-changes">NordVPN 6.0 for Linux will feature &#8216;breaking changes&#8217;</a>, a blog post from <a href="https://www.omgubuntu.co.uk">OMG! Ubuntu</a>. Do not reproduce elsewhere without permission.</p>
+]]></description>
+		
+					<wfw:commentRss>https://www.omgubuntu.co.uk/2026/10/nordvpn-6-0-linux-cli-changes/feed</wfw:commentRss>
+			<slash:comments>0</slash:comments>
+		
+		
+		<post-id xmlns="com-wordpress:feed-additions:1">342685</post-id>	</item>
+		<item>
+		<title>Linux 7.3 is out, speeds up ext4 and low-VRAM AMD GPUs</title>
+		<link>https://www.omgubuntu.co.uk/2026/10/linux-7-3-features</link>
+					<comments>https://www.omgubuntu.co.uk/2026/10/linux-7-3-features#disqus_thread</comments>
+		
+		<dc:creator><![CDATA[Joey Sneddon]]></dc:creator>
+		<pubDate>Mon, 19 Oct 2026 02:28:18 +0000</pubDate>
+				<category><![CDATA[News]]></category>
+		<category><![CDATA[linux kernel]]></category>
+		<guid isPermaLink="false">https://www.omgubuntu.co.uk/?p=342563</guid>
+
+					<description><![CDATA[<p><img width="406" height="232" src="https://www.omgubuntu.co.uk/wp-content/uploads/2026/10/linux-kernel-7.3-feature-hero-406x232.webp" class="attachment-post-list size-post-list wp-post-image" alt="Collage for Linux kernel 7.3 showing Steam Controller, Pioneer DJ DJM-S11 and other hardware now supported." decoding="async" loading="lazy" srcset="https://www.omgubuntu.co.uk/wp-content/uploads/2026/10/linux-kernel-7.3-feature-hero-406x232.webp 406w, https://www.omgubuntu.co.uk/wp-content/uploads/2026/10/linux-kernel-7.3-feature-hero-350x200.webp 350w, https://www.omgubuntu.co.uk/wp-content/uploads/2026/10/linux-kernel-7.3-feature-hero-840x480.webp 840w" sizes="auto, (max-width: 406px) 100vw, 406px" />Linux 7.3 is out with faster ext4, better performance on AMD GPUs with low VRAM and a new cgroup scheduling mode. 2026 Steam Controller driver debuts.</p>
+<p>You're reading <a href="https://www.omgubuntu.co.uk/2026/10/linux-7-3-features">Linux 7.3 is out, speeds up ext4 and low-VRAM AMD GPUs</a>, a blog post from <a href="https://www.omgubuntu.co.uk">OMG! Ubuntu</a>. Do not reproduce elsewhere without permission.</p>
+]]></description>
+		
+					<wfw:commentRss>https://www.omgubuntu.co.uk/2026/10/linux-7-3-features/feed</wfw:commentRss>
+			<slash:comments>0</slash:comments>
+		
+		
+		<post-id xmlns="com-wordpress:feed-additions:1">342563</post-id>	</item>
+		<item>
+		<title>Tiling Shell now supports mouse button layout activation</title>
+		<link>https://www.omgubuntu.co.uk/2026/10/tiling-shell-right-mouse-button-activation</link>
+					<comments>https://www.omgubuntu.co.uk/2026/10/tiling-shell-right-mouse-button-activation#disqus_thread</comments>
+		
+		<dc:creator><![CDATA[Joey Sneddon]]></dc:creator>
+		<pubDate>Sun, 18 Oct 2026 22:23:36 +0000</pubDate>
+				<category><![CDATA[News]]></category>
+		<category><![CDATA[GNOME Extensions]]></category>
+		<category><![CDATA[Tiling Shell]]></category>
+		<guid isPermaLink="false">https://www.omgubuntu.co.uk/?p=342512</guid>
+
+					<description><![CDATA[<p><img width="406" height="232" src="https://www.omgubuntu.co.uk/wp-content/uploads/2024/06/tiling-shell-bw-406x232.jpg" class="attachment-post-list size-post-list wp-post-image" alt="" decoding="async" loading="lazy" srcset="https://www.omgubuntu.co.uk/wp-content/uploads/2024/06/tiling-shell-bw-406x232.jpg 406w, https://www.omgubuntu.co.uk/wp-content/uploads/2024/06/tiling-shell-bw-300x172.jpg 300w, https://www.omgubuntu.co.uk/wp-content/uploads/2024/06/tiling-shell-bw-840x480.jpg 840w, https://www.omgubuntu.co.uk/wp-content/uploads/2024/06/tiling-shell-bw-350x200.jpg 350w, https://www.omgubuntu.co.uk/wp-content/uploads/2024/06/tiling-shell-bw-768x440.jpg 768w, https://www.omgubuntu.co.uk/wp-content/uploads/2024/06/tiling-shell-bw.jpg 1440w" sizes="auto, (max-width: 406px) 100vw, 406px" />A new version of the Tiling Shell GNOME extension is out, adding support for GNOME 51 and a faster way to tile app windows using nothing but your mouse. Tiling Shell v18.0 lets you use your right mouse button for tiling system activation. It&#8217;s feature fans of Tiling Shell had requested, many accustomed to it from Windows&#8217; PowerToys&#8217; FancyZones. You click your left button to grab and drag the window then, with it held, hold the right mouse button to trigger the on-screen tiling layout. Release the left button over a zone and the window snaps to it – no [&#8230;]</p>
+<p>You're reading <a href="https://www.omgubuntu.co.uk/2026/10/tiling-shell-right-mouse-button-activation">Tiling Shell now supports mouse button layout activation</a>, a blog post from <a href="https://www.omgubuntu.co.uk">OMG! Ubuntu</a>. Do not reproduce elsewhere without permission.</p>
+]]></description>
+		
+					<wfw:commentRss>

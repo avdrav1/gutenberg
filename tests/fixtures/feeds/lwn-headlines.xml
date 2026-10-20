@@ -1,0 +1,228 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"
+    		xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <channel>
+        <title>LWN.net</title>
+        <link>https://lwn.net</link>
+        <description> LWN.net is a comprehensive source of news and opinions from
+        and about the Linux community.  This is the main LWN.net feed,
+        listing all articles which are posted to the site front page.
+</description>
+        <language>en-us</language>
+        <pubDate>Tue, 20 Oct 2026 08:10:47 +0000</pubDate>
+        <lastBuildDate>Tue, 20 Oct 2026 08:10:47 +0000</lastBuildDate>
+        <docs>https://www.rssboard.org/rss-specification</docs>
+        <webMaster>lwn@lwn.net</webMaster>
+        <atom:link href="https://lwn.net/headlines/rss2"
+    		rel="self" type="application/rss+xml"/>
+    <item>
+        <title>Linux Plumbers Conference videos now available</title>
+        <link>https://lwn.net/Articles/1101483/</link>
+        <guid>https://lwn.net/Articles/1101483/</guid>
+        <dc:creator>jzb</dc:creator>
+        <description>&lt;p&gt;Mike Rapoport has &lt;a
+href=&quot;https://lpc.events/blog/current/index.php/2026/10/19/lpc-2026-video-recordings-are-available/&quot;&gt;announced&lt;/a&gt;
+the release of the video recordings from the &lt;a href=&quot;https://lpc.events/event/20/&quot;&gt;2026 Linux Plumbers Conference&lt;/a&gt; (LPC),
+which was held in Prague from October&amp;#160;5 through October&amp;#160;7. Find the
+complete set via the &lt;a
+href=&quot;https://www.youtube.com/playlist?list=PLd3Gjl51NPg0&quot;&gt;YouTube playlist&lt;/a&gt;
+or look for the video links in the &lt;a
+href=&quot;https://lpc.events/event/20/timetable/#all&quot;&gt;schedule&lt;/a&gt;. See also LWN's
+&lt;a
+href=&quot;https://lwn.net/Archives/ConferenceByYear/#2026-Linux_Plumbers_Conference&quot;&gt;coverage&lt;/a&gt;
+of talks from LPC.&lt;/p&gt;</description>
+        <pubDate>Mon, 19 Oct 2026 19:04:55 +0000</pubDate>
+        </item>
+        <item>
+        <title>[$] Development statistics for the 7.3 kernel</title>
+        <link>https://lwn.net/Articles/1100241/</link>
+        <guid>https://lwn.net/Articles/1100241/</guid>
+        <dc:creator>corbet</dc:creator>
+        <description>Linus Torvalds &lt;a
+href=&quot;https://lwn.net/ml/all/CAHk-=wgwnBm2zDdRM7u016NVHkv9KqbZW7AZ=8wZrqGyv_V+5A@mail.gmail.com/&quot;&gt;released&lt;/a&gt;
+the 7.3 kernel, at the end of the usual nine-week development cycle, on
+October&amp;#160;18.  This cycle, abundantly fueled by LLM-assisted
+contributions, broke just about every record imaginable.  As usual, we have
+compiled some statistics showing how this release, which is expected to be
+the next long-term-support (LTS) kernel, came together.  Also included is
+an attempt to determine whether automated patch review is actually reducing
+the number of bugs introduced into the kernel.
+</description>
+        <pubDate>Mon, 19 Oct 2026 15:45:24 +0000</pubDate>
+        </item>
+        <item>
+        <title>[$] Cross-crate forward declarations in Rust</title>
+        <link>https://lwn.net/Articles/1099596/</link>
+        <guid>https://lwn.net/Articles/1099596/</guid>
+        <dc:creator>daroc</dc:creator>
+        <description>&lt;p&gt;
+Rust has several ad-hoc mechanisms to allow user code to influence how the
+standard library executes. For example, custom panic handlers and custom
+allocators both involve registering functions that core standard library code
+needs to call. With more similar features planned,
+Jana Dönszelmann spotted the developing pattern and put together a
+general solution, introducing a safer, checked analogue of C's weak symbol
+linking. At Kangrejos 2026, she explained how this new language feature works,
+and proposed using it to clean up the kernel's handling of integer overflows in
+Rust code.
+&lt;/p&gt;
+</description>
+        <pubDate>Mon, 19 Oct 2026 13:50:49 +0000</pubDate>
+        </item>
+        <item>
+        <title>Security updates for Monday</title>
+        <link>https://lwn.net/Articles/1101421/</link>
+        <guid>https://lwn.net/Articles/1101421/</guid>
+        <dc:creator>jzb</dc:creator>
+        <description>Security updates have been issued by &lt;b&gt;AlmaLinux&lt;/b&gt; (idm:DL1, kernel, libsoup, perl-URI, python3.14-urllib3, and webkit2gtk3), &lt;b&gt;Debian&lt;/b&gt; (apache2, cifs-utils, haproxy, jq, kernel, and xen), &lt;b&gt;Fedora&lt;/b&gt; (aom, chezmoi, chromium, docker-buildx, freeipa, freerdp, GitPython, httpd, jfrog-cli, kernel, knot, libheif, log4net, mongo-c-driver, nant, NetworkManager, openssl, plasma-nm, python-cairosvg, python-django5, python-django6, qt5-qtbase, radicale, rust-faster-hex, rust-onefetch, SDL3_image, syncthing, thunderbird, tor, webkitgtk, and wordpress), &lt;b&gt;Mageia&lt;/b&gt; (curl, libreoffice, mozjs140, mutt, nodejs-braces, parted, perl-Net-Whois-Raw, perl-XS-Parse-Keyword, and python-django), &lt;b&gt;Oracle&lt;/b&gt; (kernel, kernel-uek, python36:3.6, and wireshark), &lt;b&gt;Red Hat&lt;/b&gt; (gvfs, kernel, and kernel-rt), &lt;b&gt;Slackware&lt;/b&gt; (libXtst), and &lt;b&gt;SUSE&lt;/b&gt; (agama, ansible-core, bcel, bind, buildah, busybox, cadvisor, chromium, cosign, cups-filters, distribution-registry, fetchmail, gcc13, ghostscript, gimp, glib2, go1.26, go1.27, golang-github-lusitaniae-apache_exporter, golang-github-prometheus-alertmanager, google-osconfig-agent, grype-db, hauler, hawk2, helm, ImageMagick, iperf, kernel, libheif, libpng16, librsvg, libsoup, libsoup2, libthrift-0_25_0, libx11, libxi, libxpm, mutt, ntfs-3g_ntfsprogs, nvidia-open-driver-g07-signed, nvidia-open-driver-G07-signed-check, openssl-3, openvpn, p11-kit, pacemaker, perl-xs-parse-keyword, pgvector, php8, podman, psqlodbc, python-anyio, python-hpack, python-jwcrypto, python-oauthlib, python-pyjwt, python-tornado6, python-urllib3, python-virtualenv, python313-ruff, python313-social-auth-app-django, python313-urllib3, python313-urllib3_1, python313-validators, python313-waitress, python313-zipp, qemu, qsnapper, squid, strongswan, stunnel, swtpm, unbound, virtiofsd, webkit2gtk3, xen, and xwayland).
+</description>
+        <pubDate>Mon, 19 Oct 2026 13:10:19 +0000</pubDate>
+        </item>
+        <item>
+        <title>The 7.3 kernel has been released</title>
+        <link>https://lwn.net/Articles/1101143/</link>
+        <guid>https://lwn.net/Articles/1101143/</guid>
+        <dc:creator>corbet</dc:creator>
+        <description>Linus Torvalds has &lt;a href=&quot;https://lwn.net/Articles/1101170/&quot;&gt;released&lt;/a&gt; the 7.3
+kernel, as expected.
+&lt;p&gt;
+&lt;blockquote class=&quot;bq&quot;&gt;
+	It's Sunday afternoon, and this week I somehow kept my wits
+	together long enough to keep track of the day of the week, so the
+	release isn't randomly delayed. Will wonders never cease?
+&lt;p&gt;
+	Anyway, nothing very special seems to have happened this last week,
+	so as expected the final 7.3 is out, and thus tomorrow the merge
+	window for 7.4 opens. Except I'm on my annual family vacation, so
+	instead of merging anything first thing in the morning, I'll spend
+	most of the day on a boat and under water. I'll get back to merging
+	in the afternoon, but I expect my schedule to be a bit unusual for
+	a while.
+&lt;/blockquote&gt;
+&lt;p&gt;
+
+This release is a record-breaker on all fronts; it brought in 18,765
+non-merge commits from 3,021 developers, 807 of whom were first-time kernel
+developers. 
+&lt;p&gt;
+Significant changes in this release include some &lt;a
+href=&quot;https://lwn.net/Articles/1086947/&quot;&gt;significant binfmt_misc extensions&lt;/a&gt;, some &lt;a
+href=&quot;https://lwn.net/Articles/1089244/#:~:text=There%20have%20been%20some%20subtle%20but%20significant%20changes&quot;&gt;group-scheduling work&lt;/a&gt;
+aimed at improving performance on large systems, the new &lt;a
+href=&quot;https://docs.kernel.org/next/filesystems/failfs.html&quot;&gt;failfs&lt;/a&gt;
+filesystem that fails all operations, the &lt;tt&gt;fchroot()&lt;/tt&gt; system call,
+global per-CPU data for BPF programs, the &lt;a
+href=&quot;https://lwn.net/Articles/1082717/&quot;&gt;completion&lt;/a&gt; of &lt;a
+href=&quot;https://lwn.net/Articles/1056014/&quot;&gt;the sched_ext subscheduler feature&lt;/a&gt;,
+&lt;a href=&quot;https://lwn.net/Articles/1080162/#uffd&quot;&gt;working-set tracking&lt;/a&gt; for virtual
+machines,
+&lt;a
+href=&quot;https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=be310476e8868ebe7a2ce8fb0e7b229535723963&quot;&gt;alternative
+data-stream support&lt;/a&gt; in the ntfs3 filesystem,
+a &lt;a
+href=&quot;https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=61a09cfc121472013f99ae75066676739a5db626&quot;&gt;long
+list of SMB server improvements&lt;/a&gt;,
+and much more.  See the LWN merge-window summaries 
+(&lt;a href=&quot;https://lwn.net/Articles/1089244/&quot;&gt;part&amp;#160;1&lt;/a&gt;, &lt;a
+href=&quot;https://lwn.net/Articles/1089791/&quot;&gt;part&amp;#160;2&lt;/a&gt;) and &lt;a
+href=&quot;https://kernelnewbies.org/Linux_7.3&quot;&gt;the KernelNewbies 7.3 page&lt;/a&gt;
+for details.</description>
+        <pubDate>Sun, 18 Oct 2026 23:45:23 +0000</pubDate>
+        </item>
+        <item>
+        <title>Introducing GNOME OS Preview</title>
+        <link>https://lwn.net/Articles/1101057/</link>
+        <guid>https://lwn.net/Articles/1101057/</guid>
+        <dc:creator>jzb</dc:creator>
+        <description>&lt;p&gt;The &lt;a href=&quot;https://gnome.org/&quot;&gt;GNOME Project&lt;/a&gt; has provided &lt;a
+href=&quot;https://os.gnome.org/&quot;&gt;GNOME&amp;#160;OS&lt;/a&gt; for some time; until now, the
+project only provided a &quot;Nightly&quot; edition that was built from the latest commits
+and was aimed solely at GNOME developers. Adrian Vovk has now &lt;a
+href=&quot;https://blogs.gnome.org/adrianvovk/2026/10/16/gnome-os-preview/&quot;&gt;announced&lt;/a&gt;
+the release of GNOME&amp;#160;OS&amp;#160;Preview, which is intended for a non-developer 
+audience:&lt;/p&gt;
+
+&lt;blockquote class=&quot;bq&quot;&gt;
+&lt;p&gt;GNOME OS Preview is the current GNOME OS Nightly, but without the &quot;nightly&quot;
+aspect. Instead, it's built from the latest stable GNOME release (GNOME 51.1, at
+the time of writing). GNOME OS Preview lives in the same branches on GitLab as
+the stable org.gnome.Platform Flatpak runtimes.&lt;/p&gt;
+
+&lt;p&gt;GNOME OS Preview is only a few weeks old, so it has only seen limited
+real-life testing so far. We therefore expect people will uncover some issues
+initially. That said, Preview is significantly more stable than Nightly, which
+dozens of people have been daily driving without major issues for over a
+year. Thus, we're feeling confident that Preview is going to be reliable enough
+for daily use by non-developer enthusiasts.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;While Preview is meant for non-developers, it is not considered complete or
+stable for the broader public. There are a number of features, listed in Vovk's
+post, that need to be implemented before the project is ready to declare
+GNOME&amp;#160;OS &quot;&lt;q&gt;ready for prime time&lt;/q&gt;&quot;. Adventurous users, who might not
+mind having to reinstall the OS once a stable version is declared, can
+download and start using GNOME&amp;#160;OS&amp;#160;Preview today.&lt;/p&gt;
+
+&lt;p&gt;&lt;/p&gt;</description>
+        <pubDate>Fri, 16 Oct 2026 19:05:57 +0000</pubDate>
+        </item>
+        <item>
+        <title>[$] Safe self-referential data structures in kernel Rust</title>
+        <link>https://lwn.net/Articles/1099224/</link>
+        <guid>https://lwn.net/Articles/1099224/</guid>
+        <dc:creator>daroc</dc:creator>
+        <description>&lt;p&gt;
+Self-referential structures that can be used without unsafe code
+have posed a problem for Rust for years.
+There are many cases where a self-referential data structure is the elegant
+algorithmic choice, but implementing it in accordance with Rust's lifetime rules
+is all but impossible. At Kangrejos 2026, Gary Guo presented a clever solution
+to the problem in the context of the kernel's
+&lt;a href=&quot;https://rust.docs.kernel.org/pin_init/index.html&quot;&gt;
+pin_init crate&lt;/a&gt;, which helps with the creation of immovable data structures,
+typically for interoperability with C. Guo's changes could help remove most of
+the unsafe code related to lifetimes in the
+&lt;a href=&quot;https://rust-for-linux.com/nova-gpu-driver&quot;&gt;
+Nova driver&lt;/a&gt; and, eventually, other Rust components.
+&lt;/p&gt;
+</description>
+        <pubDate>Fri, 16 Oct 2026 18:30:00 +0000</pubDate>
+        </item>
+        <item>
+        <title>[$] Recent and future changes to the Linux NFS server</title>
+        <link>https://lwn.net/Articles/1098611/</link>
+        <guid>https://lwn.net/Articles/1098611/</guid>
+        <dc:creator>corbet</dc:creator>
+        <description>The NFS network filesystem protocol has a long history on Unix-like
+operating systems (and beyond).  NFS is still evolving, though, and
+implementations need to keep up.  At the 2026 &lt;a
+href=&quot;https://lpc.events/&quot;&gt;Linux Plumbers Conference&lt;/a&gt;, NFS developer
+Jeff Layton gave an overview of recent enhancements to the Linux
+implementation, along with some hints for what will be coming in the near
+future.
+</description>
+        <pubDate>Fri, 16 Oct 2026 14:26:57 +0000</pubDate>
+        </item>
+        <item>
+        <title>Results from the 2026 TAB election</title>
+        <link>https://lwn.net/Articles/1101020/</link>
+        <guid>https://lwn.net/Articles/1101020/</guid>
+        <dc:creator>corbet</dc:creator>
+        <description>The &lt;a
+href=&quot;https://lwn.net/ml/all/9fae8567-0943-47e2-a04d-4e75e1c0cb6d@kernel.org&quot;&gt;results&lt;/a&gt;
+from the 2026 election for members of the Linux Foundation Technical
+Advisory Board (TAB) have been announced.  Kees Cook, Dave Hansen, Miguel
+Ojeda, and Shuah Khan have all been re-elected, and Laurent Pinchart will
+be joining the board.</description>
+        <pubDate>Fri, 16 Oct 2026 14:09:20 +0000</pubDate>
+        </item>
+        <item>
+        <title>Security updates for Friday</title>
+        <link>https://lwn.net/Articles/1101015/</link>
+        <guid>https://lwn.net/Articles/1101015/</guid>
+        <dc:creator>jzb</dc:creator>
+        <description>Security updates have been issued by &lt;b&gt;AlmaLinux&lt;/b&gt; (ghostscript, grafana, hplip, libsoup3, lrzsz, rpcbind, and wireshark), &lt;b&gt;Debian&lt;/b&gt; (chromium, cifs-utils, expat, gst-plugins-bad1.0, gst-plugins-good1.0, jpeg-xl, mutt, and spip), &lt;b&gt;Mageia&lt;/b&gt; (gpsd, libx11, and roundcubemail), &lt;b&gt;Oracle&lt;/b&gt; (389-ds-base, compat-libtiff3, environment-modules, ghostscript, grafana, gstreamer1-plugins-bad-free, gstreamer1-plugins-base, gstreamer1-plugins-good, hplip, idm:DL1, kernel, kernel-uek, libsoup, libsoup3, lrzsz, rpcbind, and wireshark), &lt;b&gt;Red Hat&lt;/b&gt; (gd), &lt;b&gt;SUSE&lt;/b&gt; (alloy, amazon-ecs-init, bind, busybox, chromium, distribution, govulncheck-vulndb, iperf, jackson-annotations, jackson-core, jackson-databind, kernel, libXtst, mutt, openssh, php8, python313-python-multipart, python313-python-rapidjson, python313-python3-saml, python313-pywbem, python313-redis, python313-reportlab, python313-requests, python313-rope, python313-rpyc, python313-rsa, qemu, swtpm, the Java stack, and wpa_supplicant), and &lt;b&gt;Ubuntu&lt;/b&gt; (golang-1.23, linux-azure, and rabbitmq-server).
+</description>
+        <pubDate>Fri, 16 Oct 2026 13:17:44 +0000</pubDate>
+        </item>
+        </channel>
+</rss>

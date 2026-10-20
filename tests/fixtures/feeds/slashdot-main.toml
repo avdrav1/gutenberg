@@ -1,0 +1,4 @@
+# SOURCE http://rss.slashdot.org/Slashdot/slashdotMain fetched 2026-10-20
+url = "http://rss.slashdot.org/Slashdot/slashdotMain"
+fetched = 2026-10-20
+covers = "RSS 1.0 (RDF) with dc:date and slash namespace"

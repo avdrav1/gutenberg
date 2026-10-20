@@ -1,0 +1,4 @@
+# SOURCE https://www.youtube.com/feeds/videos.xml?channel_id=UCsBjURrPoezykLs9EqgamOA fetched 2026-10-20
+url = "https://www.youtube.com/feeds/videos.xml?channel_id=UCsBjURrPoezykLs9EqgamOA"
+fetched = 2026-10-20
+covers = "Atom with yt and media namespaces, no content element"

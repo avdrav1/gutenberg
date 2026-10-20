@@ -10,7 +10,11 @@ gutenberg-sources.workspace = true
 gutenberg-store.workspace = true
 gutenberg-theme.workspace = true
 gutenberg-ui.workspace = true
+tokio.workspace = true
 
 [[bin]]
 name = "gutenberg"
 path = "src/main.rs"
+
+[dev-dependencies]
+tempfile.workspace = true

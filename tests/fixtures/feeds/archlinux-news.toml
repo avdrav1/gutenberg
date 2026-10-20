@@ -1,0 +1,4 @@
+# SOURCE https://archlinux.org/feeds/news/ fetched 2026-10-20
+url = "https://archlinux.org/feeds/news/"
+fetched = 2026-10-20
+covers = "RSS 2.0 with atom:link self, HTML descriptions"

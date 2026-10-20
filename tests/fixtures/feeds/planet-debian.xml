@@ -1,0 +1,482 @@
+<?xml version="1.0"?>
+<rdf:RDF
+	xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:foaf="http://xmlns.com/foaf/0.1/"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns="http://purl.org/rss/1.0/"
+>
+<channel rdf:about="https://planet.debian.org/">
+	<title>Planet Debian</title>
+	<link>https://planet.debian.org/</link>
+	<description>Planet Debian - https://planet.debian.org/</description>
+
+	<items>
+		<rdf:Seq> 
+		  <rdf:li rdf:resource="https://etbe.coker.com.au/?p=6326"/>
+		  <rdf:li rdf:resource="http://blog.sesse.net/blog/tech/2026-10-19-21-53_decompilation_patterns_part_16_tail_reduplication.html"/>
+		  <rdf:li rdf:resource="http://dirk.eddelbuettel.com/blog/2026/10/18#myman_0.12.0"/>
+		  <rdf:li rdf:resource="https://blog.apdu.fr/posts/2026/10/new-version-of-pcsc-lite-253/"/>
+		  <rdf:li rdf:resource="http://blog.sesse.net/blog/tech/2026-10-18-10-47_decompilation_patterns_part_15_redundant_if_for.html"/>
+		  <rdf:li rdf:resource="http://dirk.eddelbuettel.com/blog/2026/10/17#rcpparmadillo_15.6.2-1"/>
+		  <rdf:li rdf:resource="http://blog.sesse.net/blog/tech/2026-10-17-21-29_decompilation_patterns_part_14_strength_increase.html"/>
+		  <rdf:li rdf:resource="http://blog.sesse.net/blog/tech/2026-10-16-22-29_decompilation_patterns_part_13_reverse_loop.html"/>
+		  <rdf:li rdf:resource="http://dirk.eddelbuettel.com/blog/2026/10/16#rcppsimdjson_0.1.17"/>
+		  <rdf:li rdf:resource="https://diffoscope.org/news/diffoscope-334-released/"/>
+		  <rdf:li rdf:resource="http://blog.sesse.net/blog/tech/2026-10-15-21-32_decompilation_patterns_part_12_builtin_memcpy.html"/>
+		  <rdf:li rdf:resource="https://codon.org.uk/~mjg59/blog/p/epics-eac2-v2-seems-fairly-easily-bypassable/"/>
+		  <rdf:li rdf:resource="http://dirk.eddelbuettel.com/blog/2026/10/14#qlcal-r_0.1.4"/>
+		  <rdf:li rdf:resource="https://reproducible-builds.org/reports/2026-09/"/>
+		  <rdf:li rdf:resource="https://www.eyrie.org/~eagle/reviews/books/9798376517017.html"/>
+		  <rdf:li rdf:resource="https://www.freexian.com/blog/debian-contributions-09-2026/"/>
+		  <rdf:li rdf:resource="http://dirk.eddelbuettel.com/blog/2026/10/13#rquantlib_0.4.29"/>
+		  <rdf:li rdf:resource="https://codon.org.uk/~mjg59/blog/p/linux-lockdown-and-hibernation-again/"/>
+		  <rdf:li rdf:resource="https://maytham.aezign.au/blog/menus-without-javascript"/>
+		  <rdf:li rdf:resource="https://maytham.aezign.au/blog/underlining-in-css"/>
+		  <rdf:li rdf:resource="https://www.eyrie.org/~eagle/reviews/books/1-250-40009-0.html"/>
+		  <rdf:li rdf:resource="https://retout.co.uk/2026/10/10/zeversolar-esphome/"/>
+		  <rdf:li rdf:resource="tag:www.chiark.greenend.org.uk,2026-10-09:/~cjwatson/blog/activity-2026-09.html"/>
+		  <rdf:li rdf:resource="https://etbe.coker.com.au/?p=6312"/>
+		  <rdf:li rdf:resource="https://etbe.coker.com.au/?p=6320"/>
+		  <rdf:li rdf:resource="tag:veronneau.org,2026-10-09:/removing-myself-as-a-lintian-uploader-in-the-next-few-weeks.html"/>
+		  <rdf:li rdf:resource="https://diffoscope.org/news/diffoscope-333-released/"/>
+		  <rdf:li rdf:resource="https://anarc.at/blog/2026-10-08-dst-warning/"/>
+		  <rdf:li rdf:resource="http://blog.alteholz.eu/?p=2854"/>
+		  <rdf:li rdf:resource="hatenablog://entry/14945776032087269493"/>
+		  <rdf:li rdf:resource="tag:bits.debian.org,2026-10-07:/2026/10/forky-artwork-cfp.html"/>
+		  <rdf:li rdf:resource="https://etbe.coker.com.au/?p=6307"/>
+		  <rdf:li rdf:resource="https://etbe.coker.com.au/?p=6310"/>
+		  <rdf:li rdf:resource="https://utkarsh2102.org/posts/foss-in-sept-26/"/>
+		  <rdf:li rdf:resource="http://www.luffy.cx/en/blog/2026-go-netip-addrto6.html"/>
+		  <rdf:li rdf:resource="http://www.luffy.cx/en/blog/2026-go-compiler-optimization-netip.html"/>
+		  <rdf:li rdf:resource="http://www.luffy.cx/en/blog/2026-http-over-ssh.html"/>
+		  <rdf:li rdf:resource="https://www.decadent.org.uk/ben/blog/2026/10/02/foss-activity-in-september-2026"/>
+		  <rdf:li rdf:resource="http://www.netfort.gr.jp/~dancer/diary/daily/2026-Oct-2.html.en#2026-Oct-2-16:56:37"/>
+		  <rdf:li rdf:resource="https://blog.apdu.fr/posts/2026/09/macos-golden-gate-and-smart-cards-status/"/>
+		  <rdf:li rdf:resource="https://gwolf.org/2026/09/the-origins-of-gpu-computing.html"/>
+		  <rdf:li rdf:resource="https://optimizedbyotto.com/post/multiple-git-remotes/"/>
+		  <rdf:li rdf:resource="https://maytham.aezign.au/blog/how-dns-and-nameservers-work"/>
+		  <rdf:li rdf:resource="https://diffoscope.org/news/diffoscope-332-released/"/>
+		  <rdf:li rdf:resource="https://aezign.com.au/resources/how-dns-and-nameservers-work"/>
+		  <rdf:li rdf:resource="https://notes.secretsauce.net/notes/2026/09/27_lunar-terminator-paradox.html"/>
+		  <rdf:li rdf:resource="https://aquilamacedo.xyz/debian/salsa-ci/2026/09/27/transition-aware-rebuilds"/>
+		  <rdf:li rdf:resource="https://www.eyrie.org/~eagle/reviews/books/0-7564-2013-X.html"/>
+		  <rdf:li rdf:resource="https://diffoscope.org/news/diffoscope-331-released/"/>
+		  <rdf:li rdf:resource="https://sunweavers.net/160 at https://sunweavers.net/blog"/>
+		  <rdf:li rdf:resource="https://diffoscope.org/news/diffoscope-330-released/"/>
+		  <rdf:li rdf:resource="http://www.luffy.cx/en/blog/2026-goatcounter.html"/>
+		  <rdf:li rdf:resource="tag:blogger.com,1999:blog-8085113335874848981.post-6303472353413203122"/>
+		  <rdf:li rdf:resource="https://blog.apdu.fr/posts/2026/09/new-version-of-libccid-184/"/>
+		  <rdf:li rdf:resource="https://www.freexian.com/blog/debian-lts-report-2026-08/"/>
+		  <rdf:li rdf:resource="https://blog.apdu.fr/posts/2026/09/new-version-of-pcsc-lite-252/"/>
+		  <rdf:li rdf:resource="hatenablog://entry/14945776032079905182"/>
+		  <rdf:li rdf:resource="https://notes.pault.ag/why-write/"/>
+		  <rdf:li rdf:resource="http://www.hungry.com/~pere/blog/Long_term_storage_of_Mattermost_messages_with_Noark_5_XML.html"/>
+		  <rdf:li rdf:resource="tag:veronneau.org,2026-09-18:/fake-cash-the-world-trade-game.html"/>
+		</rdf:Seq>
+	</items>
+</channel>
+
+
+<item rdf:about="https://etbe.coker.com.au/?p=6326">
+	<title>Russell Coker: Cixin Liu is a Bad Person</title>
+	<link>https://etbe.coker.com.au/2026/10/20/cixin-liu-bad-person/</link>
+     <content:encoded>&lt;p&gt;The Chinese author &lt;a href=&quot;https://en.wikipedia.org/wiki/Liu_Cixin&quot;&gt;Cixin Liu [1]&lt;/a&gt; is most known for his book The Three Body Problem and it’s sequels. One of the main plot elements in the book is that every species in the universe is cool with genocide and willing to commit genocide as a preemptive strike against any star system found to contain intelligent life.&lt;/p&gt;
+&lt;p&gt;It’s not unreasonable to think that some planets may be by run societies like that, if one star system in 10,000 had a technological society and one society in 10,000 is run by depraved autocratic governments that would make 1,000+ planets in our galaxy that are run by genocidal groups!&lt;/p&gt;
+&lt;p&gt;To think that every single society wants to commit genocide at every opportunity says a lot about every person who makes such claims. If you believe that everyone wants to do something then it must be something you really want to do. If there’s something you really don’t want to do then you will be able to imagine a system of government where the majority of citizens vote against doing it.&lt;/p&gt;
+&lt;p&gt;Even in the more horrible parts of human history there hasn’t been a genocide comparable to destroying and entire star system, genocide is usually based on slavery and large scale armed robbery. To just commit large scale genocide with a side effect of destroying valuable resources without any investigation or attempts at negotiation just based on fear of others is an extreme that I don’t think humans have reached in history.&lt;/p&gt;
+&lt;p&gt;The Daleks are portrayed as a perverse extreme of xenophobia but even with the low budget SciFi trend of depicting aliens as mostly having a common belief system they managed to show some Daleks going against their system from time to time. Cixin Liu is a very talented writer but his attitude towards genocide has caused him to write SciFi with a major plot point that’s not great by Dr Who standards.&lt;/p&gt;
+&lt;p&gt;Overall his short stories are much better than the three novels he is most known for. But he shows his ass in some of them too. One notable example is a short story where a significant plot point is declaring a “right to sex” (for men) which involves government sponsored sex workers. A “right to sex” conflicts with a sex workers right to refuse sex for a potential client who is undesirable in some way. Regardless of opinions on whether sex work should be permitted I hope that the vast majority of voters in every jurisdiction can agree that sex workers shouldn’t be forced to do things that they don’t want to do.&lt;/p&gt;
+&lt;p&gt;Some writers like George Orwell create deliberately fictional scenarios that they hope to inspire opposition to bad ideas, I’m sure that many proposed laws have failed to get enacted after being described as “Orwellian”. But describing a fictional horror situation as inevitable is a way of driving support for such things. It’s particularly noteworthy when written by a citizen of a country that’s involved in genocide.&lt;/p&gt;
+&lt;p&gt;A possible counter argument would be “but he is living in a repressive country and can’t oppose his government”. But when Hergé (the author of the Tintin graphic novels) was threatened about the consequences of writing another book like &lt;a href=&quot;https://en.wikipedia.org/wiki/King_Ottokar%27s_Sceptre&quot;&gt;King Ottokar’s Sceptre [2]&lt;/a&gt; he didn’t write books in favour of authoritarianism, he just avoided the topic by writing about visiting the moon instead. I don’t think that people living in China now should be expected to publicly oppose evil things done by their government, but when they go out of their way to support such things it’s their choice and we should note that they made that choice.&lt;/p&gt;
+&lt;p&gt;I’m not saying that people shouldn’t read his work as his short stories are definitely worth reading. But the Three Body Problem series really isn’t that good, he prevented many potentially interesting situations from happening by having every interaction between different species be based around genocide or the potential for it. Being a horrible person also made him a less capable SciFi author.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;[1]&lt;a href=&quot;https://en.wikipedia.org/wiki/Liu_Cixin&quot;&gt; https://en.wikipedia.org/wiki/Liu_Cixin&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;[2]&lt;a href=&quot;https://en.wikipedia.org/wiki/King_Ottokar%27s_Sceptre&quot;&gt; https://en.wikipedia.org/wiki/King_Ottokar%27s_Sceptre&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class=&quot;yarpp yarpp-related yarpp-related-rss yarpp-template-list&quot;&gt;
+
+&lt;p&gt;Related posts:&lt;/p&gt;&lt;ol&gt;
+&lt;li&gt;&lt;a href=&quot;https://etbe.coker.com.au/2012/09/27/server-use-per-person/&quot; rel=&quot;bookmark&quot; title=&quot;Server Use Per Person&quot;&gt;Server Use Per Person&lt;/a&gt; &lt;small&gt;I’ve just read Diego’s response to an ill-informed NYT article...&lt;/small&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://etbe.coker.com.au/2022/01/05/terrorists-inspired-by-fiction/&quot; rel=&quot;bookmark&quot; title=&quot;Terrorists Inspired by Fiction&quot;&gt;Terrorists Inspired by Fiction&lt;/a&gt; &lt;small&gt;The Tom Clancy book Debt of Honor published in August...&lt;/small&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://etbe.coker.com.au/2012/08/31/links-august-2012/&quot; rel=&quot;bookmark&quot; title=&quot;Links August 2012&quot;&gt;Links August 2012&lt;/a&gt; &lt;small&gt;Google are providing some really good employee benefits including benefits...&lt;/small&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/div&gt;</content:encoded> 
+	<dc:date>2026-10-20T08:11:59+00:00</dc:date>
+	<dc:creator>etbe</dc:creator>
+</item> 
+<item rdf:about="http://blog.sesse.net/blog/tech/2026-10-19-21-53_decompilation_patterns_part_16_tail_reduplication.html">
+	<title>Steinar H. Gunderson: Decompilation patterns, part 16: Tail reduplication</title>
+	<link>http://blog.sesse.net/blog/tech/2026-10-19-21-53_decompilation_patterns_part_16_tail_reduplication.html</link>
+     <content:encoded>&lt;p&gt;We&#39;re nearing the end soon, I promise. Here&#39;s one that I see all the time:&lt;/p&gt;
+
+&lt;pre&gt;     ...
+         } else {
+             var_t0_5 = temp_a0_3 - 0x140;
+             var_a2_5 = 0xA0 - temp_a3_5;
+             goto block_45;
+         }
+     } else {
+         var_t0_5 = 0xA0 - temp_a0_3;
+         var_a2_5 = temp_a3_5 - 0x118;
+block_45:               
+         var_v0_3 = var_t0_5 + 0xA0;
+         var_v1_4 = var_a2_5 + 0x78;
+     }
+&lt;/pre&gt;
+
+&lt;p&gt;So, eh, what&#39;s that goto doing there? What happened was that the compiler
+helpfully figured it could help with some tail deduplication; someone
+wrote the same code twice, and the compiler figured taking the cost
+of a branch was better than keeping it duplicated. (In a sense, it&#39;s
+the opposite of inlining. Ish.) In most cases, it&#39;s as simple as
+copying the block and then you can remove the label:&lt;/p&gt;
+
+&lt;pre&gt;     ...
+         } else {
+             var_t0_5 = temp_a0_3 - 0x140;
+             var_a2_5 = 0xA0 - temp_a3_5;
+             var_v0_3 = var_t0_5 + 0xA0;
+             var_v1_4 = var_a2_5 + 0x78;
+         }
+     } else {
+         var_t0_5 = 0xA0 - temp_a0_3;
+         var_a2_5 = temp_a3_5 - 0x118;
+         var_v0_3 = var_t0_5 + 0xA0;
+         var_v1_4 = var_a2_5 + 0x78;
+     }
+&lt;/pre&gt;
+
+&lt;p&gt;Sometimes, these are nested, with multiple tails goto-ing into each other,
+so in that case, you&#39;ll need to reduplicate multiple times.
+Make sure you actually come out on the correct side afterwards,
+though.&lt;/p&gt;
+
+&lt;p&gt;As an extra complication, the code is deduplicated not on the C statement level, but on
+RTL instructions, so if you&#39;re calling functions with five parameters
+of more (which requires pushing parameters onto the stack), m2c can
+get really confused and start throwing &lt;code&gt;M2C_ERROR()&lt;/code&gt; at you on the
+receiving side because it&#39;s not clear at all where the parameters
+would be coming from.&lt;/p&gt;</content:encoded> 
+	<dc:date>2026-10-19T20:00:28+00:00</dc:date>
+	<dc:creator>Steinar H. Gunderson</dc:creator>
+</item> 
+<item rdf:about="http://dirk.eddelbuettel.com/blog/2026/10/18#myman_0.12.0">
+	<title>Dirk Eddelbuettel: myman 0.12.0 on CRAN: Two new waves!</title>
+	<link>http://dirk.eddelbuettel.com/blog/2026/10/18#myman_0.12.0</link>
+     <content:encoded>&lt;p&gt;Another new and exciting version of our still-new package &lt;a href=&quot;https://github.com/eddelbuettel/myman&quot;&gt;myman&lt;/a&gt; reached &lt;a href=&quot;https://cran.r-project.org&quot;&gt;CRAN&lt;/a&gt; this morning, and has been
+built for &lt;a href=&quot;https://eddelbuettel.github.io/r2u/&quot;&gt;r2u&lt;/a&gt; and on
+&lt;a href=&quot;https://eddelbuettel.r-universe.dev/myman&quot;&gt;r-universe&lt;/a&gt;. The
+matching &lt;a href=&quot;https://pypi.org/project/myman/&quot;&gt;Python package&lt;/a&gt;
+has also been updated. The package offers twenty one hundred eighty four
+&lt;em&gt;“My man …”&lt;/em&gt; posts by &lt;a href=&quot;https://bsky.app/profile/kevinmkruse.bsky.social&quot;&gt;Kevin Kruse&lt;/a&gt;
+made on &lt;a href=&quot;https://bsky.app&quot;&gt;bsky&lt;/a&gt; during the summer of 2026.
+Each wave picked at one particular public persona. This package wrapse
+these up in the style of packages like &lt;a href=&quot;https://zeileis.codeberg.page/fortunes/&quot;&gt;fortunes&lt;/a&gt; or &lt;a href=&quot;https://github.com/eddelbuettel/gaussfacts&quot;&gt;gaussfacts&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;This release regroups two new waves of posts mocking, respectively,
+Peter Thiel and Michael Tracy, and make a small update to continuous
+integration. The short NEWS entry for this release follows.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;h4 id=&quot;changes-in-version-0.12.0-2026-10-18&quot;&gt;Changes in version 0.12.0
+(2026-10-18)&lt;/h4&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;New waves eleven (100 posts) and twelve (100 posts) made last
+week; total is now 2184 posts&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;Small update to continuous integration&lt;/p&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;Courtesy of my &lt;a href=&quot;https://dirk.eddelbuettel.com/cranberries/&quot;&gt;CRANberries&lt;/a&gt;, there
+is also a diffstat report for the &lt;a href=&quot;https://dirk.eddelbuettel.com/cranberries/2026/10/18#myman_0.12.0&quot;&gt;most
+recent release&lt;/a&gt;. More information is available at the &lt;a href=&quot;https://github.com/eddelbuettel/myman&quot;&gt;repository&lt;/a&gt; or the &lt;a href=&quot;https://dirk.eddelbuettel.com/code/myman.html&quot;&gt;package
+page&lt;/a&gt;.&lt;/p&gt;
+&lt;p style=&quot;font-size: 80%; font-style: italic;&quot;&gt;
+This post by &lt;a href=&quot;https://dirk.eddelbuettel.com&quot;&gt;Dirk
+Eddelbuettel&lt;/a&gt; originated on his &lt;a href=&quot;https://dirk.eddelbuettel.com/blog/&quot;&gt;Thinking inside the box&lt;/a&gt;
+blog. If you like this or other open-source work I do, you can &lt;a href=&quot;https://github.com/sponsors/eddelbuettel&quot;&gt;sponsor me at
+GitHub&lt;/a&gt;.
+&lt;/p&gt;&lt;p&gt;&lt;/p&gt;</content:encoded> 
+	<dc:date>2026-10-18T20:00:00+00:00</dc:date>
+	<dc:creator>Dirk Eddelbuettel</dc:creator>
+</item> 
+<item rdf:about="https://blog.apdu.fr/posts/2026/10/new-version-of-pcsc-lite-253/">
+	<title>Ludovic Rousseau: New version of pcsc-lite: 2.5.3</title>
+	<link>https://blog.apdu.fr/posts/2026/10/new-version-of-pcsc-lite-253/</link>
+     <content:encoded>&lt;p&gt;I have just released a new version of &lt;a class=&quot;reference external&quot; href=&quot;https://pcsclite.apdu.fr/files/&quot;&gt;pcsc-lite 2.5.3&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;a class=&quot;reference external&quot; href=&quot;https://pcsclite.apdu.fr/&quot;&gt;pcsc-lite&lt;/a&gt; is a Free Software
+implementation of the &lt;a class=&quot;reference external&quot; href=&quot;https://www.wikipedia.org/wiki/PC/SC&quot;&gt;PC/SC&lt;/a&gt;
+(also known as WinSCard) API for Unix systems. It provides an API for
+using &lt;a class=&quot;reference external&quot; href=&quot;https://www.wikipedia.org/wiki/Smart_card&quot;&gt;smart cards&lt;/a&gt; and
+smart card readers.&lt;/p&gt;
+&lt;section id=&quot;changes&quot;&gt;
+&lt;h2&gt;Changes:&lt;/h2&gt;
+&lt;dl class=&quot;simple&quot;&gt;
+&lt;dt&gt;2.5.3: Ludovic Rousseau&lt;/dt&gt;
+&lt;dd&gt;&lt;p&gt;18 October 2026&lt;/p&gt;
+&lt;/dd&gt;
+&lt;/dl&gt;
+&lt;ul class=&quot;simple&quot;&gt;
+&lt;li&gt;&lt;p&gt;&lt;code class=&quot;docutils literal&quot;&gt;pcscd.service&lt;/code&gt;: preserve card sessions across polkit restarts&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;correctly decode all ATRs (fix the fix suggested by AI)&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;Fix authorization for uid &amp;gt; 65536&lt;/p&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/section&gt;</content:encoded> 
+	<dc:date>2026-10-18T14:27:08+00:00</dc:date>
+	<dc:creator>Ludovic Rousseau</dc:creator>
+</item> 
+<item rdf:about="http://blog.sesse.net/blog/tech/2026-10-18-10-47_decompilation_patterns_part_15_redundant_if_for.html">
+	<title>Steinar H. Gunderson: Decompilation patterns, part 15: Redundant if-for</title>
+	<link>http://blog.sesse.net/blog/tech/2026-10-18-10-47_decompilation_patterns_part_15_redundant_if_for.html</link>
+     <content:encoded>&lt;p&gt;Yet another way of writing for loops:&lt;/p&gt;
+
+&lt;pre&gt;    var_a2_4 = ...
+    if (var_a2_4 &amp;lt; 0x78) {
+        ...
+        do {
+            ...
+            var_a2_4 += 1;
+        } while (var_a2_4 &amp;lt; 0x78);
+    }
+&lt;/pre&gt;
+
+&lt;p&gt;This extra if is merely there because the compiler wasn&#39;t able to prove
+that the variable didn&#39;t start below the bound, so it can&#39;t rewrite
+the while-do to a do-while without that extra check. So the rewrite
+still reads:&lt;/p&gt;
+
+&lt;pre&gt;for (var_a2_4 = ...; var_a2_4 &amp;lt; 0x78; ++var_a2_4) {
+    ...
+}
+&lt;/pre&gt;
+
+&lt;p&gt;possibly with the initializer skipped, if it comes from something
+complex earlier.&lt;/p&gt;</content:encoded> 
+	<dc:date>2026-10-18T09:47:00+00:00</dc:date>
+	<dc:creator>Steinar H. Gunderson</dc:creator>
+</item> 
+<item rdf:about="http://dirk.eddelbuettel.com/blog/2026/10/17#rcpparmadillo_15.6.2-1">
+	<title>Dirk Eddelbuettel: RcppArmadillo 15.6.2-1 on CRAN: New Upstream</title>
+	<link>http://dirk.eddelbuettel.com/blog/2026/10/17#rcpparmadillo_15.6.2-1</link>
+     <content:encoded>&lt;p&gt;&lt;img alt=&quot;armadillo image&quot; src=&quot;https://dirk.eddelbuettel.com/images/armadillo_logo_two.png&quot; style=&quot;float: left; margin: 10px 10px 10px 0;&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://arma.sourceforge.net/&quot;&gt;Armadillo&lt;/a&gt; is a powerful
+and expressive C++ template library for linear algebra and scientific
+computing. It aims towards a good balance between speed and ease of use,
+has a syntax deliberately close to Matlab, and is useful for algorithm
+development directly in C++, or quick conversion of research code into
+production environments. &lt;a href=&quot;https://dirk.eddelbuettel.com/code/rcpp.armadillo.html&quot;&gt;RcppArmadillo&lt;/a&gt;
+integrates this library with the &lt;a href=&quot;https://www.r-project.org&quot;&gt;R&lt;/a&gt; environment and language–and is
+widely used by (currently) 1370 other packages on &lt;a href=&quot;https://cran.r-project.org&quot;&gt;CRAN&lt;/a&gt;, downloaded 49.4 million
+times (per the partial logs from the cloud mirrors of CRAN), and the &lt;a href=&quot;https://doi.org/10.1016/j.csda.2013.02.005&quot;&gt;CSDA paper&lt;/a&gt; (&lt;a href=&quot;https://cran.r-project.org/package=RcppArmadillo/vignettes/RcppArmadillo-intro.pdf&quot;&gt;preprint
+/ vignette&lt;/a&gt;) by Conrad and myself has been cited 735 times according
+to Google Scholar.&lt;/p&gt;
+&lt;p&gt;This versions updates to the 15.6.2 upstream &lt;a href=&quot;https://arma.sourceforge.net/&quot;&gt;Armadillo&lt;/a&gt; release made
+yesterday. It, along with 15.6.1 release we incorporated earlier,
+addresses only minor issues and should not present any user-facing
+changes. As usual, we did run full reverse-depdency checks against the
+over 1300 ackages, and did not find anything. As usual, we aim to
+accommodate the desired &lt;a href=&quot;https://cran.r-project.org&quot;&gt;CRAN&lt;/a&gt;
+cadences for uploads and try not to exceed six in six months—so we did
+not ship 15.6.1-1 there. The package has also already been updated for
+&lt;a href=&quot;https://www.debian.org&quot;&gt;Debian&lt;/a&gt;, built for &lt;a href=&quot;https://eddelbuettel.github.io/r2u/&quot;&gt;r2u&lt;/a&gt; and &lt;a href=&quot;https://rcppcore.r-universe.dev/RcppArmadillo&quot;&gt;r-universe&lt;/a&gt;, and
+will build shortly at &lt;a href=&quot;https://cran.r-project.org&quot;&gt;CRAN&lt;/a&gt; for
+the different binary releases.&lt;/p&gt;
+&lt;p&gt;All changes since the last CRAN release follow.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;h4 id=&quot;changes-in-rcpparmadillo-version-15.6.2-1-2026-10-16&quot;&gt;Changes in
+RcppArmadillo version 15.6.2-1 (2026-10-16)&lt;/h4&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;Upgraded to Armadillo release 15.6.2 (Medium Roast Cortado)&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Faster inplace addition of &lt;code&gt;eye()&lt;/code&gt; expressions&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h4 id=&quot;changes-in-rcpparmadillo-version-15.6.1-1-github-only-2026-10-02&quot;&gt;Changes
+in RcppArmadillo version 15.6.1-1 [github-only] (2026-10-02)&lt;/h4&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;Upgraded to Armadillo release 15.6.1 (Medium Roast Cortado)&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Fix for failures in &lt;code&gt;pinv()&lt;/code&gt; when using the (non-default)
+&quot;std&quot; method&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;Courtesy of my &lt;a href=&quot;https://dirk.eddelbuettel.com/cranberries/&quot;&gt;CRANberries&lt;/a&gt;, there
+is a &lt;a href=&quot;https://dirk.eddelbuettel.com/cranberries/2026/10/17#RcppArmadillo_15.6.2-1&quot;&gt;diffstat
+report&lt;/a&gt; relative to previous release. More detailed information is on
+the &lt;a href=&quot;https://dirk.eddelbuettel.com/code/rcpp.armadillo.html&quot;&gt;RcppArmadillo
+page&lt;/a&gt;. Questions, comments etc should go to the &lt;a href=&quot;https://lists.r-forge.r-project.org/cgi-bin/mailman/listinfo/rcpp-devel&quot;&gt;rcpp-devel
+mailing list&lt;/a&gt; off the &lt;a href=&quot;https://r-forge.r-project.org/projects/rcpp/&quot;&gt;Rcpp R-Forge&lt;/a&gt;
+page.&lt;/p&gt;
+&lt;p style=&quot;font-size: 80%; font-style: italic;&quot;&gt;
+This post by &lt;a href=&quot;https://dirk.eddelbuettel.com&quot;&gt;Dirk
+Eddelbuettel&lt;/a&gt; originated on his &lt;a href=&quot;https://dirk.eddelbuettel.com/blog/&quot;&gt;Thinking inside the box&lt;/a&gt;
+blog. If you like this or other open-source work I do, you can &lt;a href=&quot;https://github.com/sponsors/eddelbuettel&quot;&gt;sponsor me at
+GitHub&lt;/a&gt;.
+&lt;/p&gt;&lt;p&gt;&lt;/p&gt;</content:encoded> 
+	<dc:date>2026-10-17T21:41:00+00:00</dc:date>
+	<dc:creator>Dirk Eddelbuettel</dc:creator>
+</item> 
+<item rdf:about="http://blog.sesse.net/blog/tech/2026-10-17-21-29_decompilation_patterns_part_14_strength_increase.html">
+	<title>Steinar H. Gunderson: Decompilation patterns, part 14: Strength increase</title>
+	<link>http://blog.sesse.net/blog/tech/2026-10-17-21-29_decompilation_patterns_part_14_strength_increase.html</link>
+     <content:encoded>&lt;p&gt;Let&#39;s look at the entire loop from yesterday:&lt;/p&gt;
+
+&lt;pre&gt;    u16 spE10;
+    u16 *var_v0_2;
+
+    ...
+
+    var_t1_2 = 0x7F;
+    var_v0_2 = &amp;amp;spE10 + 0xFE;
+    do {
+        *var_v0_2 = 0;
+        var_t1_2 -= 1;
+        var_v0_2 -= 2;
+    } while (var_t1_2 &amp;gt;= 0);
+&lt;/pre&gt;
+
+&lt;p&gt;What&#39;s going with the pointer arithmetic here? Why is it indexing
+out-of-bounds?&lt;/p&gt;
+
+&lt;p&gt;The first thing to notice is that m2c doesn&#39;t really take into account
+that arithmetic on pointers in C is multiplied by the size of the element.
+And obviously, spE10 is the root of some array. So corrected, this reads:&lt;/p&gt;
+
+&lt;pre&gt;    u16 spE10[0x80];  // Modified.
+    u16 *var_v0_2;
+
+    ...
+
+    var_t1_2 = 0x7F;
+    var_v0_2 = spE10 + 0x7F;  // Modified.
+    do {
+        *var_v0_2 = 0;
+        var_t1_2 -= 1;
+        var_v0_2 -= 1;  // Modified.
+    } while (var_t1_2 &amp;gt;= 0);
+&lt;/pre&gt;
+
+&lt;p&gt;We saw yesterday how we should rewrite the iteration back to a for loop,
+but also, most likely, the pointer arithmetic here came from &lt;em&gt;strength
+reduction&lt;/em&gt;; the compiler took a multiplication operation and rewrote it
+to a “weaker” operation (subtraction) since that&#39;s typically cheaper,
+at the cost of making the values dependent, an easy trade. So we can
+rewrite it back into multiplication:&lt;/p&gt;
+
+&lt;pre&gt;    var_t1_2 = 0x7F;
+    do {
+        var_v0_2 = spE10 + var_t1_2;
+        *var_v0_2 = 0;
+        var_t1_2 -= 1;
+    } while (var_t1_2 &amp;gt;= 0);
+&lt;/pre&gt;
+
+&lt;p&gt;and now it&#39;s easy to see that the loop should read:&lt;/p&gt;
+
+&lt;pre&gt;    for (i = 0; i &amp;lt; 0x80; ++i) {
+        spE10[i] = 0;
+    }
+&lt;/pre&gt;
+
+&lt;p&gt;and then, of course, the array should get a better name.&lt;/p&gt;
+
+&lt;p&gt;Sometimes the loop counter will go backwards while the pointer will go
+forwards, which is also completely normal, especially if there&#39;s side
+effects. The compiler will reverse one but not the other.&lt;/p&gt;</content:encoded> 
+	<dc:date>2026-10-17T20:29:00+00:00</dc:date>
+	<dc:creator>Steinar H. Gunderson</dc:creator>
+</item> 
+<item rdf:about="http://blog.sesse.net/blog/tech/2026-10-16-22-29_decompilation_patterns_part_13_reverse_loop.html">
+	<title>Steinar H. Gunderson: Decompilation patterns, part 13: Reverse loop</title>
+	<link>http://blog.sesse.net/blog/tech/2026-10-16-22-29_decompilation_patterns_part_13_reverse_loop.html</link>
+     <content:encoded>&lt;p&gt;Anyone who&#39;s read “bro-coder” C from before that was a name will recognize
+this idiom:&lt;/p&gt;
+
+&lt;pre&gt;    var_t1_2 = 0x7F;
+    ...
+    do {
+        ...
+        var_t1_2 -= 1;
+    } while (var_t1_2 &amp;gt;= 0);
+&lt;/pre&gt;
+
+&lt;p&gt;Why does the loop count backwards? It&#39;s because comparison with zero
+is cheaper on some (many) platforms. Some people would reverse the loop
+manually, but compilers quickly managed to do that themselves. So you want:&lt;/p&gt;
+
+&lt;pre&gt;   for (i = 0; i &amp;lt; 0x80; ++i) {
+      ...
+   }
+&lt;/pre&gt;
+
+&lt;p&gt;and tomorrow, we&#39;ll have a look at what&#39;s inside the loop as well.&lt;/p&gt;</content:encoded> 
+	<dc:date>2026-10-16T21:29:00+00:00</dc:date>
+	<dc:creator>Steinar H. Gunderson</dc:creator>
+</item> 
+<item rdf:about="http://dirk.eddelbuettel.com/blog/2026/10/16#rcppsimdjson_0.1.17">
+	<title>Dirk Eddelbuettel: RcppSimdJson 0.1.17 on CRAN: Updates</title>
+	<link>http://dirk.eddelbuettel.com/blog/2026/10/16#rcppsimdjson_0.1.17</link>
+     <content:encoded>&lt;p&gt;A brand new release 0.1.17 of the &lt;a href=&quot;https://dirk.eddelbuettel.com/code/rcpp.simdjson.html&quot;&gt;RcppSimdJson&lt;/a&gt;
+package is now on &lt;a href=&quot;https://cran.r-project.org&quot;&gt;CRAN&lt;/a&gt;, and has
+been built for &lt;a href=&quot;https://eddelbuettel.github.io/r2u/&quot;&gt;r2u&lt;/a&gt; and
+on &lt;a href=&quot;https://eddelbuettel.r-universe.dev/RcppSimdJson&quot;&gt;r-universe&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://dirk.eddelbuettel.com/code/rcpp.simdjson.html&quot;&gt;RcppSimdJson&lt;/a&gt;
+wraps the fantastic and genuinely impressive &lt;a href=&quot;https://github.com/simdjson/simdjson&quot;&gt;simdjson&lt;/a&gt; library by &lt;a href=&quot;https://lemire.me/en/&quot;&gt;Daniel Lemire&lt;/a&gt; and collaborators. Via
+very clever algorithmic engineering to obtain largely branch-free code,
+coupled with modern C++ and newer compiler instructions, it results in
+parsing &lt;em&gt;gigabytes of JSON parsed per second&lt;/em&gt; which is quite
+mindboggling. The best-case performance is ‘faster than CPU speed’ as
+use of parallel SIMD instructions and careful branch avoidance can lead
+to less than one cpu cycle per byte parsed; see the video of the &lt;a href=&quot;http://www.youtube.com/watch?v=wlvKAT7SZIQ&quot;&gt;talk by Daniel Lemire
+at QCon&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;This release is a small increment relative to the &lt;a href=&quot;https://dirk.eddelbuettel.com/blog/2026/10/09#rcppsimdjson_0.1.16&quot;&gt;0.1.6
+release last week&lt;/a&gt; that got us (upstream) version 5.0.2 with many
+notable changes and sizeable speed gains on all fronts, including the
+interface from R. However, this failed to compile at &lt;a href=&quot;https://cran.r-project.org&quot;&gt;CRAN&lt;/a&gt; on macOS x86_64 as the
+machine is setup for only partial support of C++20: no ranges, no
+concepts. So we now test, and fall back to C++17 if the test compilation
+fails. Upstream, meanwhile, already got to 5.0.5 which is included. It
+also gets us improved handling of disabling pragmas which we hope will
+survive &lt;a href=&quot;https://cran.r-project.org&quot;&gt;CRAN&lt;/a&gt; checks.&lt;/p&gt;
+&lt;p&gt;The brief NEWS entry for this release follows.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;h4 id=&quot;changes-in-version-0.1.17-unreleased-2026-10-xx&quot;&gt;Changes in
+version 0.1.17 [unreleased] (2026-10-xx)&lt;/h4&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;Compilation starts with a C++20 feature test; if this fails C++17
+is used (Dirk in &lt;a href=&quot;https://github.com/eddelbuettel/rcppsimdjson/pull/111&quot;&gt;#111&lt;/a&gt;
+fixing &lt;a href=&quot;https://github.com/eddelbuettel/rcppsimdjson/issues/110&quot;&gt;#110&lt;/a&gt;)&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;&lt;span class=&quot;pkg&quot;&gt;simdjson&lt;/span&gt; was upgraded to version 5.0.5
+(Daniel in &lt;a href=&quot;https://github.com/eddelbuettel/rcppsimdjson/pull/112&quot;&gt;#112&lt;/a&gt;)&lt;/p&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;Courtesy of my &lt;a href=&quot;https://dirk.eddelbuettel.com/cranberries/&quot;&gt;CRANberries&lt;/a&gt;, there
+is also a diffstat report for &lt;a href=&quot;https://dirk.eddelbuettel.com/cranberries/2026/10/16#RcppSimdJson_0.1.17&quot;&gt;this
+release&lt;/a&gt;. For questions, suggestions, or issues please use the &lt;a href=&quot;https://github.com/eddelbuettel/rcppsimdjson/issues&quot;&gt;issue
+tracker&lt;/a&gt; at the &lt;a href=&quot;https://github.com/eddelbuettel/rcppsimdjson&quot;&gt;GitHub repo&lt;/a&gt;.&lt;/p&gt;
+&lt;p style=&quot;font-size: 80%; font-style: italic;&quot;&gt;
+This post by &lt;a href=&quot;https://dirk.eddelbuettel.com&quot;&gt;Dirk
+Eddelbuettel&lt;/a&gt; originated on his &lt;a href=&quot;https://dirk.eddelbuettel.com/blog/&quot;&gt;Thinking inside the box&lt;/a&gt;
+blog. If you like this or other open-source work I do, you can now &lt;a href=&quot;https://github.com/sponsors/eddelbuettel&quot;&gt;sponsor me at
+GitHub&lt;/a&gt;.
+&lt;/p&gt;&lt;p&gt;&lt;/p&gt;</content:encoded> 
+	<dc:date>2026-10-16T19:56:00+00:00</dc:date>
+	<dc:creator>Dirk Eddelbuettel</dc:creator>
+</item> 
+<item rdf:about="https://diffoscope.org/news/diffoscope-334-released/">
+	<title>Reproducible Builds (diffoscope): diffoscope 334 released</title>
+	<link>https://diffoscope.org/news/diffoscope-334-released/</link>
+     <content:encoded>&lt;p&gt;The diffoscope maintainers are pleased to announce the release of diffoscope
+version &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;334&lt;/code&gt;. This version includes the following changes:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;[ Chris Lamb ]
+* Fix a crash when using the latest versions of Androguard. Thanks, hc!
+  (Closes: reproducible-builds/diffoscope#434)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;You find out more by &lt;a href=&quot;https://diffoscope.org&quot;&gt;visiting the project homepage&lt;/a&gt;.&lt;/p&gt;</content:encoded> 
+	<dc:date>2026-10-16T00:00:00+00:00</dc:date>
+	<dc:creator>Reproducible Builds (diffoscope)</dc:creator>
+</item>
+ 
+
+</rdf:RDF>

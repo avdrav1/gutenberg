@@ -1,0 +1,4 @@
+# SOURCE https://feeds.npr.org/1001/rss.xml fetched 2026-10-20
+url = "https://feeds.npr.org/1001/rss.xml"
+fetched = 2026-10-20
+covers = "RSS 2.0 with content:encoded and npr namespace"

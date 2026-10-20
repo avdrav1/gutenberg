@@ -1,0 +1,2 @@
+# SOURCE synthetic, 2026-10-20
+covers = "inputs that must fail with one line of error: truncated XML (first half of omgubuntu.xml), an HTML page, an empty body, cut-off JSON"

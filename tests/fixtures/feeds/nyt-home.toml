@@ -1,0 +1,4 @@
+# SOURCE https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml fetched 2026-10-20
+url = "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"
+fetched = 2026-10-20
+covers = "RSS 2.0 with dc:creator, media:content, categories"

@@ -6,3 +6,7 @@ license.workspace = true
 
 [dependencies]
 gutenberg-core.workspace = true
+feed-rs.workspace = true
+reqwest.workspace = true
+html-escape.workspace = true
+thiserror.workspace = true

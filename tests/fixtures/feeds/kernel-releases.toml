@@ -1,0 +1,4 @@
+# SOURCE https://www.kernel.org/feeds/kdist.xml fetched 2026-10-20
+url = "https://www.kernel.org/feeds/kdist.xml"
+fetched = 2026-10-20
+covers = "RSS 2.0, release table HTML, fewer than 10 items"

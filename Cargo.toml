@@ -17,7 +17,7 @@ gutenberg-ui = { path = "crates/ui" }
 
 tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "brotli", "json"] }
-feed-rs = "2"
+feed-rs = "3"
 # The bundled SQLite is compiled with FTS5; there is no separate feature.
 rusqlite = { version = "0.32", features = ["bundled"] }
 rmcp = { version = "3", features = ["client", "transport-child-process", "transport-streamable-http-client"] }
@@ -32,6 +32,7 @@ thiserror = "1"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 directories = "5"
+html-escape = "0.2"
 tempfile = "3"
 criterion = "0.8"
 

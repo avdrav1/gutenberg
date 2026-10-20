@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:nyt="http://www.nytimes.com/namespaces/rss/2.0" version="2.0">
+  <channel>
+    <title>NYT &gt; Top Stories</title>
+    <link>https://www.nytimes.com</link>
+    <atom:link href="https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml" rel="self" type="application/rss+xml"></atom:link>
+    <description></description>
+    <language>en-us</language>
+    <copyright>Copyright 2026 The New York Times Company</copyright>
+    <lastBuildDate>Tue, 20 Oct 2026 08:13:22 +0000</lastBuildDate>
+    <pubDate>Tue, 20 Oct 2026 07:19:14 +0000</pubDate>
+    <image>
+      <title>NYT &gt; Top Stories</title>
+      <url>https://static01.nyt.com/images/misc/NYT_logo_rss_250x40.png</url>
+      <link>https://www.nytimes.com</link>
+    </image>
+    <item>
+      <title>Trump’s Push for Deals With Russia Powers His Frustration With Ukraine</title>
+      <link>https://www.nytimes.com/2026/10/19/us/politics/trump-russia-deals.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2026/10/19/us/politics/trump-russia-deals.html</guid>
+      <atom:link href="https://www.nytimes.com/2026/10/19/us/politics/trump-russia-deals.html" rel="standout"></atom:link>
+      <description>The series of recent steps by the president that seem to favor Vladimir Putin reflect his intensifying desire to normalize the relationship with Moscow even if it means further undercutting Ukraine.</description>
+      <dc:creator>David E. Sanger</dc:creator>
+      <pubDate>Tue, 20 Oct 2026 07:19:14 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Putin, Vladimir V</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Zelensky, Volodymyr</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <media:content height="1799" medium="image" url="https://static01.nyt.com/images/2026/10/19/multimedia/1dc-prexy-gfmw/1dc-prexy-gfmw-mediumSquareAt3X-v2.jpg" width="1800"></media:content>
+      <media:credit>Tierney L. Cross/The New York Times</media:credit>
+      <media:description>President Trump with President Volodymyr Zelensky of Ukraine at Mar-a-Lago in December.</media:description>
+    </item>
+    <item>
+      <title>Russian Satellite Makes a Menacing Approach to Another Craft in Orbit</title>
+      <link>https://www.nytimes.com/2026/10/19/science/russia-satellite-kosmos-2612.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2026/10/19/science/russia-satellite-kosmos-2612.html</guid>
+      <atom:link href="https://www.nytimes.com/2026/10/19/science/russia-satellite-kosmos-2612.html" rel="standout"></atom:link>
+      <description>Although Kosmos 2612 is now backing away, the maneuver raised alarm bells for analysts who see it as part of a pattern of Russian aggression.</description>
+      <dc:creator>Kenneth Chang</dc:creator>
+      <pubDate>Tue, 20 Oct 2026 00:24:26 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Satellites</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Space and Astronomy</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Defense and Military Forces</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">LeoLabs Inc</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">ICEYE Oy</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">China</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">United States</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <media:content height="1757" medium="image" url="https://static01.nyt.com/images/2026/10/19/science/19SCI-SAT-STALKER/19SCI-SAT-STALKER-mediumSquareAt3X.jpg" width="1759"></media:content>
+      <media:credit>ICEYE</media:credit>
+      <media:description>An artist’s concept of a satellite made by ICEYE, a multinational company that provides three-dimensional images of Earth’s surface.</media:description>
+    </item>
+    <item>
+      <title>Trump Rallies Red States Amid Fears About G.O.P. Voter Enthusiasm as Midterms Near</title>
+      <link>https://www.nytimes.com/2026/10/19/us/politics/trump-midterm-rally-red-states.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2026/10/19/us/politics/trump-midterm-rally-red-states.html</guid>
+      <atom:link href="https://www.nytimes.com/2026/10/19/us/politics/trump-midterm-rally-red-states.html" rel="standout"></atom:link>
+      <description>The president’s swing is taking him to states including South Carolina and Kansas that were not seen as competitive just a few months ago.</description>
+      <dc:creator>Emily Davies and Jonathan Swan</dc:creator>
+      <pubDate>Tue, 20 Oct 2026 02:37:48 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Elections</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Midterm Elections (2026)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Vance, J D</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2026/10/19/multimedia/19pol-trump-travel-01-hmfq/19pol-trump-travel-01-hmfq-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Haiyun Jiang/The New York Times</media:credit>
+      <media:description>With just two weeks to go until the midterms, President Trump’s itinerary reflects how worried the G.O.P. is about its holding onto the House and Senate.</media:description>
+    </item>
+    <item>
+      <title>Trump Campaigns for Republicans as Turmoil Mounts in Washington</title>
+      <link>https://www.nytimes.com/video/us/100000011219687/trump-campaigns-for-republicans-as-turmoil-mounts-in-washington.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/video/us/100000011219687/trump-campaigns-for-republicans-as-turmoil-mounts-in-washington.html</guid>
+      <atom:link href="https://www.nytimes.com/video/us/100000011219687/trump-campaigns-for-republicans-as-turmoil-mounts-in-washington.html" rel="standout"></atom:link>
+      <description>Our White House correspondent Tyler Pager traveled with President Trump as he campaigned across the country ahead of the midterms. As the president touted his record, political drama mounted in Washington.</description>
+      <dc:creator>Tyler Pager, Nour Idriss and Pierre Kattar</dc:creator>
+      <pubDate>Mon, 19 Oct 2026 05:29:44 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Midterm Elections (2026)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">United States</category>
+    </item>
+    <item>
+      <title>Republicans Barely Mention Trump in Political Ads Ahead of the Midterms</title>
+      <link>https://www.nytimes.com/2026/10/19/us/politics/trump-midterms-republican-political-ads.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2026/10/19/us/politics/trump-midterms-republican-political-ads.html</guid>
+      <atom:link href="https://www.nytimes.com/2026/10/19/us/politics/trump-midterms-republican-political-ads.html" rel="standout"></atom:link>
+      <description>Only a small fraction of recent G.O.P. broadcast and streaming ads mention the president, according to a Times analysis of ad data.</description>
+      <dc:creator>Bayliss Wagner</dc:creator>
+      <pubDate>Mon, 19 Oct 2026 20:35:14 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Political Advertising</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Midterm Elections (2026)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Democratic Party</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Republican Party</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2026/10/19/multimedia/19pol-midterm-ads-trump-vmbf/19pol-midterm-ads-trump-vmbf-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Kenny Holston/The New York Times</media:credit>
+      <media:description>President Trump, seen on a partially covered television screen, during a speech earlier this year.</media:description>
+    </item>
+    <item>
+      <title>Voters in Oil-Rich Alberta Reject Leaving Canada</title>
+      <link>https://www.nytimes.com/2026/10/19/world/canada/alberta-secession-canada-referendum.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2026/10/19/world/canada/alberta-secession-canada-referendum.html</guid>
+      <atom:link href="https://www.nytimes.com/2026/10/19/world/canada/alberta-secession-canada-referendum.html" rel="standout"></atom:link>
+      <description>Residents of the province were asked if they wish to remain in Canada or to hold another vote on breaking away, in a referendum that left both sides unhappy.</description>
+      <dc:creator>Ian Austen</dc:creator>
+      <pubDate>Tue, 20 Oct 2026 07:07:17 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Canada</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Alberta (Canada)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Secession and Independence Movements</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Referendums</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Smith, Danielle (1971- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Carney, Mark J</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2026/10/20/multimedia/20int-canada-alberta-vote-sub/20int-canada-alberta-vote-hp-zljc-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Todd Korol/Reuters</media:credit>
+      <media:description>Supporters of the Forever Canadian group, who want Alberta to remain in Canada, in Edmonton, Alberta, on Monday. </media:description>
+    </item>
+    <item>
+      <title>Mahmoud Khalil Appeals to Supreme Court to Halt Deportation</title>
+      <link>https://www.nytimes.com/2026/10/19/us/politics/supreme-court-mahmoud-khalil-deportation.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2026/10/19/us/politics/supreme-court-mahmoud-khalil-deportation.html</guid>
+      <atom:link href="https://www.nytimes.com/2026/10/19/us/politics/supreme-court-mahmoud-khalil-deportation.html" rel="standout"></atom:link>
+      <description>Mr. Khalil had recently graduated from Columbia when he was arrested by ICE agents and became the face of the Trump administration’s crackdown on pro-Palestinian demonstrations.</description>
+      <dc:creator>Ann E. Marimow</dc:creator>
+      <pubDate>Mon, 19 Oct 2026 20:31:52 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Pro-Palestinian Campus Protests (2023- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deportation</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Freedom of Speech and Expression</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Immigration Detention</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Israel-Gaza War (2023- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Demonstrations, Protests and Riots</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Foreign Students (in US)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Columbia University</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Immigration and Customs Enforcement (US)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Justice Department</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Supreme Court (US)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Khalil, Mahmoud (Activist)</category>
+      <media:content height="1802" medium="image" url="https://static01.nyt.com/images/2026/10/19/multimedia/19dc-scotus-khalil-qwpt/19dc-scotus-khalil-qwpt-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Scott Heins for The New York Times</media:credit>
+      <media:description>Mahmoud Khalil speaking in Manhattan last year. His memoir, “No Land to Stand On,” recounts his harrowing experience of being arrested in the lobby of his New York apartment building and held for months in a detention camp in Louisiana.</media:description>
+    </item>
+    <item>
+      <title>U.S. Citizen Hospitalized After Being Detained by ICE, His Family Says</title>
+      <link>https://www.nytimes.com/2026/10/19/us/ice-hospitalization-us-citizen.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2026/10/19/us/ice-hospitalization-us-citizen.html</guid>
+      <atom:link href="https://www.nytimes.com/2026/10/19/us/ice-hospitalization-us-citizen.html" rel="standout"></atom:link>
+      <description>The police in Long Beach, Calif., said they were called by ICE for backup and found a man who was bleeding and handcuffed.</description>
+      <dc:creator>Madison Malone Kircher</dc:creator>
+      <pubDate>Mon, 19 Oct 2026 18:40:00 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Immigration Detention</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deportation</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Immigration and Customs Enforcement (US)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">California</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Long Beach (Calif)</category>
+      <media:content height="1802" medium="image" url="https://static01.nyt.com/images/2026/10/19/multimedia/19nat-ice-citizen-sub-khpq/19nat-ice-citizen-sub-khpq-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Philip Cheung for The New York Times</media:credit>
+      <media:description>A rally in Los Angeles against Immigration and Customs Enforcement in January.</media:description>
+    </item>
+    <item>
+      <title>Man Who Died in ICE Custody in Texas Was Denied Medicine, Daughter Says</title>
+      <link>https://www.nytimes.com/2026/10/19/us/ice-death-laredo-texas-medicine.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2026/10/19/us/ice-death-laredo-texas-medicine.html</guid>
+      <atom:link href="https://www.nytimes.com/2026/10/19/us/ice-death-laredo-texas-medicine.html" rel="standout"></atom:link>
+      <description>The man had been detained at an immigration center in Laredo, Texas, since June. Immigration officials said he had received proper medical care.</description>
+      <dc:creator>Edgar Sandoval</dc:creator>
+      <pubDate>Tue, 20 Oct 2026 00:31:30 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Immigration Detention</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Illegal Immigration</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Immigration and Customs Enforcement (US)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Laredo (Tex)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Texas</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2026/10/19/multimedia/19nat-laredo-death-vhcq/19nat-laredo-death-vhcq-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Jordan Vonderhaar for The New York Times</media:credit>
+      <media:description>Emiliano Andrade-Covarrubias was found unconscious in his cell in an immigration detention center in Texas, his daughter said.</media:description>
+    </item>
+    <item>
+      <title>It’s Sliced Cheese on Bread. And It’s Rocking Copenhagen’s World.</title>
+      <link>https://www.nytimes.com/2026/10/19/dining/copenhagen-denmark-bread-bmo.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2026/10/19/dining/copenhagen-denmark-bread-bmo.html</guid>
+      <atom:link href="https://www.nytimes.com/2026/10/19/dining/copenhagen-denmark-bread-bmo.html" rel="standout"></atom:link>
+      <description>The Danish capital is obsessed with this stripped-down snack, and the city’s top bakeries won’t stop until they’ve perfected it.</description>
+      <dc:creator>Amelia Nierenberg and Ulf Svane</dc:creator>
+      <pubDate>Mon, 19 Oct 2026 13:51:34 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Bakeries and Baked Products</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Cheese</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Copenhagen (Denmark)</category>
+      <media:content height="1799" medium="image" url="https://static01.nyt.com/images/2026/10/16/multimedia/16FD-COPENHAGEN-BREAD-01-zqmw/16FD-COPENHAGEN-BREAD-01-zqmw-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:description>Real Copenhageners know to eat a bolle med ost open-faced, instead of closed up like a sandwich. </media:description>
+    </item>
+  </channel>
+</rss>
