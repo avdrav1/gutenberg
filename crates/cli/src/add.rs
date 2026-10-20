@@ -1,4 +1,5 @@
-//! `gutenberg --add <url>`: fetch a feed, save it and its articles.
+//! `gutenberg --add <url>`: find a feed (from its own URL or a site's),
+//! save it and its articles.
 
 use std::process::ExitCode;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -23,18 +24,27 @@ fn add(url: &str) -> Result<String, String> {
     let path = Store::default_path().map_err(|e| e.to_string())?;
     let mut store = Store::open(&path).map_err(|e| e.to_string())?;
     let known = store.sources().map_err(|e| e.to_string())?;
-    if known.iter().any(|s| s.url.as_deref() == Some(url)) {
+    let is_known = |u: &str| known.iter().any(|s| s.url.as_deref() == Some(u));
+    if is_known(url) {
         return Err("already added".to_owned());
     }
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .map_err(|e| e.to_string())?;
-    let bytes = runtime
-        .block_on(feed::fetch(url))
+    // A site address works too: find() follows the page to its feed.
+    let found = runtime
+        .block_on(feed::find(url))
         .map_err(|e| e.to_string())?;
-    let parsed = feed::parse(&bytes, url).map_err(|e| e.to_string())?;
-    save(&mut store, url, &parsed, now()).map_err(|e| e.to_string())
+    let mut message = String::new();
+    if found.url != url {
+        if is_known(&found.url) {
+            return Err(format!("already added as {}", found.url));
+        }
+        message = format!("Found {}\n", found.url);
+    }
+    message += &save(&mut store, &found.url, &found.feed, now()).map_err(|e| e.to_string())?;
+    Ok(message)
 }
 
 fn save(

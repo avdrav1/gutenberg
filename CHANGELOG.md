@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `gutenberg --add` takes a site address too: it finds the feed the site links to, or tries `/feed`, `/rss` and `/atom.xml`.
+
 ## 0.1.0 — 2026-10-20
 
 - Running `gutenberg` opens the main window with its three panes. Press `q` to quit.
