@@ -21,7 +21,7 @@ Goals, in priority order:
 3. **One inbox for three kinds of source.** Feeds, MCP tools and keyword alerts all land in the same list with the same keys.
 4. **Private and local.** No account, no telemetry, one SQLite file the user can copy.
 
-Success at 1.0: Avniel uses it daily instead of a browser, three Omarchy users adopt it from the AUR, and no issue is open about theme mismatch.
+Success at 1.0: Avniel uses it daily instead of a browser, three Omarchy users install it from the site, and no issue is open about theme mismatch.
 
 Non-goals for 1.0: AI summaries and ranking (Cronkite covers that; a later MCP bridge can connect the two), podcast playback, full web browsing inside the app.
 
@@ -30,7 +30,7 @@ Non-goals for 1.0: AI summaries and ranking (Cronkite covers that; a later MCP b
 | User | What they do | What they need |
 | --- | --- | --- |
 | Avniel, daily reader | Opens the app with a Hyprland keybind, triages 200 new items in 10 minutes, reads 10 | j/k, unread counts, a reader view that strips the page down, star and share |
-| Omarchy tinkerer | Switches themes often, installs from the AUR, edits TOML by hand | Theme sync with no restart, a config file in `~/.config`, no GUI settings maze |
+| Omarchy tinkerer | Switches themes often, installs with a one-line `curl`, edits TOML by hand | Theme sync with no restart, a config file in `~/.config`, no GUI settings maze |
 | Politics-tech watcher | Follows a few names and bills across outlets | Keyword alerts that dedupe across sources, grouped by story |
 | MCP builder | Runs local MCP servers (Cronkite, a scraper, a Slack digest) | Add a server by command or URL, pick a tool, see its results as articles |
 | Future macOS user | Same app on a MacBook | Cross-platform core; native look is a later concern |
@@ -103,7 +103,7 @@ Omarchy keeps the palette in one file and tells apps when it changes. The app re
 | Change signal | `omarchy-theme-set` runs `omarchy-hook theme-set <name>`, which runs `~/.config/omarchy/hooks/theme-set` and every script in `theme-set.d/` | Install a drop-in `theme-set.d/gutenberg` that sends `gutenberg --reload-theme` (a Unix socket message). Also watch the theme directory with inotify as a fallback, since the hook may not be installed |
 | Font | fontconfig is the canonical source; `omarchy-font-set` writes a `monospace` rule to `~/.config/fontconfig/fonts.conf` and runs the `font-set` hook | Resolve with `fc-match monospace` at launch and on the `font-set` hook. Default is CaskaydiaMono Nerd Font, so Nerd Font glyphs are safe for icons |
 | Window chrome | Hyprland draws borders; `omarchy-shell` uses `shell.toml` for its own surfaces | No client-side decorations. Use the theme's border radius and the shell's spacing scale so the app matches Walker and the notifications |
-| Install | Arch package via the AUR; Omarchy's `omarchy-pkg-add` wraps `pacman` | Ship `gutenberg-bin` (prebuilt) and `gutenberg` (source) AUR packages, plus a `.desktop` file so Walker lists it |
+| Install | A page on GitHub Pages with `curl -fsSL https://avdrav1.github.io/gutenberg/install.sh \| sh`; binaries from GitHub Releases | `install.sh` picks the x86_64 or aarch64 tarball, checks it against `SHA256SUMS`, installs to `~/.local/bin`. CI attaches a build attestation (`gh attestation verify`). A `.desktop` file so Walker lists it comes in S7.1. No AUR package |
 | Keybind | Users bind apps in `~/.config/hypr/bindings.conf` | Document `bindd = SUPER, N, News, exec, gutenberg` and offer to add it on first run |
 
 Fact check before building: the theme path moved between Omarchy 2 and 3. Read `bin/omarchy-theme-set` in the installed version and check both paths at runtime.
@@ -177,7 +177,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | ID | Story | Acceptance |
 | --- | --- | --- |
 | S7.1 | `.desktop` file, icon, Walker entry, `gutenberg --unread` for Waybar | Appears in Walker; Waybar module shows the count |
-| S7.2 | AUR packages `gutenberg` and `gutenberg-bin`, GitHub release workflow | `yay -S gutenberg-bin` installs a signed binary |
+| S7.2 | GitHub release workflow and an install page on GitHub Pages with a `curl` one-liner | `curl -fsSL https://avdrav1.github.io/gutenberg/install.sh \| sh` installs a checksum-verified, attested binary; `gutenberg --version` prints the release |
 | S7.3 | Single-instance: a second launch focuses the first | Unix socket; `gutenberg --reload-theme` and `--refresh` work from scripts |
 | S7.4 | Image cache on disk with size cap | Under 150 MB RAM with 10k articles |
 | S7.5 | Crash-free week: panic handler writes a report; fuzz the parsers | `cargo fuzz` runs on feed and HTML inputs in CI |
@@ -200,7 +200,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | 0.2 Themed | E3.5 to E3.7, E4 | Every stock Omarchy theme has a screenshot and no contrast bug |
 | 0.3 Alerts | E5, E7.1, E7.3 | Three keyword sources replace Google Alerts email |
 | 0.4 MCP | E6 | Cronkite's output appears as a source |
-| 1.0 | E7, docs, AUR | Three outside users on the AUR package; no open Blocker for two weeks |
+| 1.0 | E7, docs, install site | Three outside users installed from the site; no open Blocker for two weeks |
 | 1.x | E8 | macOS beta |
 
 Cadence: tag a release whenever the `ship-it` skill's checks pass and at least one story is merged. Small releases, often.
