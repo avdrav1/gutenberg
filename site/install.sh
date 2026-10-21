@@ -1,7 +1,7 @@
 #!/bin/sh
 # Install Gutenberg, the news reader for Omarchy.
 #
-#   curl -fsSL https://avdrav1.github.io/gutenberg/install.sh | sh
+#   curl -fsSL https://gutenbergapp.com/install.sh | sh
 #
 # Downloads the release tarball for this machine from GitHub Releases,
 # checks it against the release's SHA256SUMS, and installs the binary to

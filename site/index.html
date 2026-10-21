@@ -60,7 +60,7 @@
 
   <h2>Install</h2>
   <div class="install">
-    <pre id="cmd">curl -fsSL https://avdrav1.github.io/gutenberg/install.sh | sh</pre>
+    <pre id="cmd">curl -fsSL https://gutenbergapp.com/install.sh | sh</pre>
     <button type="button" id="copy" aria-label="Copy the install command">copy</button>
   </div>
   <p>Linux on x86_64 or aarch64. The script downloads the latest release from GitHub, checks it against the release's <code>SHA256SUMS</code>, and puts one binary in <code>~/.local/bin</code>. Nothing else is touched. <a href="install.sh">Read the script</a> before you run it.</p>
@@ -77,8 +77,8 @@ gutenberg --add &lt;feed-url&gt;     # add an RSS, Atom or JSON feed</pre>
   <pre class="block">gh attestation verify gutenberg-x86_64-unknown-linux-gnu.tar.gz -R avdrav1/gutenberg</pre>
 
   <h2>A specific version, or somewhere else</h2>
-  <pre class="block">curl -fsSL https://avdrav1.github.io/gutenberg/install.sh | GUTENBERG_VERSION=0.1.0 sh
-curl -fsSL https://avdrav1.github.io/gutenberg/install.sh | GUTENBERG_INSTALL_DIR=/opt/bin sh</pre>
+  <pre class="block">curl -fsSL https://gutenbergapp.com/install.sh | GUTENBERG_VERSION=0.2.0 sh
+curl -fsSL https://gutenbergapp.com/install.sh | GUTENBERG_INSTALL_DIR=/opt/bin sh</pre>
 
   <h2>Uninstall</h2>
   <pre class="block">rm ~/.local/bin/gutenberg

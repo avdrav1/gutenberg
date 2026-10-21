@@ -120,7 +120,7 @@ jobs:
             echo "::error::CHANGELOG.md has no section for $version"
             exit 1
           fi
-          printf '\nInstall: `curl -fsSL https://avdrav1.github.io/gutenberg/install.sh | sh`\n' >> notes.md
+          printf '\nInstall: `curl -fsSL https://gutenbergapp.com/install.sh | sh`\n' >> notes.md
           cat notes.md
       - name: Publish
         env:
