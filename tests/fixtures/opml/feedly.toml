@@ -1,0 +1,2 @@
+# SOURCE synthetic, 2026-10-21
+covers = "Feedly's OPML export layout: categories as outlines with text and title, feeds as type=\"rss\" outlines with xmlUrl and htmlUrl, escaped & and > in titles and URLs, one feed filed in two categories, an empty category. 21 feed outlines, 20 distinct feeds, 6 categories. No real export was on hand; swap one in when there is."

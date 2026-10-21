@@ -2,3 +2,4 @@
 
 pub mod discover;
 pub mod feed;
+pub mod opml;
