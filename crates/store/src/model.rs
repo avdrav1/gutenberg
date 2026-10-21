@@ -111,3 +111,20 @@ pub struct FetchState {
     pub failures: i64,
     pub retry_at: Option<i64>,
 }
+
+/// Which articles the list shows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Filter {
+    All,
+    Source(i64),
+    Folder(i64),
+}
+
+/// Where a dragged source lands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SourceTarget {
+    /// Just before this source, in its folder.
+    Before(i64),
+    /// After the last source in this folder, or unfiled when `None`.
+    EndOf(Option<i64>),
+}

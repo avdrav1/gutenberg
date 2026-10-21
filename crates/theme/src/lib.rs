@@ -30,6 +30,8 @@ pub struct Tokens {
     pub muted: Rgb,
     /// The selected row.
     pub selection: Rgb,
+    /// Links and drop targets.
+    pub accent: Rgb,
     /// Lines between panes.
     pub border: Rgb,
 }
@@ -43,6 +45,7 @@ impl Tokens {
             foreground: Rgb::hex(0xa9b1d6),
             muted: Rgb::hex(0x565f89),
             selection: Rgb::hex(0x283457),
+            accent: Rgb::hex(0x7aa2f7),
             border: Rgb::hex(0x414868),
         }
     }
