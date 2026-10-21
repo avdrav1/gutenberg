@@ -33,6 +33,7 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 directories = "5"
 html-escape = "0.2"
+url = "2"
 tempfile = "3"
 criterion = "0.8"
 

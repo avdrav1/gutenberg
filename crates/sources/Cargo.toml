@@ -10,3 +10,4 @@ feed-rs.workspace = true
 reqwest.workspace = true
 html-escape.workspace = true
 thiserror.workspace = true
+url.workspace = true

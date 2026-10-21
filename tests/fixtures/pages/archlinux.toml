@@ -1,0 +1,4 @@
+# SOURCE https://archlinux.org/ fetched 2026-10-20
+url = "https://archlinux.org/"
+fetched = 2026-10-20
+covers = "two RSS alternate links with relative hrefs; news first"

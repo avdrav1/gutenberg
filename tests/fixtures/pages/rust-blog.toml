@@ -1,0 +1,4 @@
+# SOURCE https://blog.rust-lang.org/ fetched 2026-10-20
+url = "https://blog.rust-lang.org/"
+fetched = 2026-10-20
+covers = "Atom alternate link with type before rel"
