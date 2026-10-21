@@ -18,9 +18,9 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | ID | Story | Acceptance | Status |
 | --- | --- | --- | --- |
 | S2.1 | Add a feed by URL; parse RSS, Atom and JSON Feed | 20 fixture feeds from `tests/fixtures/` parse; bad XML shows one line of error | done |
-| S2.2 | Autodiscover a feed from a site URL | Pasting `https://example.com` finds `<link rel="alternate">`; falls back to `/feed`, `/rss`, `/atom.xml` | review |
-| S2.3 | Background refresh with conditional GET and per-host rate limits | A second refresh of an unchanged feed sends `If-None-Match` and gets 304; 100 feeds finish in under 10 s | review |
-| S2.4 | Folders, drag to reorder, unread counts per source and folder (after S3.1; folders from `--add --folder`, sources moved by drag) | Counts update as items are read; order persists | review |
+| S2.2 | Autodiscover a feed from a site URL | Pasting `https://example.com` finds `<link rel="alternate">`; falls back to `/feed`, `/rss`, `/atom.xml` | done |
+| S2.3 | Background refresh with conditional GET and per-host rate limits | A second refresh of an unchanged feed sends `If-None-Match` and gets 304; 100 feeds finish in under 10 s | done |
+| S2.4 | Folders, drag to reorder, unread counts per source and folder (after S3.1; folders from `--add --folder`, sources moved by drag) | Counts update as items are read; order persists | done |
 | S2.5 | OPML import and export | Round-trips the user's Feedly export without losing a feed or folder | todo |
 | S2.6 | Favicons cached to disk | Shown in the source list; no network call after the first fetch | todo |
 
@@ -28,7 +28,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 
 | ID | Story | Acceptance | Status |
 | --- | --- | --- | --- |
-| S3.1 | Article list with `j`/`k`, unread styling, mark read on open | 10k rows scroll at 60 fps on a 4K monitor; only visible rows render. tiny-skia managed ~10 fps at 4K, so this moves to wgpu (Vulkan) and the cold-start budget to 250 ms | review |
+| S3.1 | Article list with `j`/`k`, unread styling, mark read on open | 10k rows scroll at 60 fps on a 4K monitor; only visible rows render. tiny-skia managed ~10 fps at 4K, so this moves to wgpu (Vulkan) and the cold-start budget to 250 ms | done |
 | S3.2 | Article pane renders the feed's HTML summary as styled text | Headings, links, lists, images, code, blockquotes; nothing escapes the pane | todo |
 | S3.3 | Reader view extracts the full page | Works on 9 of 10 outlets in `tests/reader_sites.txt`; falls back to the summary | todo |
 | S3.4 | Star, mark unread, mark folder read, open in browser, copy link | Each has a key and a palette entry | todo |
