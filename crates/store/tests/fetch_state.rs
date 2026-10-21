@@ -95,3 +95,39 @@ fn only_feeds_with_urls_are_refreshed() {
         .unwrap();
     assert_eq!(store.feeds_due(0).unwrap().len(), 1);
 }
+
+#[test]
+fn a_new_feed_is_unchecked_until_its_first_refresh() {
+    let (mut store, id) = store_with_feed();
+    assert!(store.has_unchecked_feeds().unwrap());
+    store
+        .record_fetched(id, &[article(id, "a")], &Validators::default(), 100)
+        .unwrap();
+    assert!(!store.has_unchecked_feeds().unwrap());
+
+    let second = store
+        .add_source(&NewSource {
+            folder_id: None,
+            kind: SourceKind::Feed,
+            title: "Second".to_owned(),
+            url: Some("https://other.example/feed".to_owned()),
+            config: "{}".to_owned(),
+        })
+        .unwrap()
+        .id;
+    assert!(store.has_unchecked_feeds().unwrap());
+    // A failure counts as checked, so a broken feed doesn't refresh nonstop.
+    store.record_failure(second, "timed out", 400, 100).unwrap();
+    assert!(!store.has_unchecked_feeds().unwrap());
+
+    store
+        .add_source(&NewSource {
+            folder_id: None,
+            kind: SourceKind::Keyword,
+            title: "Cory Booker".to_owned(),
+            url: None,
+            config: "{}".to_owned(),
+        })
+        .unwrap();
+    assert!(!store.has_unchecked_feeds().unwrap());
+}

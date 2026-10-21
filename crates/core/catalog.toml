@@ -1,0 +1,2424 @@
+# Gutenberg's starter catalog: what the Add sources screen offers.
+#
+# Curated for trust (editorial standards and corrections, original reporting
+# or primary sources, known ownership; balanced where politics is involved)
+# and for ease (a public feed, no login, no key). Every feed was fetched on
+# 2026-10-21 with Gutenberg's User-Agent: HTTP 200, a parseable RSS, Atom,
+# RDF or JSON feed, a newest item under 60 days old, at most 300 items.
+# Recheck before a release: cargo run -p gutenberg-core --example check_catalog
+#
+# Rules the tests enforce: 8 to 12 feeds per category; unique https URLs;
+# titles up to 40 characters, blurbs up to 70; exactly 12 starter feeds,
+# all free. Keyword presets and MCP servers show greyed out until keyword
+# alerts (S5.1) and MCP sources (S6.2) can add them.
+
+[[category]]
+id = "world"
+name = "World"
+
+[[category]]
+id = "us"
+name = "U.S."
+
+[[category]]
+id = "politics"
+name = "Politics"
+
+[[category]]
+id = "investigations"
+name = "Investigations"
+
+[[category]]
+id = "business"
+name = "Business"
+
+[[category]]
+id = "science"
+name = "Science"
+
+[[category]]
+id = "space"
+name = "Space"
+
+[[category]]
+id = "health"
+name = "Health"
+
+[[category]]
+id = "climate"
+name = "Climate"
+
+[[category]]
+id = "tech"
+name = "Technology"
+
+[[category]]
+id = "linux"
+name = "Linux"
+
+[[category]]
+id = "programming"
+name = "Programming"
+
+[[category]]
+id = "security"
+name = "Security"
+
+[[category]]
+id = "ai"
+name = "AI"
+
+[[category]]
+id = "culture"
+name = "Culture"
+
+[[category]]
+id = "screen"
+name = "Film & TV"
+
+[[category]]
+id = "music"
+name = "Music"
+
+[[category]]
+id = "gaming"
+name = "Games"
+
+[[category]]
+id = "sports"
+name = "Sports"
+
+[[category]]
+id = "design"
+name = "Design"
+
+[[category]]
+id = "food"
+name = "Food"
+
+# ── World ──
+[[feed]]
+category = "world"
+title = "BBC News – World"
+url = "https://feeds.bbci.co.uk/news/world/rss.xml"
+site = "https://www.bbc.co.uk/news/world"
+blurb = "Global news from the BBC's international desk"
+paywall = "none"
+starter = true
+
+[[feed]]
+category = "world"
+title = "NPR – World"
+url = "https://feeds.npr.org/1004/rss.xml"
+site = "https://www.npr.org/sections/world/"
+blurb = "International reporting from NPR's foreign correspondents"
+paywall = "none"
+starter = true
+
+[[feed]]
+category = "world"
+title = "DW – World"
+url = "https://rss.dw.com/rdf/rss-en-world"
+site = "https://www.dw.com/en/"
+blurb = "World news from Germany's public international broadcaster"
+paywall = "none"
+
+[[feed]]
+category = "world"
+title = "The Guardian – World"
+url = "https://www.theguardian.com/world/rss"
+site = "https://www.theguardian.com/world"
+blurb = "World news and analysis from The Guardian"
+paywall = "none"
+
+[[feed]]
+category = "world"
+title = "Christian Science Monitor – World"
+url = "https://rss.csmonitor.com/feeds/world"
+site = "https://www.csmonitor.com/World"
+blurb = "Measured international reporting from the Monitor's correspondents"
+paywall = "metered"
+
+[[feed]]
+category = "world"
+title = "France 24 – International"
+url = "https://www.france24.com/en/rss"
+site = "https://www.france24.com/en/"
+blurb = "International news from France's public news channel"
+paywall = "none"
+
+[[feed]]
+category = "world"
+title = "PBS NewsHour – World"
+url = "https://www.pbs.org/newshour/feeds/rss/world"
+site = "https://www.pbs.org/newshour/world"
+blurb = "World news and analysis from PBS NewsHour"
+paywall = "none"
+
+[[feed]]
+category = "world"
+title = "CBC News – World"
+url = "https://www.cbc.ca/webfeed/rss/rss-world"
+site = "https://www.cbc.ca/news/world"
+blurb = "World news from Canada's public broadcaster"
+paywall = "none"
+
+[[feed]]
+category = "world"
+title = "Al Jazeera English"
+url = "https://www.aljazeera.com/xml/rss/all.xml"
+site = "https://www.aljazeera.com/"
+blurb = "Global news, strong on the Middle East and Global South; Qatar-funded"
+paywall = "none"
+
+[[feed]]
+category = "world"
+title = "The New York Times – World"
+url = "https://rss.nytimes.com/services/xml/rss/nyt/World.xml"
+site = "https://www.nytimes.com/section/world"
+blurb = "International coverage from the Times' foreign desk"
+paywall = "metered"
+
+[[feed]]
+category = "world"
+title = "The Economist – International"
+url = "https://www.economist.com/international/rss.xml"
+site = "https://www.economist.com/international"
+blurb = "Weekly analysis of global affairs from The Economist"
+paywall = "hard"
+
+[[feed]]
+category = "world"
+title = "UN News"
+url = "https://news.un.org/feed/subscribe/en/news/all/rss.xml"
+site = "https://news.un.org/en/"
+blurb = "Primary-source news from the United Nations and its agencies"
+paywall = "none"
+
+# ── U.S. ──
+[[feed]]
+category = "us"
+title = "NPR – National"
+url = "https://feeds.npr.org/1003/rss.xml"
+site = "https://www.npr.org/sections/national/"
+blurb = "U.S. news from NPR's national desk"
+paywall = "none"
+
+[[feed]]
+category = "us"
+title = "PBS NewsHour – Nation"
+url = "https://www.pbs.org/newshour/feeds/rss/nation"
+site = "https://www.pbs.org/newshour/nation"
+blurb = "National news and analysis from PBS NewsHour"
+paywall = "none"
+starter = true
+
+[[feed]]
+category = "us"
+title = "Christian Science Monitor – USA"
+url = "https://rss.csmonitor.com/feeds/usa"
+site = "https://www.csmonitor.com/USA"
+blurb = "Calm, solutions-minded coverage of American life and politics"
+paywall = "metered"
+
+[[feed]]
+category = "us"
+title = "The New York Times – U.S."
+url = "https://rss.nytimes.com/services/xml/rss/nyt/US.xml"
+site = "https://www.nytimes.com/section/us"
+blurb = "National news from The New York Times"
+paywall = "metered"
+
+[[feed]]
+category = "us"
+title = "Stateline"
+url = "https://stateline.org/feed/"
+site = "https://stateline.org/"
+blurb = "Nonprofit reporting on state policy across all 50 states"
+paywall = "none"
+
+[[feed]]
+category = "us"
+title = "CBS News – U.S."
+url = "https://www.cbsnews.com/latest/rss/us"
+site = "https://www.cbsnews.com/us/"
+blurb = "U.S. news from CBS News"
+paywall = "none"
+
+[[feed]]
+category = "us"
+title = "ABC News – U.S."
+url = "https://abcnews.com/abcnews/usheadlines"
+site = "https://abcnews.com/US"
+blurb = "U.S. headlines from ABC News, including AP wire stories"
+paywall = "none"
+
+[[feed]]
+category = "us"
+title = "The Guardian – US News"
+url = "https://www.theguardian.com/us-news/rss"
+site = "https://www.theguardian.com/us-news"
+blurb = "U.S. news from The Guardian's American edition"
+paywall = "none"
+
+[[feed]]
+category = "us"
+title = "Axios"
+url = "https://api.axios.com/feed/"
+site = "https://www.axios.com/"
+blurb = "Short, structured briefs on U.S. politics, business and tech"
+paywall = "none"
+
+[[feed]]
+category = "us"
+title = "Semafor"
+url = "https://www.semafor.com/rss.xml"
+site = "https://www.semafor.com/"
+blurb = "Briefs that separate the facts from the reporter's view"
+paywall = "none"
+
+[[feed]]
+category = "us"
+title = "The Conversation (US)"
+url = "https://theconversation.com/us/articles.atom"
+site = "https://theconversation.com/us"
+blurb = "Academics explain the news, edited by journalists; nonprofit"
+paywall = "none"
+
+[[feed]]
+category = "us"
+title = "The 19th"
+url = "https://19thnews.org/feed/"
+site = "https://19thnews.org/"
+blurb = "Nonprofit newsroom on gender, politics and policy"
+paywall = "none"
+
+# ── Politics ──
+[[feed]]
+category = "politics"
+title = "PBS NewsHour – Politics"
+url = "https://www.pbs.org/newshour/feeds/rss/politics"
+site = "https://www.pbs.org/newshour/politics"
+blurb = "Political news and analysis from PBS NewsHour"
+paywall = "none"
+
+[[feed]]
+category = "politics"
+title = "The Hill"
+url = "https://thehill.com/feed/"
+site = "https://thehill.com/"
+blurb = "Congress, campaigns and the White House, from Capitol Hill"
+paywall = "none"
+
+[[feed]]
+category = "politics"
+title = "NPR – Politics"
+url = "https://feeds.npr.org/1014/rss.xml"
+site = "https://www.npr.org/sections/politics/"
+blurb = "Government, elections and policy from NPR"
+paywall = "none"
+
+[[feed]]
+category = "politics"
+title = "The Dispatch"
+url = "https://thedispatch.com/feed/"
+site = "https://thedispatch.com/"
+blurb = "Fact-based politics and policy reporting from a conservative view"
+paywall = "metered"
+
+[[feed]]
+category = "politics"
+title = "Politico"
+url = "https://rss.politico.com/politics-news.xml"
+site = "https://www.politico.com/politics"
+blurb = "Inside coverage of Washington, campaigns and policy"
+paywall = "none"
+
+[[feed]]
+category = "politics"
+title = "Reason"
+url = "https://reason.com/feed/"
+site = "https://reason.com/"
+blurb = "Libertarian reporting and commentary on policy and civil liberties"
+paywall = "none"
+
+[[feed]]
+category = "politics"
+title = "National Review"
+url = "https://www.nationalreview.com/feed/"
+site = "https://www.nationalreview.com/"
+blurb = "Conservative news, commentary and policy analysis"
+paywall = "metered"
+
+[[feed]]
+category = "politics"
+title = "The Free Press"
+url = "https://www.thefp.com/feed"
+site = "https://www.thefp.com/"
+blurb = "Independent reporting and debate on politics and culture"
+paywall = "metered"
+
+[[feed]]
+category = "politics"
+title = "SCOTUSblog"
+url = "https://www.scotusblog.com/feed/"
+site = "https://www.scotusblog.com/"
+blurb = "Independent news and analysis on the U.S. Supreme Court"
+paywall = "none"
+
+[[feed]]
+category = "politics"
+title = "Votebeat"
+url = "https://www.votebeat.org/arc/outboundfeeds/rss/?outputType=xml"
+site = "https://www.votebeat.org/"
+blurb = "Nonprofit reporting on how U.S. elections are run"
+paywall = "none"
+
+[[feed]]
+category = "politics"
+title = "Pew Research Center"
+url = "https://www.pewresearch.org/feed/"
+site = "https://www.pewresearch.org/"
+blurb = "Nonpartisan survey data on politics, society and public opinion"
+paywall = "none"
+
+# ── Investigations ──
+[[feed]]
+category = "investigations"
+title = "ProPublica"
+url = "https://www.propublica.org/feeds/propublica/main"
+site = "https://www.propublica.org/"
+blurb = "Nonprofit investigative journalism in the public interest"
+paywall = "none"
+starter = true
+
+[[feed]]
+category = "investigations"
+title = "FactCheck.org"
+url = "https://www.factcheck.org/feed/"
+site = "https://www.factcheck.org/"
+blurb = "Nonpartisan fact-checks from the Annenberg Public Policy Center"
+paywall = "none"
+
+[[feed]]
+category = "investigations"
+title = "Bellingcat"
+url = "https://www.bellingcat.com/feed/"
+site = "https://www.bellingcat.com/"
+blurb = "Open-source investigations using satellite, video and data"
+paywall = "none"
+
+[[feed]]
+category = "investigations"
+title = "PolitiFact"
+url = "https://www.politifact.com/rss/factchecks/"
+site = "https://www.politifact.com/"
+blurb = "Truth-O-Meter fact-checks from the Poynter Institute"
+paywall = "none"
+
+[[feed]]
+category = "investigations"
+title = "Full Fact"
+url = "https://fullfact.org/feed/"
+site = "https://fullfact.org/"
+blurb = "UK charity fact-checking politicians, media and viral claims"
+paywall = "none"
+
+[[feed]]
+category = "investigations"
+title = "BBC Verify"
+url = "https://feeds.bbci.co.uk/news/bbcverify/rss.xml"
+site = "https://www.bbc.co.uk/news/bbcverify"
+blurb = "BBC team checking claims, footage and data behind the news"
+paywall = "none"
+
+[[feed]]
+category = "investigations"
+title = "ICIJ"
+url = "https://www.icij.org/feed/"
+site = "https://www.icij.org/"
+blurb = "Cross-border investigations, from the Panama Papers team"
+paywall = "none"
+
+[[feed]]
+category = "investigations"
+title = "OCCRP"
+url = "https://www.occrp.org/en/feed"
+site = "https://www.occrp.org/en"
+blurb = "Reporting on organized crime and corruption worldwide"
+paywall = "none"
+
+[[feed]]
+category = "investigations"
+title = "The Markup"
+url = "https://themarkup.org/feeds/rss.xml"
+site = "https://themarkup.org/"
+blurb = "Data-driven investigations into technology and privacy"
+paywall = "none"
+
+[[feed]]
+category = "investigations"
+title = "Snopes"
+url = "https://www.snopes.com/feed/"
+site = "https://www.snopes.com/"
+blurb = "Long-running fact-checks of rumors, viral claims and quotes"
+paywall = "none"
+
+[[feed]]
+category = "investigations"
+title = "Lead Stories"
+url = "https://leadstories.com/atom.xml"
+site = "https://leadstories.com/"
+blurb = "Fact-checks of viral posts and AI-generated media"
+paywall = "none"
+
+# ── Business ──
+[[feed]]
+category = "business"
+title = "BBC News – Business"
+url = "https://feeds.bbci.co.uk/news/business/rss.xml"
+site = "https://www.bbc.co.uk/news/business"
+blurb = "Business and economic news from the BBC"
+paywall = "none"
+
+[[feed]]
+category = "business"
+title = "NPR – Business"
+url = "https://feeds.npr.org/1006/rss.xml"
+site = "https://www.npr.org/sections/business/"
+blurb = "Business, markets and the economy from NPR"
+paywall = "none"
+
+[[feed]]
+category = "business"
+title = "CNBC – Business News"
+url = "https://www.cnbc.com/id/10001147/device/rss/rss.html"
+site = "https://www.cnbc.com/business/"
+blurb = "Corporate, earnings and markets news from CNBC"
+paywall = "none"
+
+[[feed]]
+category = "business"
+title = "Marketplace"
+url = "https://feeds.publicradio.org/public_feeds/marketplace"
+site = "https://www.marketplace.org/"
+blurb = "Daily business and economics show from American Public Media"
+paywall = "none"
+
+[[feed]]
+category = "business"
+title = "Planet Money"
+url = "https://feeds.npr.org/93559255/rss.xml"
+site = "https://www.npr.org/sections/money/"
+blurb = "NPR's team explaining the economy through stories"
+paywall = "none"
+
+[[feed]]
+category = "business"
+title = "Financial Times"
+url = "https://www.ft.com/rss/home/international"
+site = "https://www.ft.com"
+blurb = "Global business, finance and economics from the FT"
+paywall = "hard"
+
+[[feed]]
+category = "business"
+title = "The Economist – Finance & economics"
+url = "https://www.economist.com/finance-and-economics/rss.xml"
+site = "https://www.economist.com/finance-and-economics"
+blurb = "Weekly analysis of finance and economics"
+paywall = "hard"
+
+[[feed]]
+category = "business"
+title = "WSJ – Markets"
+url = "https://feeds.content.dowjones.io/public/rss/RSSMarketsMain"
+site = "https://www.wsj.com/finance"
+blurb = "Markets and finance news from the Wall Street Journal"
+paywall = "hard"
+
+[[feed]]
+category = "business"
+title = "Bloomberg – Markets"
+url = "https://www.bloomberg.com/feeds/markets/news.rss"
+site = "https://www.bloomberg.com/markets"
+blurb = "Market news from Bloomberg"
+paywall = "hard"
+
+[[feed]]
+category = "business"
+title = "The Guardian – Business"
+url = "https://www.theguardian.com/business/rss"
+site = "https://www.theguardian.com/business"
+blurb = "Business and economics news from the Guardian"
+paywall = "none"
+
+[[feed]]
+category = "business"
+title = "Federal Reserve – Press releases"
+url = "https://www.federalreserve.gov/feeds/press_all.xml"
+site = "https://www.federalreserve.gov/newsevents/pressreleases.htm"
+blurb = "All press releases from the Federal Reserve Board"
+paywall = "none"
+
+[[feed]]
+category = "business"
+title = "Liberty Street Economics (NY Fed)"
+url = "https://libertystreeteconomics.newyorkfed.org/feed/"
+site = "https://libertystreeteconomics.newyorkfed.org/"
+blurb = "Research blog of the New York Fed's economists"
+paywall = "none"
+
+# ── Science ──
+[[feed]]
+category = "science"
+title = "Quanta Magazine"
+url = "https://www.quantamagazine.org/feed/"
+site = "https://www.quantamagazine.org"
+blurb = "Math, physics, biology and computer science from the Simons Foundation"
+paywall = "none"
+starter = true
+
+[[feed]]
+category = "science"
+title = "Science – Latest News"
+url = "https://www.science.org/rss/news_current.xml"
+site = "https://www.science.org/news"
+blurb = "News from the journal Science, published by AAAS"
+paywall = "none"
+
+[[feed]]
+category = "science"
+title = "BBC News – Science & Environment"
+url = "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml"
+site = "https://www.bbc.co.uk/news/science_and_environment"
+blurb = "Science and environment news from the BBC"
+paywall = "none"
+
+[[feed]]
+category = "science"
+title = "Knowable Magazine"
+url = "https://knowablemagazine.org/rss"
+site = "https://knowablemagazine.org/"
+blurb = "Explainers from Annual Reviews, a nonprofit science publisher"
+paywall = "none"
+
+[[feed]]
+category = "science"
+title = "Nature"
+url = "https://www.nature.com/nature.rss"
+site = "https://www.nature.com/nature"
+blurb = "News and research from the journal Nature"
+paywall = "metered"
+
+[[feed]]
+category = "science"
+title = "Science News"
+url = "https://www.sciencenews.org/feed"
+site = "https://www.sciencenews.org"
+blurb = "Independent science journalism since 1921 (Society for Science)"
+paywall = "none"
+
+[[feed]]
+category = "science"
+title = "Scientific American"
+url = "https://www.scientificamerican.com/platform/syndication/rss/"
+site = "https://www.scientificamerican.com"
+blurb = "Science news and features from Scientific American"
+paywall = "metered"
+
+[[feed]]
+category = "science"
+title = "New Scientist"
+url = "https://www.newscientist.com/feed/"
+site = "https://www.newscientist.com/"
+blurb = "Science and technology news from New Scientist"
+paywall = "hard"
+
+[[feed]]
+category = "science"
+title = "Ars Technica – Science"
+url = "https://feeds.arstechnica.com/arstechnica/science"
+site = "https://arstechnica.com/science/"
+blurb = "Science reporting from Ars Technica"
+paywall = "none"
+
+[[feed]]
+category = "science"
+title = "NPR – Science"
+url = "https://feeds.npr.org/1007/rss.xml"
+site = "https://www.npr.org/sections/science/"
+blurb = "Science news from NPR"
+paywall = "none"
+
+[[feed]]
+category = "science"
+title = "The Guardian – Science"
+url = "https://www.theguardian.com/science/rss"
+site = "https://www.theguardian.com/science"
+blurb = "Science news, comment and analysis from the Guardian"
+paywall = "none"
+
+[[feed]]
+category = "science"
+title = "Undark"
+url = "https://undark.org/feed/"
+site = "https://undark.org/"
+blurb = "Nonprofit magazine on science and society, published at MIT"
+paywall = "none"
+
+# ── Space ──
+[[feed]]
+category = "space"
+title = "NASA – News"
+url = "https://www.nasa.gov/news-release/feed/"
+site = "https://www.nasa.gov/news/"
+blurb = "Official news releases from NASA"
+paywall = "none"
+
+[[feed]]
+category = "space"
+title = "ESA – Space News"
+url = "https://www.esa.int/rssfeed/Our_Activities/Space_News"
+site = "https://www.esa.int/"
+blurb = "News from the European Space Agency"
+paywall = "none"
+
+[[feed]]
+category = "space"
+title = "Spaceflight Now"
+url = "https://spaceflightnow.com/feed/"
+site = "https://spaceflightnow.com"
+blurb = "Launch coverage and spaceflight news"
+paywall = "none"
+
+[[feed]]
+category = "space"
+title = "The Planetary Society"
+url = "https://www.planetary.org/rss/articles"
+site = "https://www.planetary.org/"
+blurb = "Articles from the nonprofit Planetary Society"
+paywall = "none"
+
+[[feed]]
+category = "space"
+title = "SpaceNews"
+url = "https://spacenews.com/feed/"
+site = "https://spacenews.com/"
+blurb = "The business and politics of space"
+paywall = "metered"
+
+[[feed]]
+category = "space"
+title = "Ars Technica – Space"
+url = "https://arstechnica.com/space/feed/"
+site = "https://arstechnica.com/space/"
+blurb = "Space reporting from Ars Technica"
+paywall = "none"
+
+[[feed]]
+category = "space"
+title = "SpacePolicyOnline"
+url = "https://spacepolicyonline.com/feed/"
+site = "https://spacepolicyonline.com"
+blurb = "Civil, military and commercial space policy news"
+paywall = "none"
+
+[[feed]]
+category = "space"
+title = "Universe Today"
+url = "https://www.universetoday.com/rss.xml"
+site = "https://www.universetoday.com"
+blurb = "Space and astronomy news"
+paywall = "none"
+
+[[feed]]
+category = "space"
+title = "Space.com"
+url = "https://www.space.com/feeds.xml"
+site = "https://www.space.com"
+blurb = "Space exploration, launches and skywatching news"
+paywall = "none"
+
+# ── Health ──
+[[feed]]
+category = "health"
+title = "KFF Health News"
+url = "https://kffhealthnews.org/feed/"
+site = "https://kffhealthnews.org/"
+blurb = "Nonprofit newsroom covering US health policy and care"
+paywall = "none"
+
+[[feed]]
+category = "health"
+title = "NPR – Health"
+url = "https://feeds.npr.org/1128/rss.xml"
+site = "https://www.npr.org/sections/health/"
+blurb = "Health and medicine news from NPR, including Shots"
+paywall = "none"
+
+[[feed]]
+category = "health"
+title = "BBC News – Health"
+url = "https://feeds.bbci.co.uk/news/health/rss.xml"
+site = "https://www.bbc.co.uk/news/health"
+blurb = "Health news from the BBC"
+paywall = "none"
+
+[[feed]]
+category = "health"
+title = "STAT"
+url = "https://www.statnews.com/feed/"
+site = "https://www.statnews.com/"
+blurb = "Reporting on health, medicine and the life sciences"
+paywall = "metered"
+
+[[feed]]
+category = "health"
+title = "MedPage Today"
+url = "https://www.medpagetoday.com/rss/headlines.xml"
+site = "https://www.medpagetoday.com/"
+blurb = "Clinical and health policy news written for physicians"
+paywall = "none"
+
+[[feed]]
+category = "health"
+title = "Science-Based Medicine"
+url = "https://sciencebasedmedicine.org/feed/"
+site = "https://sciencebasedmedicine.org"
+blurb = "Physicians and scientists evaluating medical claims"
+paywall = "none"
+
+[[feed]]
+category = "health"
+title = "NEJM – Current issue"
+url = "https://www.nejm.org/action/showFeed?type=etoc&feed=rss&jc=nejm"
+site = "https://www.nejm.org/"
+blurb = "Table of contents of the New England Journal of Medicine"
+paywall = "hard"
+
+[[feed]]
+category = "health"
+title = "JAMA – Current issue"
+url = "https://jamanetwork.com/rss/site_3/67.xml"
+site = "https://jamanetwork.com/journals/jama"
+blurb = "Table of contents of JAMA"
+paywall = "hard"
+
+[[feed]]
+category = "health"
+title = "The Lancet – Current issue"
+url = "https://www.thelancet.com/rssfeed/lancet_current.xml"
+site = "https://www.thelancet.com/journals/lancet/issue/current"
+blurb = "Table of contents of The Lancet"
+paywall = "hard"
+
+[[feed]]
+category = "health"
+title = "The Guardian – Health"
+url = "https://www.theguardian.com/society/health/rss"
+site = "https://www.theguardian.com/society/health"
+blurb = "Health news and features from the Guardian"
+paywall = "none"
+
+# ── Climate ──
+[[feed]]
+category = "climate"
+title = "Inside Climate News"
+url = "https://insideclimatenews.org/feed/"
+site = "https://insideclimatenews.org/"
+blurb = "Pulitzer-winning nonprofit newsroom covering climate and energy"
+paywall = "none"
+
+[[feed]]
+category = "climate"
+title = "Carbon Brief"
+url = "https://www.carbonbrief.org/feed/"
+site = "https://www.carbonbrief.org/"
+blurb = "UK-based analysis of climate science, policy and energy"
+paywall = "none"
+starter = true
+
+[[feed]]
+category = "climate"
+title = "Yale Climate Connections"
+url = "https://yaleclimateconnections.org/feed/"
+site = "https://yaleclimateconnections.org/"
+blurb = "Climate news and explainers from Yale's climate communication center"
+paywall = "none"
+
+[[feed]]
+category = "climate"
+title = "Canary Media"
+url = "https://www.canarymedia.com/rss.rss"
+site = "https://www.canarymedia.com/"
+blurb = "Nonprofit newsroom on clean energy and decarbonization"
+paywall = "none"
+
+[[feed]]
+category = "climate"
+title = "The Guardian – Environment"
+url = "https://www.theguardian.com/environment/rss"
+site = "https://www.theguardian.com/environment"
+blurb = "Environment and climate news from the Guardian"
+paywall = "none"
+
+[[feed]]
+category = "climate"
+title = "Grist"
+url = "https://grist.org/feed/"
+site = "https://grist.org/"
+blurb = "Nonprofit news on climate, justice and solutions"
+paywall = "none"
+
+[[feed]]
+category = "climate"
+title = "Mongabay"
+url = "https://news.mongabay.com/feed/"
+site = "https://news.mongabay.com/"
+blurb = "Nonprofit conservation and environmental science news"
+paywall = "none"
+
+[[feed]]
+category = "climate"
+title = "Heatmap News"
+url = "https://heatmap.news/feeds/feed.rss"
+site = "https://heatmap.news/"
+blurb = "Climate, energy and politics coverage"
+paywall = "none"
+
+[[feed]]
+category = "climate"
+title = "Climate Home News"
+url = "https://www.climatechangenews.com/feed/"
+site = "https://www.climatechangenews.com/"
+blurb = "Independent news on international climate politics"
+paywall = "none"
+
+[[feed]]
+category = "climate"
+title = "NPR – Climate"
+url = "https://feeds.npr.org/1167/rss.xml"
+site = "https://www.npr.org/sections/climate"
+blurb = "Climate science, extreme weather and adaptation from NPR"
+paywall = "none"
+
+[[feed]]
+category = "climate"
+title = "State of the Planet (Columbia)"
+url = "https://news.climate.columbia.edu/feed/"
+site = "https://news.climate.columbia.edu"
+blurb = "News from the Columbia Climate School"
+paywall = "none"
+
+[[feed]]
+category = "climate"
+title = "Floodlight"
+url = "https://floodlightnews.org/rss/"
+site = "https://floodlightnews.org/"
+blurb = "Nonprofit newsroom investigating obstacles to climate action"
+paywall = "none"
+
+# ── Technology ──
+[[feed]]
+category = "tech"
+title = "Ars Technica"
+url = "https://feeds.arstechnica.com/arstechnica/index"
+site = "https://arstechnica.com"
+blurb = "In-depth technology, science and policy reporting"
+paywall = "none"
+starter = true
+
+[[feed]]
+category = "tech"
+title = "The Register"
+url = "https://www.theregister.com/headlines.atom"
+site = "https://www.theregister.com"
+blurb = "UK-based news on enterprise IT, security and the tech industry"
+paywall = "none"
+
+[[feed]]
+category = "tech"
+title = "IEEE Spectrum"
+url = "https://spectrum.ieee.org/feeds/feed.rss"
+site = "https://spectrum.ieee.org"
+blurb = "Engineering and technology news from the IEEE"
+paywall = "none"
+
+[[feed]]
+category = "tech"
+title = "Rest of World"
+url = "https://restofworld.org/feed/latest/"
+site = "https://restofworld.org"
+blurb = "Nonprofit reporting on technology outside the Western bubble"
+paywall = "none"
+starter = true
+
+[[feed]]
+category = "tech"
+title = "MIT Technology Review"
+url = "https://www.technologyreview.com/feed/"
+site = "https://www.technologyreview.com"
+blurb = "Emerging technology coverage from MIT's magazine"
+paywall = "metered"
+
+[[feed]]
+category = "tech"
+title = "The Verge"
+url = "https://www.theverge.com/rss/index.xml"
+site = "https://www.theverge.com"
+blurb = "Consumer tech, platforms and culture"
+paywall = "metered"
+
+[[feed]]
+category = "tech"
+title = "404 Media"
+url = "https://www.404media.co/rss/"
+site = "https://www.404media.co"
+blurb = "Journalist-owned investigations into tech, privacy and the internet"
+paywall = "metered"
+
+[[feed]]
+category = "tech"
+title = "TechCrunch"
+url = "https://techcrunch.com/feed/"
+site = "https://techcrunch.com"
+blurb = "Startup, venture and big-tech business news"
+paywall = "none"
+
+[[feed]]
+category = "tech"
+title = "WIRED – Business"
+url = "https://www.wired.com/feed/category/business/latest/rss"
+site = "https://www.wired.com/category/business/"
+blurb = "WIRED's reporting on the tech industry and its power"
+paywall = "metered"
+
+[[feed]]
+category = "tech"
+title = "Tom's Hardware"
+url = "https://www.tomshardware.com/feeds.xml"
+site = "https://www.tomshardware.com"
+blurb = "PC hardware news, CPUs, GPUs and component reviews"
+paywall = "none"
+
+[[feed]]
+category = "tech"
+title = "Chips and Cheese"
+url = "https://chipsandcheese.com/feed"
+site = "https://chipsandcheese.com"
+blurb = "Deep CPU and GPU microarchitecture analysis"
+paywall = "none"
+
+[[feed]]
+category = "tech"
+title = "Platformer"
+url = "https://www.platformer.news/rss/"
+site = "https://www.platformer.news"
+blurb = "Casey Newton on social platforms, policy and big tech"
+paywall = "metered"
+
+# ── Linux ──
+[[feed]]
+category = "linux"
+title = "LWN.net"
+url = "https://lwn.net/headlines/rss"
+site = "https://lwn.net"
+blurb = "Linux and free-software news and kernel coverage since 1998"
+paywall = "metered"
+
+[[feed]]
+category = "linux"
+title = "Phoronix"
+url = "https://www.phoronix.com/rss.php"
+site = "https://www.phoronix.com"
+blurb = "Linux hardware, drivers, kernel and benchmark news"
+paywall = "none"
+starter = true
+
+[[feed]]
+category = "linux"
+title = "Arch Linux News"
+url = "https://archlinux.org/feeds/news/"
+site = "https://archlinux.org/news/"
+blurb = "Official Arch announcements, including manual-intervention notices"
+paywall = "none"
+starter = true
+
+[[feed]]
+category = "linux"
+title = "Omarchy Releases"
+url = "https://github.com/omacom/omarchy/releases.atom"
+site = "https://github.com/omacom/omarchy/releases"
+blurb = "Release notes for Omarchy"
+paywall = "none"
+starter = true
+
+[[feed]]
+category = "linux"
+title = "Linux Kernel Releases"
+url = "https://www.kernel.org/feeds/kdist.xml"
+site = "https://www.kernel.org"
+blurb = "Mainline, stable and longterm kernel releases from kernel.org"
+paywall = "none"
+
+[[feed]]
+category = "linux"
+title = "Fedora Magazine"
+url = "https://fedoramagazine.org/feed/"
+site = "https://fedoramagazine.org"
+blurb = "News and how-tos from the Fedora Project"
+paywall = "none"
+
+[[feed]]
+category = "linux"
+title = "Ubuntu Blog"
+url = "https://ubuntu.com/blog/feed"
+site = "https://ubuntu.com/blog"
+blurb = "Canonical's official Ubuntu news and security notices"
+paywall = "none"
+
+[[feed]]
+category = "linux"
+title = "Planet KDE"
+url = "https://planet.kde.org/atom.xml"
+site = "https://planet.kde.org"
+blurb = "KDE developer blogs and official KDE announcements"
+paywall = "none"
+
+[[feed]]
+category = "linux"
+title = "This Week in GNOME"
+url = "https://thisweek.gnome.org/index.xml"
+site = "https://thisweek.gnome.org"
+blurb = "Weekly roundup of work across the GNOME project"
+paywall = "none"
+
+[[feed]]
+category = "linux"
+title = "Planet Debian"
+url = "https://planet.debian.org/rss20.xml"
+site = "https://planet.debian.org"
+blurb = "Blogs from Debian developers and contributors"
+paywall = "none"
+
+[[feed]]
+category = "linux"
+title = "9to5Linux"
+url = "https://9to5linux.com/feed/atom"
+site = "https://9to5linux.com"
+blurb = "Distro, desktop and app release news"
+paywall = "none"
+
+[[feed]]
+category = "linux"
+title = "OMG! Ubuntu"
+url = "https://www.omgubuntu.co.uk/feed"
+site = "https://www.omgubuntu.co.uk"
+blurb = "Ubuntu and Linux desktop news and apps"
+paywall = "none"
+
+# ── Programming ──
+[[feed]]
+category = "programming"
+title = "Hacker News – Front Page"
+url = "https://hnrss.org/frontpage"
+site = "https://news.ycombinator.com"
+blurb = "Front-page links from Hacker News, via hnrss.org"
+paywall = "none"
+starter = true
+
+[[feed]]
+category = "programming"
+title = "Lobsters"
+url = "https://lobste.rs/rss"
+site = "https://lobste.rs"
+blurb = "Invite-only, tag-moderated link community for programmers"
+paywall = "none"
+
+[[feed]]
+category = "programming"
+title = "Simon Willison's Weblog"
+url = "https://simonwillison.net/atom/everything/"
+site = "https://simonwillison.net"
+blurb = "Datasette creator on Python, web development and LLM tools"
+paywall = "none"
+
+[[feed]]
+category = "programming"
+title = "Rust Blog"
+url = "https://blog.rust-lang.org/feed.xml"
+site = "https://blog.rust-lang.org"
+blurb = "Official Rust release and project announcements"
+paywall = "none"
+
+[[feed]]
+category = "programming"
+title = "This Week in Rust"
+url = "https://this-week-in-rust.org/atom.xml"
+site = "https://this-week-in-rust.org"
+blurb = "Weekly summary of the Rust ecosystem"
+paywall = "none"
+
+[[feed]]
+category = "programming"
+title = "The Go Blog"
+url = "https://go.dev/blog/feed.atom"
+site = "https://go.dev/blog"
+blurb = "Official Go team posts on releases and tooling"
+paywall = "none"
+
+[[feed]]
+category = "programming"
+title = "Python Insider"
+url = "https://blog.python.org/rss.xml"
+site = "https://blog.python.org"
+blurb = "Official blog of the Python core development team"
+paywall = "none"
+
+[[feed]]
+category = "programming"
+title = "The GitHub Blog"
+url = "https://github.blog/feed/"
+site = "https://github.blog"
+blurb = "GitHub product, engineering and open-source news"
+paywall = "none"
+
+[[feed]]
+category = "programming"
+title = "Julia Evans"
+url = "https://jvns.ca/atom.xml"
+site = "https://jvns.ca"
+blurb = "Clear explanations of systems, networking and tools"
+paywall = "none"
+
+[[feed]]
+category = "programming"
+title = "Martin Fowler"
+url = "https://martinfowler.com/feed.atom"
+site = "https://martinfowler.com"
+blurb = "Software design, architecture and delivery practice"
+paywall = "none"
+
+[[feed]]
+category = "programming"
+title = "Dan Luu"
+url = "https://danluu.com/atom.xml"
+site = "https://danluu.com"
+blurb = "Long, data-driven essays on software and the industry"
+paywall = "none"
+
+[[feed]]
+category = "programming"
+title = "Stack Overflow Blog"
+url = "https://stackoverflow.blog/feed/"
+site = "https://stackoverflow.blog"
+blurb = "Developer interviews, podcasts and engineering essays"
+paywall = "none"
+
+# ── Security ──
+[[feed]]
+category = "security"
+title = "Krebs on Security"
+url = "https://krebsonsecurity.com/feed/"
+site = "https://krebsonsecurity.com"
+blurb = "Brian Krebs' investigations into cybercrime"
+paywall = "none"
+
+[[feed]]
+category = "security"
+title = "The Record"
+url = "https://therecord.media/feed"
+site = "https://therecord.media"
+blurb = "Cybersecurity news desk from Recorded Future News"
+paywall = "none"
+
+[[feed]]
+category = "security"
+title = "BleepingComputer"
+url = "https://www.bleepingcomputer.com/feed/"
+site = "https://www.bleepingcomputer.com"
+blurb = "Breaking news on breaches, malware and ransomware"
+paywall = "none"
+
+[[feed]]
+category = "security"
+title = "Risky Bulletin"
+url = "https://risky.biz/feeds/risky-business-news/"
+site = "https://risky.biz"
+blurb = "Risky Business's daily cybersecurity news digest"
+paywall = "none"
+
+[[feed]]
+category = "security"
+title = "Schneier on Security"
+url = "https://www.schneier.com/feed/atom/"
+site = "https://www.schneier.com"
+blurb = "Bruce Schneier on security, privacy and policy"
+paywall = "none"
+
+[[feed]]
+category = "security"
+title = "CISA Cybersecurity Advisories"
+url = "https://www.cisa.gov/cybersecurity-advisories/all.xml"
+site = "https://www.cisa.gov/news-events/cybersecurity-advisories"
+blurb = "US government advisories, ICS alerts and joint guidance"
+paywall = "none"
+
+[[feed]]
+category = "security"
+title = "Google Project Zero"
+url = "https://projectzero.google/feed.xml"
+site = "https://projectzero.google"
+blurb = "Vulnerability research from Google's Project Zero"
+paywall = "none"
+
+[[feed]]
+category = "security"
+title = "Troy Hunt"
+url = "https://www.troyhunt.com/rss/"
+site = "https://www.troyhunt.com"
+blurb = "Have I Been Pwned founder on breaches and web security"
+paywall = "none"
+
+[[feed]]
+category = "security"
+title = "SANS Internet Storm Center"
+url = "https://isc.sans.edu/rssfeed_full.xml"
+site = "https://isc.sans.edu"
+blurb = "Handler diaries and daily threat briefings from SANS"
+paywall = "none"
+
+[[feed]]
+category = "security"
+title = "Dark Reading"
+url = "https://www.darkreading.com/rss.xml"
+site = "https://www.darkreading.com"
+blurb = "Enterprise security news and analysis"
+paywall = "none"
+
+[[feed]]
+category = "security"
+title = "SecurityWeek"
+url = "https://www.securityweek.com/feed/"
+site = "https://www.securityweek.com"
+blurb = "Security industry news, vulnerabilities and ICS coverage"
+paywall = "none"
+
+[[feed]]
+category = "security"
+title = "The Citizen Lab"
+url = "https://citizenlab.ca/feed/"
+site = "https://citizenlab.ca"
+blurb = "University of Toronto research on spyware and digital rights"
+paywall = "none"
+
+# ── AI ──
+[[feed]]
+category = "ai"
+title = "Import AI"
+url = "https://importai.substack.com/feed"
+site = "https://importai.substack.com"
+blurb = "Jack Clark's weekly digest of AI research and policy"
+paywall = "none"
+
+[[feed]]
+category = "ai"
+title = "Interconnects"
+url = "https://www.interconnects.ai/feed"
+site = "https://www.interconnects.ai"
+blurb = "Nathan Lambert on open models, RLHF and AI research"
+paywall = "metered"
+
+[[feed]]
+category = "ai"
+title = "Ars Technica – AI"
+url = "https://arstechnica.com/ai/feed/"
+site = "https://arstechnica.com/ai/"
+blurb = "Ars Technica's skeptical, technical AI coverage"
+paywall = "none"
+
+[[feed]]
+category = "ai"
+title = "Simon Willison – AI"
+url = "https://simonwillison.net/tags/ai.atom"
+site = "https://simonwillison.net/tags/ai/"
+blurb = "Hands-on notes on LLMs, tools and prompt injection"
+paywall = "none"
+
+[[feed]]
+category = "ai"
+title = "MIT Technology Review – AI"
+url = "https://www.technologyreview.com/topic/artificial-intelligence/feed"
+site = "https://www.technologyreview.com/topic/artificial-intelligence/"
+blurb = "AI reporting and analysis from MIT Technology Review"
+paywall = "metered"
+
+[[feed]]
+category = "ai"
+title = "MIT News – Artificial Intelligence"
+url = "https://news.mit.edu/topic/mitartificial-intelligence2-rss.xml"
+site = "https://news.mit.edu/topic/artificial-intelligence2"
+blurb = "AI research news from MIT labs"
+paywall = "none"
+
+[[feed]]
+category = "ai"
+title = "Ahead of AI"
+url = "https://magazine.sebastianraschka.com/feed"
+site = "https://magazine.sebastianraschka.com"
+blurb = "Sebastian Raschka's explainers on LLM research"
+paywall = "metered"
+
+[[feed]]
+category = "ai"
+title = "Google DeepMind"
+url = "https://deepmind.google/blog/rss.xml"
+site = "https://deepmind.google/discover/blog/"
+blurb = "Research and announcements from Google DeepMind"
+paywall = "none"
+
+[[feed]]
+category = "ai"
+title = "Google Research"
+url = "https://research.google/blog/rss/"
+site = "https://research.google/blog/"
+blurb = "Research papers and posts from Google Research"
+paywall = "none"
+
+# ── Culture ──
+[[feed]]
+category = "culture"
+title = "The New Yorker – Culture"
+url = "https://www.newyorker.com/feed/culture"
+site = "https://www.newyorker.com/culture"
+blurb = "Criticism and essays on books, film, TV, music and the arts"
+paywall = "metered"
+
+[[feed]]
+category = "culture"
+title = "The Atlantic – Culture"
+url = "https://www.theatlantic.com/feed/channel/culture/"
+site = "https://www.theatlantic.com/culture/"
+blurb = "Culture, books and ideas from The Atlantic"
+paywall = "metered"
+
+[[feed]]
+category = "culture"
+title = "Aeon"
+url = "https://aeon.co/feed.rss"
+site = "https://aeon.co"
+blurb = "Long essays and short films on philosophy, science and culture"
+paywall = "none"
+
+[[feed]]
+category = "culture"
+title = "Smithsonian Magazine"
+url = "https://www.smithsonianmag.com/rss/latest_articles/"
+site = "https://www.smithsonianmag.com"
+blurb = "History, science, art and travel from the Smithsonian Institution"
+paywall = "none"
+
+[[feed]]
+category = "culture"
+title = "Literary Hub"
+url = "https://lithub.com/feed/"
+site = "https://lithub.com"
+blurb = "Daily writing about books, authors and publishing"
+paywall = "none"
+
+[[feed]]
+category = "culture"
+title = "The New York Review of Books"
+url = "https://feeds.feedburner.com/nybooks"
+site = "https://www.nybooks.com"
+blurb = "Essays and reviews on books, politics and the arts"
+paywall = "metered"
+
+[[feed]]
+category = "culture"
+title = "The Paris Review – Daily"
+url = "https://www.theparisreview.org/blog/feed/"
+site = "https://www.theparisreview.org/blog/"
+blurb = "Essays, interviews and poetry from the literary quarterly"
+paywall = "none"
+
+[[feed]]
+category = "culture"
+title = "Atlas Obscura"
+url = "https://www.atlasobscura.com/feeds/latest"
+site = "https://www.atlasobscura.com"
+blurb = "Curious places and stories from around the world"
+paywall = "none"
+
+[[feed]]
+category = "culture"
+title = "The Public Domain Review"
+url = "https://publicdomainreview.org/rss.xml"
+site = "https://publicdomainreview.org"
+blurb = "Essays and curated finds from public-domain art and books"
+paywall = "none"
+
+[[feed]]
+category = "culture"
+title = "Hyperallergic"
+url = "https://hyperallergic.com/rss/"
+site = "https://hyperallergic.com"
+blurb = "Independent news and criticism about contemporary art"
+paywall = "none"
+
+[[feed]]
+category = "culture"
+title = "The New Criterion"
+url = "https://newcriterion.com/feed/"
+site = "https://newcriterion.com"
+blurb = "Conservative-leaning criticism of art, music, theatre and books"
+paywall = "metered"
+
+[[feed]]
+category = "culture"
+title = "kottke.org"
+url = "https://feeds.kottke.org/main"
+site = "https://kottke.org"
+blurb = "Jason Kottke's long-running blog of links on culture and ideas"
+paywall = "none"
+
+# ── Film & TV ──
+[[feed]]
+category = "screen"
+title = "RogerEbert.com"
+url = "https://www.rogerebert.com/feed"
+site = "https://www.rogerebert.com"
+blurb = "Film and TV reviews, interviews and festival reports"
+paywall = "none"
+
+[[feed]]
+category = "screen"
+title = "Variety"
+url = "https://variety.com/feed/"
+site = "https://variety.com"
+blurb = "Entertainment industry news, film and TV reviews"
+paywall = "none"
+
+[[feed]]
+category = "screen"
+title = "The Hollywood Reporter"
+url = "https://www.hollywoodreporter.com/feed/"
+site = "https://www.hollywoodreporter.com"
+blurb = "Film, TV and entertainment business news"
+paywall = "none"
+
+[[feed]]
+category = "screen"
+title = "IndieWire"
+url = "https://www.indiewire.com/feed/"
+site = "https://www.indiewire.com"
+blurb = "Film and TV criticism, craft features and industry news"
+paywall = "none"
+
+[[feed]]
+category = "screen"
+title = "The Criterion Collection – Current"
+url = "https://www.criterion.com/feeds/current"
+site = "https://www.criterion.com/current"
+blurb = "Essays and interviews on classic and art-house cinema"
+paywall = "none"
+
+[[feed]]
+category = "screen"
+title = "Deadline"
+url = "https://deadline.com/feed/"
+site = "https://deadline.com"
+blurb = "Hollywood deals, casting and box-office news"
+paywall = "none"
+
+[[feed]]
+category = "screen"
+title = "The Guardian – Film"
+url = "https://www.theguardian.com/film/rss"
+site = "https://www.theguardian.com/film"
+blurb = "Film news, reviews and interviews from The Guardian"
+paywall = "none"
+
+[[feed]]
+category = "screen"
+title = "Vulture"
+url = "https://feeds.feedburner.com/nymag/vulture"
+site = "https://www.vulture.com"
+blurb = "New York magazine's TV recaps, film and pop-culture coverage"
+paywall = "metered"
+
+[[feed]]
+category = "screen"
+title = "The A.V. Club"
+url = "https://www.avclub.com/rss.xml"
+site = "https://www.avclub.com"
+blurb = "TV and film news, reviews and recaps"
+paywall = "none"
+
+[[feed]]
+category = "screen"
+title = "NPR – Movies"
+url = "https://feeds.npr.org/1045/rss.xml"
+site = "https://www.npr.org/sections/movies/"
+blurb = "Film reviews and interviews from NPR"
+paywall = "none"
+
+[[feed]]
+category = "screen"
+title = "Little White Lies"
+url = "https://www.lwlies.com/feed.rss"
+site = "https://www.lwlies.com"
+blurb = "Independent UK film magazine: reviews, interviews and festivals"
+paywall = "none"
+
+# ── Music ──
+[[feed]]
+category = "music"
+title = "NPR Music"
+url = "https://feeds.npr.org/1039/rss.xml"
+site = "https://www.npr.org/music/"
+blurb = "Music features, Tiny Desk concerts and interviews from NPR"
+paywall = "none"
+
+[[feed]]
+category = "music"
+title = "Pitchfork – Album Reviews"
+url = "https://pitchfork.com/feed/feed-album-reviews/rss"
+site = "https://pitchfork.com/reviews/albums/"
+blurb = "Daily album reviews across indie, rap, pop and electronic"
+paywall = "none"
+
+[[feed]]
+category = "music"
+title = "Bandcamp Daily"
+url = "https://daily.bandcamp.com/feed"
+site = "https://daily.bandcamp.com"
+blurb = "Features, album picks and genre guides from Bandcamp's editors"
+paywall = "none"
+
+[[feed]]
+category = "music"
+title = "The Guardian – Music"
+url = "https://www.theguardian.com/music/rss"
+site = "https://www.theguardian.com/music"
+blurb = "Music news, interviews and album reviews from The Guardian"
+paywall = "none"
+
+[[feed]]
+category = "music"
+title = "Stereogum"
+url = "https://stereogum.com/feed"
+site = "https://stereogum.com"
+blurb = "Indie and alternative music news and new releases"
+paywall = "none"
+
+[[feed]]
+category = "music"
+title = "The Quietus"
+url = "https://thequietus.com/feed/"
+site = "https://thequietus.com"
+blurb = "Independent UK site for adventurous music, reviews and essays"
+paywall = "none"
+
+[[feed]]
+category = "music"
+title = "The Wire"
+url = "https://www.thewire.co.uk/home/rss"
+site = "https://www.thewire.co.uk"
+blurb = "Experimental and underground music magazine"
+paywall = "none"
+
+[[feed]]
+category = "music"
+title = "Rolling Stone – Music"
+url = "https://www.rollingstone.com/music/feed/"
+site = "https://www.rollingstone.com/music/"
+blurb = "Music news, features and interviews from Rolling Stone"
+paywall = "none"
+
+[[feed]]
+category = "music"
+title = "Consequence"
+url = "https://consequence.net/feed/"
+site = "https://consequence.net"
+blurb = "Music, film and TV news with tour and festival coverage"
+paywall = "none"
+
+[[feed]]
+category = "music"
+title = "Aquarium Drunkard"
+url = "https://aquariumdrunkard.com/feed/"
+site = "https://aquariumdrunkard.com"
+blurb = "Independent music blog: reissues, interviews and deep cuts"
+paywall = "none"
+
+# ── Games ──
+[[feed]]
+category = "gaming"
+title = "GamingOnLinux"
+url = "https://www.gamingonlinux.com/article_rss.php"
+site = "https://www.gamingonlinux.com"
+blurb = "Linux gaming, Steam Deck, Proton and driver news"
+paywall = "none"
+
+[[feed]]
+category = "gaming"
+title = "Rock Paper Shotgun"
+url = "https://www.rockpapershotgun.com/feed"
+site = "https://www.rockpapershotgun.com"
+blurb = "PC gaming news, reviews and features"
+paywall = "none"
+
+[[feed]]
+category = "gaming"
+title = "Eurogamer"
+url = "https://www.eurogamer.net/feed"
+site = "https://www.eurogamer.net"
+blurb = "Games news and reviews from the UK outlet"
+paywall = "none"
+
+[[feed]]
+category = "gaming"
+title = "Ars Technica – Gaming"
+url = "https://feeds.arstechnica.com/arstechnica/gaming"
+site = "https://arstechnica.com/gaming/"
+blurb = "Games coverage from Ars Technica's tech newsroom"
+paywall = "none"
+
+[[feed]]
+category = "gaming"
+title = "Game Developer"
+url = "https://www.gamedeveloper.com/rss.xml"
+site = "https://www.gamedeveloper.com"
+blurb = "Industry news and craft articles for people who make games"
+paywall = "none"
+
+[[feed]]
+category = "gaming"
+title = "Video Games Chronicle"
+url = "https://www.videogameschronicle.com/feed/"
+site = "https://www.videogameschronicle.com"
+blurb = "Games industry news and reviews"
+paywall = "none"
+
+[[feed]]
+category = "gaming"
+title = "PC Gamer"
+url = "https://www.pcgamer.com/rss/"
+site = "https://www.pcgamer.com"
+blurb = "PC games news, reviews and hardware"
+paywall = "none"
+
+[[feed]]
+category = "gaming"
+title = "Kotaku"
+url = "https://kotaku.com/feed"
+site = "https://kotaku.com"
+blurb = "Games news, culture and opinion"
+paywall = "none"
+
+[[feed]]
+category = "gaming"
+title = "Steam News"
+url = "https://store.steampowered.com/feeds/news/app/593110/?cc=US&l=english"
+site = "https://store.steampowered.com/news/"
+blurb = "Official Valve posts: Steam client updates, sales and events"
+paywall = "none"
+
+[[feed]]
+category = "gaming"
+title = "Aftermath"
+url = "https://aftermath.site/rss/"
+site = "https://aftermath.site"
+blurb = "Worker-owned site covering games and internet culture"
+paywall = "metered"
+
+[[feed]]
+category = "gaming"
+title = "Nintendo Life"
+url = "https://www.nintendolife.com/feeds/latest"
+site = "https://www.nintendolife.com"
+blurb = "Nintendo and Switch news, reviews and previews"
+paywall = "none"
+
+# ── Sports ──
+[[feed]]
+category = "sports"
+title = "BBC Sport"
+url = "https://feeds.bbci.co.uk/sport/rss.xml"
+site = "https://www.bbc.co.uk/sport"
+blurb = "Top sports stories from the BBC"
+paywall = "none"
+
+[[feed]]
+category = "sports"
+title = "ESPN – Top Headlines"
+url = "https://www.espn.com/espn/rss/news"
+site = "https://www.espn.com"
+blurb = "Top US sports headlines from ESPN"
+paywall = "none"
+
+[[feed]]
+category = "sports"
+title = "The Guardian – Sport"
+url = "https://www.theguardian.com/sport/rss"
+site = "https://www.theguardian.com/sport"
+blurb = "Sports news, match reports and features from The Guardian"
+paywall = "none"
+
+[[feed]]
+category = "sports"
+title = "Yahoo Sports (incl. AP wire)"
+url = "https://sports.yahoo.com/rss/"
+site = "https://sports.yahoo.com"
+blurb = "Sports news including Associated Press game stories"
+paywall = "none"
+
+[[feed]]
+category = "sports"
+title = "The Athletic"
+url = "https://www.nytimes.com/athletic/rss/news/"
+site = "https://www.nytimes.com/athletic/"
+blurb = "In-depth sports reporting from The New York Times"
+paywall = "hard"
+
+[[feed]]
+category = "sports"
+title = "NPR – Sports"
+url = "https://feeds.npr.org/1055/rss.xml"
+site = "https://www.npr.org/sections/sports/"
+blurb = "Sports stories and interviews from NPR"
+paywall = "none"
+
+[[feed]]
+category = "sports"
+title = "SB Nation"
+url = "https://www.sbnation.com/rss/index.xml"
+site = "https://www.sbnation.com"
+blurb = "US sports analysis and commentary from Vox Media"
+paywall = "none"
+
+[[feed]]
+category = "sports"
+title = "CBS Sports"
+url = "https://www.cbssports.com/rss/headlines/"
+site = "https://www.cbssports.com"
+blurb = "US sports headlines from CBS Sports"
+paywall = "none"
+
+[[feed]]
+category = "sports"
+title = "Defector"
+url = "https://defector.com/feed"
+site = "https://defector.com"
+blurb = "Worker-owned sports and culture writing"
+paywall = "metered"
+
+# ── Design ──
+[[feed]]
+category = "design"
+title = "Smashing Magazine"
+url = "https://www.smashingmagazine.com/feed/"
+site = "https://www.smashingmagazine.com"
+blurb = "Practical articles on web design, UX and front-end"
+paywall = "none"
+
+[[feed]]
+category = "design"
+title = "Dezeen"
+url = "https://www.dezeen.com/feed/"
+site = "https://www.dezeen.com"
+blurb = "Architecture, interiors and design news"
+paywall = "none"
+
+[[feed]]
+category = "design"
+title = "Colossal"
+url = "https://www.thisiscolossal.com/feed/"
+site = "https://www.thisiscolossal.com"
+blurb = "Independent magazine on art, craft and visual culture"
+paywall = "none"
+
+[[feed]]
+category = "design"
+title = "PetaPixel"
+url = "https://petapixel.com/feed/"
+site = "https://petapixel.com"
+blurb = "Photography news, gear and techniques"
+paywall = "none"
+
+[[feed]]
+category = "design"
+title = "designboom"
+url = "https://www.designboom.com/feed/"
+site = "https://www.designboom.com"
+blurb = "Architecture, design, art and technology magazine"
+paywall = "none"
+
+[[feed]]
+category = "design"
+title = "ArchDaily"
+url = "https://feeds.feedburner.com/Archdaily"
+site = "https://www.archdaily.com"
+blurb = "New buildings and architecture projects worldwide"
+paywall = "none"
+
+[[feed]]
+category = "design"
+title = "Core77"
+url = "https://feeds.feedburner.com/core77/blog"
+site = "https://www.core77.com"
+blurb = "Industrial design, tools, craft and objects"
+paywall = "none"
+
+[[feed]]
+category = "design"
+title = "DPReview"
+url = "https://www.dpreview.com/feed/"
+site = "https://www.dpreview.com"
+blurb = "Camera reviews, photography news and buying guides"
+paywall = "none"
+
+[[feed]]
+category = "design"
+title = "Design Milk"
+url = "https://design-milk.com/feed/"
+site = "https://design-milk.com"
+blurb = "Modern furniture, interiors and product design"
+paywall = "none"
+
+[[feed]]
+category = "design"
+title = "Creative Bloq"
+url = "https://www.creativebloq.com/feeds.xml"
+site = "https://www.creativebloq.com"
+blurb = "Graphic design, illustration and creative tools"
+paywall = "none"
+
+# ── Food ──
+[[feed]]
+category = "food"
+title = "Eater"
+url = "https://www.eater.com/rss/index.xml"
+site = "https://www.eater.com"
+blurb = "Restaurant news, food culture and dining guides"
+paywall = "none"
+
+[[feed]]
+category = "food"
+title = "The Guardian – Food"
+url = "https://www.theguardian.com/food/rss"
+site = "https://www.theguardian.com/food"
+blurb = "Recipes, restaurant reviews and food writing from The Guardian"
+paywall = "none"
+
+[[feed]]
+category = "food"
+title = "Budget Bytes"
+url = "https://www.budgetbytes.com/feed/"
+site = "https://www.budgetbytes.com"
+blurb = "Tested low-cost recipes with per-serving prices"
+paywall = "none"
+
+[[feed]]
+category = "food"
+title = "Bon Appétit"
+url = "https://www.bonappetit.com/feed/rss"
+site = "https://www.bonappetit.com"
+blurb = "Recipes, cooking advice and food stories"
+paywall = "metered"
+
+[[feed]]
+category = "food"
+title = "NYT – Food"
+url = "https://rss.nytimes.com/services/xml/rss/nyt/DiningandWine.xml"
+site = "https://www.nytimes.com/section/food"
+blurb = "Food news, restaurant reviews and NYT Cooking articles"
+paywall = "metered"
+
+[[feed]]
+category = "food"
+title = "Smitten Kitchen"
+url = "https://smittenkitchen.com/feed/"
+site = "https://smittenkitchen.com"
+blurb = "Deb Perelman's home-cooking recipes"
+paywall = "none"
+
+[[feed]]
+category = "food"
+title = "RecipeTin Eats"
+url = "https://www.recipetineats.com/feed/"
+site = "https://www.recipetineats.com"
+blurb = "Nagi Maehashi's tested everyday recipes"
+paywall = "none"
+
+[[feed]]
+category = "food"
+title = "Civil Eats"
+url = "https://civileats.com/feed/"
+site = "https://civileats.com"
+blurb = "Nonprofit news on farming, food policy and the food system"
+paywall = "none"
+
+[[feed]]
+category = "food"
+title = "Just One Cookbook"
+url = "https://www.justonecookbook.com/feed/"
+site = "https://www.justonecookbook.com"
+blurb = "Japanese home-cooking recipes and guides"
+paywall = "none"
+
+[[feed]]
+category = "food"
+title = "Epicurious"
+url = "https://www.epicurious.com/feed/rss"
+site = "https://www.epicurious.com"
+blurb = "Recipes and cooking guides"
+paywall = "metered"
+
+[[feed]]
+category = "food"
+title = "The Kitchn"
+url = "https://www.thekitchn.com/main.rss"
+site = "https://www.thekitchn.com"
+blurb = "Everyday recipes, kitchen tips and product reviews"
+paywall = "none"
+
+# ── Keyword alert presets (addable from S5.1) ──
+[[keyword]]
+category = "world"
+title = "United Nations"
+query = '"United Nations"'
+
+[[keyword]]
+category = "world"
+title = "Humanitarian aid"
+query = '"humanitarian aid"'
+
+[[keyword]]
+category = "world"
+title = "Ceasefire talks"
+query = 'ceasefire talks'
+
+[[keyword]]
+category = "us"
+title = "Supreme Court"
+query = '"Supreme Court" ruling'
+
+[[keyword]]
+category = "us"
+title = "Census Bureau"
+query = '"Census Bureau"'
+
+[[keyword]]
+category = "us"
+title = "FEMA disaster response"
+query = 'FEMA disaster'
+
+[[keyword]]
+category = "politics"
+title = "Congressional Budget Office"
+query = '"Congressional Budget Office"'
+
+[[keyword]]
+category = "politics"
+title = "Bipartisan bills"
+query = '"bipartisan bill"'
+
+[[keyword]]
+category = "politics"
+title = "Federal Election Commission"
+query = '"Federal Election Commission"'
+
+[[keyword]]
+category = "investigations"
+title = "Inspector general reports"
+query = '"inspector general" report'
+
+[[keyword]]
+category = "investigations"
+title = "GAO reports"
+query = '"Government Accountability Office"'
+
+[[keyword]]
+category = "investigations"
+title = "Whistleblowers"
+query = 'whistleblower'
+
+[[keyword]]
+category = "business"
+title = "Federal Reserve"
+query = '"Federal Reserve"'
+
+[[keyword]]
+category = "business"
+title = "Jobs report"
+query = '"jobs report"'
+
+[[keyword]]
+category = "business"
+title = "Inflation"
+query = 'inflation CPI'
+
+[[keyword]]
+category = "science"
+title = "Peer-reviewed studies"
+query = '"peer-reviewed" study'
+
+[[keyword]]
+category = "science"
+title = "National Science Foundation"
+query = '"National Science Foundation"'
+
+[[keyword]]
+category = "science"
+title = "CERN"
+query = 'CERN physics'
+
+[[keyword]]
+category = "space"
+title = "NASA"
+query = 'NASA'
+
+[[keyword]]
+category = "space"
+title = "James Webb Telescope"
+query = '"James Webb Space Telescope"'
+
+[[keyword]]
+category = "space"
+title = "Rocket launches"
+query = '"rocket launch"'
+
+[[keyword]]
+category = "health"
+title = "Clinical trials"
+query = '"clinical trial" results'
+
+[[keyword]]
+category = "health"
+title = "FDA approvals"
+query = '"FDA approval"'
+
+[[keyword]]
+category = "health"
+title = "World Health Organization"
+query = '"World Health Organization"'
+
+[[keyword]]
+category = "climate"
+title = "Climate change"
+query = '"climate change"'
+
+[[keyword]]
+category = "climate"
+title = "Renewable energy"
+query = '"renewable energy"'
+
+[[keyword]]
+category = "climate"
+title = "NOAA"
+query = 'NOAA'
+
+[[keyword]]
+category = "tech"
+title = "Semiconductors"
+query = 'semiconductor chips'
+
+[[keyword]]
+category = "tech"
+title = "Open source"
+query = '"open source" software'
+
+[[keyword]]
+category = "tech"
+title = "Broadband"
+query = 'broadband internet'
+
+[[keyword]]
+category = "linux"
+title = "Linux kernel"
+query = '"Linux kernel"'
+
+[[keyword]]
+category = "linux"
+title = "Arch Linux"
+query = '"Arch Linux"'
+
+[[keyword]]
+category = "linux"
+title = "Hyprland"
+query = 'Hyprland'
+
+[[keyword]]
+category = "programming"
+title = "Rust language"
+query = '"Rust programming language"'
+
+[[keyword]]
+category = "programming"
+title = "Python releases"
+query = '"Python" release programming'
+
+[[keyword]]
+category = "programming"
+title = "WebAssembly"
+query = 'WebAssembly'
+
+[[keyword]]
+category = "security"
+title = "Zero-day vulnerabilities"
+query = '"zero-day" vulnerability'
+
+[[keyword]]
+category = "security"
+title = "CISA advisories"
+query = 'CISA advisory'
+
+[[keyword]]
+category = "security"
+title = "Ransomware"
+query = 'ransomware attack'
+
+[[keyword]]
+category = "ai"
+title = "Large language models"
+query = '"large language model"'
+
+[[keyword]]
+category = "ai"
+title = "AI regulation"
+query = '"AI regulation"'
+
+[[keyword]]
+category = "ai"
+title = "Open-weight models"
+query = '"open-weight" model'
+
+[[keyword]]
+category = "culture"
+title = "Museum exhibitions"
+query = 'museum exhibition'
+
+[[keyword]]
+category = "culture"
+title = "Pulitzer Prize"
+query = '"Pulitzer Prize"'
+
+[[keyword]]
+category = "culture"
+title = "Booker Prize"
+query = '"Booker Prize"'
+
+[[keyword]]
+category = "screen"
+title = "Box office"
+query = '"box office"'
+
+[[keyword]]
+category = "screen"
+title = "Film festivals"
+query = '"film festival"'
+
+[[keyword]]
+category = "screen"
+title = "TV series"
+query = '"television series" review'
+
+[[keyword]]
+category = "music"
+title = "Grammys"
+query = 'Grammy'
+
+[[keyword]]
+category = "music"
+title = "Album reviews"
+query = '"album review"'
+
+[[keyword]]
+category = "music"
+title = "World tours"
+query = '"world tour" announced'
+
+[[keyword]]
+category = "gaming"
+title = "Video game releases"
+query = '"video game" release'
+
+[[keyword]]
+category = "gaming"
+title = "Nintendo"
+query = 'Nintendo'
+
+[[keyword]]
+category = "gaming"
+title = "Esports"
+query = 'esports'
+
+[[keyword]]
+category = "sports"
+title = "Premier League"
+query = '"Premier League"'
+
+[[keyword]]
+category = "sports"
+title = "NBA"
+query = 'NBA'
+
+[[keyword]]
+category = "sports"
+title = "Olympics"
+query = 'Olympics'
+
+[[keyword]]
+category = "design"
+title = "Typography"
+query = 'typography design'
+
+[[keyword]]
+category = "design"
+title = "Industrial design"
+query = '"industrial design"'
+
+[[keyword]]
+category = "design"
+title = "Pritzker Prize"
+query = '"Pritzker Prize"'
+
+[[keyword]]
+category = "food"
+title = "Michelin Guide"
+query = '"Michelin Guide"'
+
+[[keyword]]
+category = "food"
+title = "Food recalls"
+query = '"food recall"'
+
+[[keyword]]
+category = "food"
+title = "James Beard Awards"
+query = '"James Beard"'
+
+# ── MCP servers (addable from S6.2) ──
+[[mcp]]
+title = "Brave Search – News"
+blurb = "News search from Brave's independent web index"
+transport = "stdio"
+command = "npx"
+args = ["-y", "@brave/brave-search-mcp-server", "--transport", "stdio"]
+tool = "brave_news_search"
+arguments = '{"query": "world news", "country": "US", "search_lang": "en", "count": 20, "freshness": "pd"}'
+secret = "BRAVE_API_KEY"
+homepage = "https://github.com/brave/brave-search-mcp-server"
+maintainer = "Brave Software (official)"
+
+[[mcp]]
+title = "Tavily – News Search"
+blurb = "Web and news search with time filters, built for agents"
+transport = "stdio"
+command = "npx"
+args = ["-y", "tavily-mcp@latest"]
+tool = "tavily_search"
+arguments = '{"query": "Federal Reserve interest rates", "topic": "news", "time_range": "day", "max_results": 20}'
+secret = "TAVILY_API_KEY"
+homepage = "https://github.com/tavily-ai/tavily-mcp"
+maintainer = "Tavily (official)"
+
+[[mcp]]
+title = "SEC EDGAR – Recent Filings"
+blurb = "Latest 8-K and other SEC filings, with links to EDGAR"
+transport = "stdio"
+command = "uvx"
+args = ["sec-edgar-mcp"]
+tool = "get_recent_filings"
+arguments = '{"form_type": "8-K", "days": 1, "limit": 40}'
+secret = "SEC_EDGAR_USER_AGENT"
+homepage = "https://github.com/stefanoamorelli/sec-edgar-mcp"
+maintainer = "Stefano Amorelli (community; not affiliated with the SEC)"
+
+[[mcp]]
+title = "Exa – News Search"
+blurb = "Neural web search, filtered to news, no key needed"
+transport = "http"
+url = "https://mcp.exa.ai/mcp"
+tool = "web_search_exa"
+arguments = '{"query": "category:news consumer technology product launch", "numResults": 20}'
+homepage = "https://github.com/exa-labs/exa-mcp-server"
+maintainer = "Exa Labs (official)"
+
+[[mcp]]
+title = "Jina AI – Web Search"
+blurb = "Web search with age filter, returning titles, URLs and snippets"
+transport = "http"
+url = "https://mcp.jina.ai/v1"
+tool = "search_web"
+arguments = '{"query": "NASA mission", "num": 10, "tbs": "qdr:d"}'
+secret = "JINA_API_KEY"
+homepage = "https://github.com/jina-ai/MCP"
+maintainer = "Jina AI (official)"
+
+[[mcp]]
+title = "Firecrawl – News Search"
+blurb = "Web and news search from Firecrawl, keyless free tier"
+transport = "http"
+url = "https://mcp.firecrawl.dev/v2/mcp"
+tool = "firecrawl_search"
+arguments = '{"query": "heatwave drought wildfire", "sources": ["news"], "limit": 20, "lang": "en", "country": "us"}'
+homepage = "https://github.com/firecrawl/firecrawl-mcp-server"
+maintainer = "Firecrawl (official)"
+
+[[mcp]]
+title = "GitHub – Repo Releases"
+blurb = "Latest releases of any GitHub repository"
+transport = "http"
+url = "https://api.githubcopilot.com/mcp/"
+tool = "list_releases"
+arguments = '{"owner": "rust-lang", "repo": "rust", "perPage": 10}'
+secret = "GITHUB_PERSONAL_ACCESS_TOKEN"
+homepage = "https://github.com/github/github-mcp-server"
+maintainer = "GitHub (official)"
+
+[[mcp]]
+title = "arXiv – Latest Papers"
+blurb = "Newest arXiv preprints by query and category"
+transport = "stdio"
+command = "uvx"
+args = ["arxiv-mcp-server"]
+tool = "search_papers"
+arguments = '{"query": "\"large language models\"", "categories": ["cs.CL", "cs.LG", "cs.AI"], "sort_by": "date", "max_results": 30, "abstract_mode": "snippet"}'
+homepage = "https://github.com/blazickjp/arxiv-mcp-server"
+maintainer = "blazickjp (community; listed in official MCP registry)"
+
+[[mcp]]
+title = "Hugging Face – Daily Papers"
+blurb = "Today's Hugging Face Daily Papers picks for ML research"
+transport = "http"
+url = "https://huggingface.co/mcp"
+tool = "hf_fs"
+arguments = '{"operations": [{"op": "ls", "uri": "hf://papers/daily/latest", "limit": 30}]}'
+homepage = "https://github.com/huggingface/hf-mcp-server"
+maintainer = "Hugging Face (official)"
+
+[[mcp]]
+title = "PubMed – New Clinical Trials"
+blurb = "Newest PubMed records for a query, NCBI E-utilities"
+transport = "stdio"
+command = "npx"
+args = ["-y", "@cyanheads/pubmed-mcp-server"]
+tool = "pubmed_search_articles"
+arguments = '{"query": "randomized controlled trial[pt]", "maxResults": 20, "summaryCount": 20, "sort": "pub_date"}'
+homepage = "https://github.com/cyanheads/pubmed-mcp-server"
+maintainer = "Casey Hand / cyanheads (community)"
+
+[[mcp]]
+title = "Fetch – Any Page as Markdown"
+blurb = "Reads a web page with no feed as Markdown so its links become items"
+transport = "stdio"
+command = "uvx"
+args = ["mcp-server-fetch", "--user-agent=Gutenberg/0.2 (+https://github.com/avdrav1/gutenberg)"]
+tool = "fetch"
+arguments = '{"url": "https://www.kernel.org/", "max_length": 20000}'
+homepage = "https://github.com/modelcontextprotocol/servers/tree/main/src/fetch"
+maintainer = "Model Context Protocol project (official reference server)"
