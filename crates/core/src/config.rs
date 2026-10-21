@@ -12,6 +12,7 @@ use serde::Deserialize;
 #[serde(default, deny_unknown_fields)]
 pub struct Config {
     pub layout: Layout,
+    pub refresh: Refresh,
 }
 
 /// Relative pane widths. 0 hides a pane.
@@ -30,6 +31,20 @@ impl Default for Layout {
             list: 4,
             article: 6,
         }
+    }
+}
+
+/// Background refresh.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Refresh {
+    /// Minutes between refreshes; 0 turns background refresh off.
+    pub minutes: u32,
+}
+
+impl Default for Refresh {
+    fn default() -> Self {
+        Self { minutes: 30 }
     }
 }
 
@@ -178,6 +193,12 @@ mod tests {
                 ..Layout::default()
             }
         );
+    }
+
+    #[test]
+    fn refresh_interval_defaults_to_30_minutes() {
+        assert_eq!(parse("").unwrap().refresh.minutes, 30);
+        assert_eq!(parse("[refresh]\nminutes = 0").unwrap().refresh.minutes, 0);
     }
 
     #[test]

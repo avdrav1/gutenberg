@@ -1,4 +1,4 @@
-use gutenberg_store::{Error, NewArticle, NewSource, SourceKind, Store};
+use gutenberg_store::{Error, NewArticle, NewSource, SourceKind, Store, SCHEMA_VERSION};
 use rusqlite::Connection;
 
 fn feed(url: &str) -> NewSource {
@@ -30,7 +30,7 @@ fn fresh_file_is_created_and_migrated() {
     let path = dir.path().join("gutenberg").join("gutenberg.db");
     let store = Store::open(&path).unwrap();
     assert!(path.exists());
-    assert_eq!(store.schema_version().unwrap(), 1);
+    assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
 }
 
 #[test]
@@ -49,7 +49,7 @@ fn reopening_an_existing_file_keeps_its_rows() {
         store.insert_articles(&[article(source.id, "a")]).unwrap();
     }
     let store = Store::open(&path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 1);
+    assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
     assert_eq!(store.folders().unwrap()[0].name, "Tech");
     assert_eq!(store.sources().unwrap().len(), 1);
     assert_eq!(store.list_articles(None, 10).unwrap().len(), 1);
@@ -64,7 +64,7 @@ fn an_empty_existing_file_is_migrated() {
         .execute_batch("CREATE TABLE unrelated (x)")
         .unwrap();
     let store = Store::open(&path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 1);
+    assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
 }
 
 #[test]
@@ -79,13 +79,7 @@ fn a_file_from_a_newer_build_is_refused_untouched() {
         .err()
         .expect("newer schema must be refused");
     assert!(
-        matches!(
-            err,
-            Error::TooNew {
-                found: 99,
-                known: 1
-            }
-        ),
+        matches!(err, Error::TooNew { found: 99, known } if known == SCHEMA_VERSION),
         "{err}"
     );
 
@@ -145,4 +139,36 @@ fn bundled_sqlite_has_fts5() {
         .unwrap()
         .execute_batch("CREATE VIRTUAL TABLE t USING fts5(body)")
         .unwrap();
+}
+
+/// S2.3: a file written by 0.1.0 (schema 1) gains the fetch-state columns
+/// and keeps its rows.
+#[test]
+fn a_version_1_file_upgrades_and_keeps_its_rows() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("gutenberg.db");
+    let raw = Connection::open(&path).unwrap();
+    raw.execute_batch(include_str!("../migrations/0001_init.sql"))
+        .unwrap();
+    raw.execute_batch(
+        "PRAGMA user_version = 1;
+         INSERT INTO source (kind, title, url, position, created_at)
+           VALUES ('feed', 'LWN', 'https://lwn.net/headlines/rss', 0, 1);
+         INSERT INTO article (source_id, guid, title, fetched_at, sort_at, read)
+           VALUES (1, 'a', 'A', 1, 1, 1);",
+    )
+    .unwrap();
+    drop(raw);
+
+    let store = Store::open(&path).unwrap();
+    assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
+    let rows = store.list_articles(None, 10).unwrap();
+    assert_eq!(rows.len(), 1);
+    assert!(rows[0].read);
+    let state = store.fetch_state(1).unwrap();
+    assert_eq!(
+        (state.failures, state.checked_at, state.error),
+        (0, None, None)
+    );
+    assert_eq!(store.feeds_due(0).unwrap().len(), 1);
 }

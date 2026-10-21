@@ -1381,12 +1381,16 @@ name = "gutenberg-core"
 version = "0.1.0"
 dependencies = [
  "directories",
+ "futures",
+ "gutenberg-sources",
  "gutenberg-store",
  "notify",
  "serde",
  "tempfile",
  "thiserror 1.0.69",
+ "tokio",
  "toml",
+ "url",
 ]
 
 [[package]]
@@ -1394,7 +1398,6 @@ name = "gutenberg-sources"
 version = "0.1.0"
 dependencies = [
  "feed-rs",
- "gutenberg-core",
  "html-escape",
  "reqwest",
  "thiserror 1.0.69",

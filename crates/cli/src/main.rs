@@ -1,4 +1,5 @@
 mod add;
+mod refresh;
 
 use gutenberg_core::config::Config;
 
@@ -14,6 +15,7 @@ fn main() -> std::process::ExitCode {
                 None => usage(),
             }
         }
+        Some("--refresh") => return refresh::run(),
         Some(_) => return usage(),
         None => {}
     }
@@ -26,6 +28,10 @@ fn main() -> std::process::ExitCode {
         }
         None => Config::default(),
     };
+    // Refresh runs on its own thread with its own store connection.
+    if let Ok(store_path) = gutenberg_store::Store::default_path() {
+        gutenberg_core::sync::spawn(store_path, config_path.clone(), &config);
+    }
     match gutenberg_ui::run(config, config_path) {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(err) => {
@@ -36,6 +42,6 @@ fn main() -> std::process::ExitCode {
 }
 
 fn usage() -> std::process::ExitCode {
-    eprintln!("usage: gutenberg [--version | --add <feed-url>]");
+    eprintln!("usage: gutenberg [--version | --add <url> | --refresh]");
     std::process::ExitCode::from(2)
 }

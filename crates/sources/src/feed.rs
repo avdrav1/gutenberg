@@ -4,6 +4,7 @@
 use std::time::Duration;
 
 use feed_rs::model;
+pub use reqwest::Client;
 
 use crate::discover;
 
@@ -35,8 +36,12 @@ pub enum FeedError {
     Empty,
     #[error("not a feed ({0})")]
     NotAFeed(String),
-    #[error("HTTP {0}")]
-    Status(reqwest::StatusCode),
+    #[error("HTTP {status}")]
+    Status {
+        status: reqwest::StatusCode,
+        /// Seconds from a `Retry-After` header, when it gave a number.
+        retry_after: Option<u64>,
+    },
     #[error("timed out")]
     Timeout,
     #[error("{0}")]
@@ -97,23 +102,78 @@ pub async fn find(url: &str) -> Result<Found, FeedError> {
     Err(FeedError::NoFeedFound { page_had_links })
 }
 
-/// Downloads a feed document.
-pub async fn fetch(url: &str) -> Result<Vec<u8>, FeedError> {
-    let client = reqwest::Client::builder()
+/// What a conditional fetch got back.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Fetched {
+    /// 304: the copy from last time is still current.
+    NotModified,
+    Body {
+        bytes: Vec<u8>,
+        etag: Option<String>,
+        last_modified: Option<String>,
+    },
+}
+
+/// One client to share across fetches, so connections are reused.
+pub fn client() -> Result<reqwest::Client, FeedError> {
+    reqwest::Client::builder()
         .user_agent(concat!("Gutenberg/", env!("CARGO_PKG_VERSION")))
         .timeout(TIMEOUT)
         .build()
-        .map_err(http_error)?;
-    let response = client
-        .get(url)
-        .header(reqwest::header::ACCEPT, ACCEPT)
-        .send()
-        .await
-        .map_err(http_error)?;
-    if !response.status().is_success() {
-        return Err(FeedError::Status(response.status()));
+        .map_err(http_error)
+}
+
+/// Downloads a feed document.
+pub async fn fetch(url: &str) -> Result<Vec<u8>, FeedError> {
+    match fetch_conditional(&client()?, url, None, None).await? {
+        Fetched::Body { bytes, .. } => Ok(bytes),
+        // Without validators a server has nothing to compare against.
+        Fetched::NotModified => Err(FeedError::Http("304 without a conditional request".into())),
     }
-    Ok(response.bytes().await.map_err(http_error)?.to_vec())
+}
+
+/// Fetches with `If-None-Match` / `If-Modified-Since` from the last 200.
+pub async fn fetch_conditional(
+    client: &reqwest::Client,
+    url: &str,
+    etag: Option<&str>,
+    last_modified: Option<&str>,
+) -> Result<Fetched, FeedError> {
+    use reqwest::header;
+
+    let mut request = client.get(url).header(header::ACCEPT, ACCEPT);
+    if let Some(etag) = etag {
+        request = request.header(header::IF_NONE_MATCH, etag);
+    }
+    if let Some(last_modified) = last_modified {
+        request = request.header(header::IF_MODIFIED_SINCE, last_modified);
+    }
+    let response = request.send().await.map_err(http_error)?;
+    let status = response.status();
+    if status == reqwest::StatusCode::NOT_MODIFIED {
+        return Ok(Fetched::NotModified);
+    }
+    let text_header = |name| {
+        response
+            .headers()
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_owned)
+    };
+    if !status.is_success() {
+        return Err(FeedError::Status {
+            status,
+            retry_after: text_header(header::RETRY_AFTER).and_then(|v| v.trim().parse().ok()),
+        });
+    }
+    let etag = text_header(header::ETAG);
+    let last_modified = text_header(header::LAST_MODIFIED);
+    let bytes = response.bytes().await.map_err(http_error)?.to_vec();
+    Ok(Fetched::Body {
+        bytes,
+        etag,
+        last_modified,
+    })
 }
 
 fn http_error(err: reqwest::Error) -> FeedError {
