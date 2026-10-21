@@ -32,7 +32,8 @@ fn main() -> std::process::ExitCode {
     if let Ok(store_path) = gutenberg_store::Store::default_path() {
         gutenberg_core::sync::spawn(store_path, config_path.clone(), &config);
     }
-    match gutenberg_ui::run(config, config_path) {
+    let store_path = gutenberg_store::Store::default_path().ok();
+    match gutenberg_ui::run(config, config_path, store_path) {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(err) => {
             eprintln!("gutenberg: {err}");

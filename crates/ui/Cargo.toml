@@ -9,3 +9,11 @@ gutenberg-core.workspace = true
 gutenberg-store.workspace = true
 gutenberg-theme.workspace = true
 iced.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+criterion.workspace = true
+
+[[bench]]
+name = "list_view"
+harness = false

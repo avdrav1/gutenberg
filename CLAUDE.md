@@ -28,7 +28,7 @@ Cargo workspace. One crate per concern; the UI never touches the network.
 
 ## Performance budgets
 
-Cold start to first paint under 200 ms. 10k articles scroll at 60 fps. Search under 50 ms at 100k articles. A story that breaks a budget isn't done; `cargo bench` has a benchmark for each.
+Cold start to first paint under 250 ms (Vulkan setup is ~170 ms of it; see S3.1). 10k articles scroll at 60 fps. Search under 50 ms at 100k articles. A story that breaks a budget isn't done; `cargo bench` has a benchmark for each.
 
 ## Omarchy facts
 

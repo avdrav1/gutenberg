@@ -4,7 +4,7 @@ Oct 17, 2026 · @Avniel Dravid
 
 ## Summary
 
-**Gutenberg** is a native Linux news reader for Omarchy, written in Rust. It pulls stories from RSS and Atom feeds, from MCP servers, and from keyword alerts, and shows them in one keyboard-driven window that takes its colors and font from the active Omarchy theme. It starts in under 200 ms, works offline, and keeps everything in one SQLite file.
+**Gutenberg** is a native Linux news reader for Omarchy, written in Rust. It pulls stories from RSS and Atom feeds, from MCP servers, and from keyword alerts, and shows them in one keyboard-driven window that takes its colors and font from the active Omarchy theme. It starts in under 250 ms, works offline, and keeps everything in one SQLite file.
 
 It is for Avniel first, then Omarchy users who want a reader that looks like the rest of their desktop and never phones home. Linux ships first. macOS and Windows follow once the Linux build is stable, since the Rust core and the UI toolkit are cross-platform.
 
@@ -17,7 +17,7 @@ Omarchy has no news reader that fits the desktop. The options are a browser tab 
 Goals, in priority order:
 
 1. **Belongs on the desktop.** Colors, font and spacing follow the Omarchy theme and change the moment the theme does. Keys follow Vim and Hyprland habits.
-2. **Fast.** Cold start under 200 ms, 10,000 articles scroll at 60 fps, a refresh of 100 feeds finishes in under 10 s on a home connection.
+2. **Fast.** Cold start under 250 ms, 10,000 articles scroll at 60 fps, a refresh of 100 feeds finishes in under 10 s on a home connection.
 3. **One inbox for three kinds of source.** Feeds, MCP tools and keyword alerts all land in the same list with the same keys.
 4. **Private and local.** No account, no telemetry, one SQLite file the user can copy.
 
@@ -64,7 +64,7 @@ Non-goals for 1.0: AI summaries and ranking (Cronkite covers that; a later MCP b
 
 ### Performance and reliability
 
-- Cold start under 200 ms to first paint with 10k articles in the store.
+- Cold start under 250 ms to first paint with 10k articles in the store. (Was 200 ms; raised in S3.1 when 60 fps at 4K needed the GPU, whose setup is ~170 ms.)
 - Refresh runs in the background on a tokio runtime; the UI never blocks.
 - Storage: one SQLite file at `$XDG_DATA_HOME/gutenberg/gutenberg.db`, WAL mode, schema migrations on launch.
 - Memory under 150 MB with 10k articles loaded and images cached to disk, not RAM.
@@ -82,7 +82,7 @@ A Cargo workspace of six crates. Sources implement one trait (`fetch() -> Vec<Ar
 
 | Choice | Pick | Why, and the alternative |
 | --- | --- | --- |
-| UI toolkit | iced 0.14 | Elm-style, rendered on the CPU with tiny-skia (wgpu cost ~170 ms of cold start, see S1.2), runs on Wayland through winit; System76 builds the COSMIC desktop on it, so Wayland bugs get fixed. Alternative: gpui (Zed), faster text and lists but a moving API. Decide after the E1 spike |
+| UI toolkit | iced 0.14 | Elm-style, rendered with wgpu on Vulkan (tiny-skia as the no-GPU fallback; it managed ~10 fps scrolling at 4K, see S3.1), runs on Wayland through winit; System76 builds the COSMIC desktop on it, so Wayland bugs get fixed. Alternative: gpui (Zed), faster text and lists but a moving API. Decide after the E1 spike |
 | Async | tokio | Sync engine, HTTP, MCP transports all run on it; the UI thread stays free |
 | HTTP | reqwest with rustls | Conditional GET, gzip, per-host semaphores |
 | Feed parsing | feed-rs | Handles RSS 0.9 through 2.0, Atom and JSON Feed in one type |
@@ -117,7 +117,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | ID | Story | Acceptance |
 | --- | --- | --- |
 | S1.1 | Cargo workspace with `core`, `store`, `sources`, `theme`, `ui`, `cli` crates | `cargo build` and `cargo test` pass in CI on Arch and Ubuntu |
-| S1.2 | iced window opens under Hyprland with three empty panes and `q` quits | Window has no CSD; Hyprland tiles it; cold start under 100 ms |
+| S1.2 | iced window opens under Hyprland with three empty panes and `q` quits | Window has no CSD; Hyprland tiles it; cold start under 100 ms (met on tiny-skia; superseded by the 250 ms budget when S3.1 moved to wgpu) |
 | S1.3 | SQLite store with migrations and `Article`, `Source`, `Folder` tables | Migration runs on a fresh and an existing file; a test inserts 10k rows and lists them in under 20 ms |
 | S1.4 | Config file loads with defaults and hot-reloads on change | Edit `config.toml`; the change applies within 1 s with no restart |
 

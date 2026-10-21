@@ -26,6 +26,10 @@ pub struct Tokens {
     /// Article pane.
     pub lighter_background: Rgb,
     pub foreground: Rgb,
+    /// Read articles and secondary text.
+    pub muted: Rgb,
+    /// The selected row.
+    pub selection: Rgb,
     /// Lines between panes.
     pub border: Rgb,
 }
@@ -37,6 +41,8 @@ impl Tokens {
             background: Rgb::hex(0x1a1b26),
             lighter_background: Rgb::hex(0x24283b),
             foreground: Rgb::hex(0xa9b1d6),
+            muted: Rgb::hex(0x565f89),
+            selection: Rgb::hex(0x283457),
             border: Rgb::hex(0x414868),
         }
     }
