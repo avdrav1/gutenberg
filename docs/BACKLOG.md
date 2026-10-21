@@ -21,7 +21,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | S2.2 | Autodiscover a feed from a site URL | Pasting `https://example.com` finds `<link rel="alternate">`; falls back to `/feed`, `/rss`, `/atom.xml` | done |
 | S2.3 | Background refresh with conditional GET and per-host rate limits | A second refresh of an unchanged feed sends `If-None-Match` and gets 304; 100 feeds finish in under 10 s | done |
 | S2.4 | Folders, drag to reorder, unread counts per source and folder (after S3.1; folders from `--add --folder`, sources moved by drag) | Counts update as items are read; order persists | done |
-| S2.5 | OPML import and export | Round-trips the user's Feedly export without losing a feed or folder | doing |
+| S2.5 | OPML import and export | Round-trips the user's Feedly export without losing a feed or folder | review |
 | S2.6 | Favicons cached to disk | Shown in the source list; no network call after the first fetch | todo |
 
 ### E3 Reading
@@ -72,7 +72,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | S7.2 | GitHub release workflow and an install page on GitHub Pages with a `curl` one-liner | `curl -fsSL https://avdrav1.github.io/gutenberg/install.sh \| sh` installs a checksum-verified, attested binary; `gutenberg --version` prints the release | done |
 | S7.3 | Single-instance: a second launch focuses the first | Unix socket; `gutenberg --reload-theme` and `--refresh` work from scripts | todo |
 | S7.4 | Image cache on disk with size cap | Under 150 MB RAM with 10k articles | todo |
-| S7.5 | Crash-free week: panic handler writes a report; fuzz the parsers | `cargo fuzz` runs on feed and HTML inputs in CI | todo |
+| S7.5 | Crash-free week: panic handler writes a report; fuzz the parsers | `cargo fuzz` runs on feed, OPML and HTML inputs in CI | todo |
 
 ### E8 Later
 
