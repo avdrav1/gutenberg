@@ -1,4 +1,5 @@
 mod add;
+mod opml;
 mod refresh;
 
 use gutenberg_core::config::Config;
@@ -19,6 +20,14 @@ fn main() -> std::process::ExitCode {
                 _ => usage(),
             };
         }
+        Some("--import") => {
+            let rest: Vec<String> = std::env::args().skip(2).collect();
+            return match rest.as_slice() {
+                [path] => opml::import(path),
+                _ => usage(),
+            };
+        }
+        Some("--export") if std::env::args().len() == 2 => return opml::export(),
         Some("--refresh") => return refresh::run(),
         Some(_) => return usage(),
         None => {}
@@ -47,6 +56,8 @@ fn main() -> std::process::ExitCode {
 }
 
 fn usage() -> std::process::ExitCode {
-    eprintln!("usage: gutenberg [--version | --add <url> [--folder <name>] | --refresh]");
+    eprintln!(
+        "usage: gutenberg [--version | --add <url> [--folder <name>] | --import <file.opml> | --export | --refresh]"
+    );
     std::process::ExitCode::from(2)
 }
