@@ -372,7 +372,7 @@ impl Store {
     }
 
     /// Whether a feed has never been fetched: added since the last refresh
-    /// (the Add sources screen, `--add`, `--import`).
+    /// (the Add sources screen, `--add`).
     pub fn has_unchecked_feeds(&self) -> Result<bool> {
         Ok(self.conn.query_row(
             "SELECT EXISTS(SELECT 1 FROM source

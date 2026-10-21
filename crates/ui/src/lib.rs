@@ -1,15 +1,17 @@
 //! See CLAUDE.md for what this crate owns.
 
 mod list;
+mod onboarding;
 mod sidebar;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
+use gutenberg_core::catalog;
 use gutenberg_core::config::{self, Config};
 use gutenberg_core::sync::unix_now;
-use gutenberg_store::{ArticleRow, Filter, Folder, Source, Store};
+use gutenberg_store::{ArticleRow, Filter, Folder, Source, SourceKind, Store};
 use gutenberg_theme::{Rgb, Tokens};
 use iced::futures::Stream;
 use iced::keyboard;
@@ -79,6 +81,8 @@ struct App {
     opened: Option<Opened>,
     pending_g: bool,
     bench: Option<Bench>,
+    /// The Add sources screen, shown instead of the panes while open.
+    onboarding: Option<onboarding::Onboarding>,
 }
 
 /// A press on a sources-pane row and where the pointer is now.
@@ -116,6 +120,7 @@ enum Message {
     Over(Entry),
     /// Mouse up anywhere: a click if it never left the row, else a drop.
     Release,
+    Onboarding(onboarding::Action),
 }
 
 impl App {
@@ -163,9 +168,62 @@ impl App {
             opened: None,
             pending_g: false,
             bench,
+            onboarding: None,
         };
         app.reload();
+        // First run: nothing to read yet, so start by picking sources.
+        if app.store.is_ok() && app.sources.is_empty() && app.bench.is_none() {
+            app.open_onboarding();
+        }
         app
+    }
+
+    /// Shows Add sources. With an empty store the starter feeds are checked.
+    fn open_onboarding(&mut self) {
+        if self.store.is_err() {
+            return;
+        }
+        let known = self
+            .sources
+            .iter()
+            .filter(|s| s.kind == SourceKind::Feed)
+            .filter_map(|s| s.url.clone())
+            .collect();
+        self.onboarding = Some(onboarding::Onboarding::new(
+            catalog::builtin(),
+            known,
+            self.sources.is_empty(),
+        ));
+    }
+
+    fn update_onboarding(&mut self, action: onboarding::Action) -> Task<Message> {
+        use onboarding::Action as A;
+        let Some(state) = &mut self.onboarding else {
+            return Task::none();
+        };
+        match action {
+            A::Quit => return iced::exit(),
+            A::Close => self.onboarding = None,
+            A::Add => {
+                let picks = state.picks();
+                if picks.is_empty() {
+                    self.onboarding = None;
+                    return Task::none();
+                }
+                let Ok(store) = &self.store else {
+                    return Task::none();
+                };
+                match catalog::subscribe(store, catalog::builtin(), &picks) {
+                    Ok(_) => {
+                        self.onboarding = None;
+                        self.reload();
+                    }
+                    Err(e) => eprintln!("gutenberg: adding feeds: {e}"),
+                }
+            }
+            other => state.apply(catalog::builtin(), other),
+        }
+        Task::none()
     }
 
     /// Re-reads articles and sources, keeping the selection on the same
@@ -207,6 +265,8 @@ impl App {
         }
         match message {
             Message::Key(Action::Quit) => return iced::exit(),
+            Message::Key(Action::AddSources) => self.open_onboarding(),
+            Message::Onboarding(action) => return self.update_onboarding(action),
             Message::Key(Action::PendingG) => self.pending_g = true,
             Message::Key(Action::Down) => self.select(self.selected.saturating_add(1)),
             Message::Key(Action::Up) => self.select(self.selected.saturating_sub(1)),
@@ -354,8 +414,12 @@ impl App {
 
     fn subscription(&self) -> Subscription<Message> {
         let keys = keyboard::listen()
-            .with(self.pending_g)
-            .filter_map(|(pending_g, event)| match event {
+            .with((self.pending_g, self.onboarding.is_some()))
+            .filter_map(|((pending_g, onboarding), event)| match event {
+                // List keys must not fire under the Add sources screen.
+                keyboard::Event::KeyPressed { key, modifiers, .. } if onboarding => {
+                    onboarding::action_for(&key, modifiers).map(Message::Onboarding)
+                }
                 keyboard::Event::KeyPressed { key, modifiers, .. } => {
                     list::action_for(&key, modifiers, pending_g).map(Message::Key)
                 }
@@ -385,6 +449,9 @@ impl App {
 
     fn view(&self) -> Element<'_, Message> {
         let t = &self.tokens;
+        if let Some(state) = &self.onboarding {
+            return onboarding::view(state, catalog::builtin(), t);
+        }
         let layout = self.config.layout;
         let panes: [(u16, Element<'_, Message>, Rgb); 3] = [
             (layout.sources, self.sidebar_view(), t.background),
@@ -503,10 +570,12 @@ impl App {
             return note(format!("Can't open the article store: {e}"), t.muted);
         }
         if self.rows.is_empty() {
-            return note(
-                "No articles yet. Add a feed with gutenberg --add <url>".to_owned(),
-                t.muted,
-            );
+            let message = if self.sources.is_empty() {
+                "No feeds yet. Press a to pick some, or run gutenberg --add <url>"
+            } else {
+                "Fetching your feeds…"
+            };
+            return note(message.to_owned(), t.muted);
         }
         let now = unix_now();
         let rows = list::visible(self.top, self.height, self.rows.len())
@@ -929,5 +998,49 @@ mod tests {
         let _ = app.update(Message::Release);
         let stored = app.store.as_ref().unwrap().sources().unwrap();
         assert_eq!(stored.iter().find(|s| s.id == a).unwrap().folder_id, None);
+    }
+
+    #[test]
+    fn a_fresh_store_opens_on_add_sources_and_enter_adds_the_starters() {
+        let mut app = App::with_store(
+            Config::default(),
+            None,
+            Ok(Store::open_in_memory().unwrap()),
+        );
+        assert_eq!(app.onboarding.as_ref().unwrap().picks().len(), 12);
+        let _ = app.update(Message::Onboarding(onboarding::Action::Add));
+        assert!(app.onboarding.is_none());
+        let store = app.store.as_ref().unwrap();
+        assert_eq!(store.sources().unwrap().len(), 12);
+        let folders: Vec<String> = store
+            .folders()
+            .unwrap()
+            .into_iter()
+            .map(|f| f.name)
+            .collect();
+        assert_eq!(
+            folders,
+            [
+                "World",
+                "U.S.",
+                "Investigations",
+                "Science",
+                "Climate",
+                "Technology",
+                "Linux",
+                "Programming"
+            ]
+        );
+        assert_eq!(app.sources.len(), 12);
+    }
+
+    #[test]
+    fn a_press_on_a_opens_add_sources_with_nothing_checked() {
+        let (mut app, ..) = app_with_folders();
+        assert!(app.onboarding.is_none());
+        let _ = app.update(Message::Key(Action::AddSources));
+        assert!(app.onboarding.as_ref().unwrap().picks().is_empty());
+        let _ = app.update(Message::Onboarding(onboarding::Action::Close));
+        assert!(app.onboarding.is_none());
     }
 }
