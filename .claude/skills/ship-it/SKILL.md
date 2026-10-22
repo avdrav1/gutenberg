@@ -24,7 +24,7 @@ Take what's on `main` plus any PRs the user names from "reviewed" to "installed 
 
 1. The `release` GitHub Actions workflow builds on the tag: `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`, stripped, with `cargo auditable`. Watch it with `gh run watch`. If it fails, read the log, fix on a branch, delete the tag, and start over at Version.
 2. The workflow attaches `gutenberg-<target>.tar.gz` for each target and a `SHA256SUMS` to the GitHub release, with notes from the changelog, and attests each tarball's build provenance. Check them with `gh release view v<version>` and `gh attestation verify <tarball> -R avdrav1/gutenberg`.
-3. The same run deploys `site/` (the install page and `install.sh`) to GitHub Pages, served at https://gutenbergapp.com/ (GoDaddy DNS → GitHub Pages; the old avdrav1.github.io/gutenberg address redirects there). Check that the page and `install.sh` return 200 over HTTPS, and that the served `install.sh` is byte-for-byte `site/install.sh` (`curl -fsSL https://gutenbergapp.com/install.sh | diff - site/install.sh`).
+3. The same run deploys `site/` (the install page and `install.sh`) twice: the `cloudflare` job to the Cloudflare Pages project `gutenberg`, served at https://gutenbergapp.com/, and the `pages` job to GitHub Pages at https://avdrav1.github.io/gutenberg/, so one-liners from 0.1.0–0.3.0 keep working. Check that both pages and both `install.sh` return 200, and that the served `install.sh` is byte-for-byte `site/install.sh` (`curl -fsSL https://gutenbergapp.com/install.sh | diff - site/install.sh`).
 
 ## Verify
 
