@@ -22,7 +22,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | S2.3 | Background refresh with conditional GET and per-host rate limits | A second refresh of an unchanged feed sends `If-None-Match` and gets 304; 100 feeds finish in under 10 s | done |
 | S2.4 | Folders, drag to reorder, unread counts per source and folder (after S3.1; folders from `--add --folder`, sources moved by drag) | Counts update as items are read; order persists | done |
 | S2.5 | OPML import and export | Round-trips the user's Feedly export without losing a feed or folder | done |
-| S2.6 | Favicons cached to disk | Shown in the source list; no network call after the first fetch | todo |
+| S2.6 | Favicons cached to disk | Shown in the source list; no network call after the first fetch | doing |
 | S2.7 | Onboarding: an Add sources screen with a verified catalog of feeds, keyword presets and MCP servers | A fresh install opens on Add sources with 12 starter feeds checked; Enter adds them and articles appear within 10 s; keyword and MCP entries show greyed out | done |
 
 ### E3 Reading
