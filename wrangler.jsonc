@@ -4,5 +4,6 @@
   "name": "gutenberg",
   "compatibility_date": "2026-10-01",
   "assets": { "directory": "./site" },
-  "routes": [{ "pattern": "gutenbergapp.com", "custom_domain": true }]
+  "routes": [{ "pattern": "gutenbergapp.com", "custom_domain": true }],
+  "workers_dev": true
 }
