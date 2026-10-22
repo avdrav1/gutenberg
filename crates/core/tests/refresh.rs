@@ -134,7 +134,7 @@ fn a_second_refresh_of_an_unchanged_feed_gets_304() {
     let rt = runtime();
 
     let first = rt
-        .block_on(refresh(&mut store, 1_000, &Limits::default()))
+        .block_on(refresh(&mut store, 1_000, &Limits::default(), None))
         .unwrap();
     assert_eq!((first.updated, first.new_articles), (1, 10), "{first}");
     assert_eq!(
@@ -143,7 +143,7 @@ fn a_second_refresh_of_an_unchanged_feed_gets_304() {
     );
 
     let second = rt
-        .block_on(refresh(&mut store, 2_000, &Limits::default()))
+        .block_on(refresh(&mut store, 2_000, &Limits::default(), None))
         .unwrap();
     assert_eq!((second.unchanged, second.new_articles), (1, 0), "{second}");
     assert_eq!(
@@ -172,7 +172,7 @@ fn a_hundred_feeds_finish_in_under_ten_seconds() {
 
     let start = Instant::now();
     let summary = runtime()
-        .block_on(refresh(&mut store, 1_000, &Limits::default()))
+        .block_on(refresh(&mut store, 1_000, &Limits::default(), None))
         .unwrap();
     let took = start.elapsed();
 
@@ -198,7 +198,7 @@ fn retry_after_backs_a_feed_off_until_then() {
     let rt = runtime();
 
     let summary = rt
-        .block_on(refresh(&mut store, 1_000, &Limits::default()))
+        .block_on(refresh(&mut store, 1_000, &Limits::default(), None))
         .unwrap();
     assert_eq!(summary.failed.len(), 1);
     let state = store.fetch_state(id).unwrap();
@@ -207,13 +207,13 @@ fn retry_after_backs_a_feed_off_until_then() {
 
     // Not due before then: nothing is fetched.
     let skipped = rt
-        .block_on(refresh(&mut store, 1_100, &Limits::default()))
+        .block_on(refresh(&mut store, 1_100, &Limits::default(), None))
         .unwrap();
     assert_eq!(skipped.feeds, 0);
 
     // A 500 with no Retry-After doubles from 5 minutes: second failure, 10.
     *reply.lock().unwrap() = Reply::Status("500 Internal Server Error", None);
-    rt.block_on(refresh(&mut store, 1_200, &Limits::default()))
+    rt.block_on(refresh(&mut store, 1_200, &Limits::default(), None))
         .unwrap();
     let state = store.fetch_state(id).unwrap();
     assert_eq!((state.failures, state.retry_at), (2, Some(1_200 + 600)));
@@ -224,7 +224,7 @@ fn retry_after_backs_a_feed_off_until_then() {
         .unwrap()
         .clone();
     let ok = rt
-        .block_on(refresh(&mut store, 1_800, &Limits::default()))
+        .block_on(refresh(&mut store, 1_800, &Limits::default(), None))
         .unwrap();
     assert_eq!(ok.new_articles, 10);
     let state = store.fetch_state(id).unwrap();
@@ -246,7 +246,7 @@ fn a_feed_that_stops_parsing_records_one_line_and_backs_off() {
     let id = add_feed(&store, &format!("{base}/feed"));
 
     runtime()
-        .block_on(refresh(&mut store, 1_000, &Limits::default()))
+        .block_on(refresh(&mut store, 1_000, &Limits::default(), None))
         .unwrap();
     let state = store.fetch_state(id).unwrap();
     let error = state.error.unwrap();
