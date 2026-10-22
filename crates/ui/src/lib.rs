@@ -612,7 +612,8 @@ impl App {
         };
         let line = Row::new()
             .push(icon)
-            .push(label)
+            // A long title stops at the count instead of running under it.
+            .push(container(label).width(Length::Fill).clip(true))
             .push(count)
             .spacing(8)
             .align_y(Alignment::Center);
