@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.1 — 2026-10-22
+
 - The install page now lives at https://gutenbergapp.com: `curl -fsSL https://gutenbergapp.com/install.sh | sh`. The old address keeps working.
 
 ## 0.3.0 — 2026-10-22
