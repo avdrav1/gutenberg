@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 feed-rs.workspace = true
+quick-xml.workspace = true
 reqwest.workspace = true
 html-escape.workspace = true
 thiserror.workspace = true
