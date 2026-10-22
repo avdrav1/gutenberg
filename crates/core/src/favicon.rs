@@ -6,7 +6,7 @@ use std::collections::{HashMap, HashSet};
 use std::io;
 use std::path::{Path, PathBuf};
 
-use gutenberg_sources::favicon::Format;
+pub use gutenberg_sources::favicon::Format;
 
 /// The extension of a "this site has no icon" file.
 const MISS: &str = "none";
