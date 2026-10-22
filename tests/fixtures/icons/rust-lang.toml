@@ -1,0 +1,4 @@
+# SOURCE https://www.rust-lang.org/static/images/favicon.svg fetched 2026-10-22
+url = "https://www.rust-lang.org/static/images/favicon.svg"
+fetched = 2026-10-22
+covers = "SVG favicon with an XML prolog and doctype before <svg>"

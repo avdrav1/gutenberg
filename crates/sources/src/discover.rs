@@ -17,6 +17,37 @@ pub const FALLBACK_PATHS: &[&str] = &["/feed", "/rss", "/atom.xml"];
 
 /// Feed URLs a page advertises, absolute, in page order, without repeats.
 pub fn feed_links(html: &str, page_url: &str) -> Vec<String> {
+    let mut found = Vec::new();
+    for link in links(html, page_url) {
+        let is_feed = link.kind.is_some_and(|t| {
+            let t = t
+                .split(';')
+                .next()
+                .unwrap_or("")
+                .trim()
+                .to_ascii_lowercase();
+            FEED_TYPES.contains(&t.as_str())
+        });
+        if is_feed && has_token(&link.rel, "alternate") {
+            let url = link.href.to_string();
+            if !found.contains(&url) {
+                found.push(url);
+            }
+        }
+    }
+    found
+}
+
+/// A `<link>` whose `href` resolved against the page and its `<base>`.
+pub(crate) struct Link {
+    pub rel: String,
+    /// The `type` attribute.
+    pub kind: Option<String>,
+    pub href: Url,
+}
+
+/// Every `<link href>` on a page, in page order.
+pub(crate) fn links(html: &str, page_url: &str) -> Vec<Link> {
     let Ok(page) = Url::parse(page_url) else {
         return Vec::new();
     };
@@ -25,39 +56,29 @@ pub fn feed_links(html: &str, page_url: &str) -> Vec<String> {
     for tag in tags(html) {
         match tag.name.as_str() {
             "base" => {
-                if let Some(href) = tag.attr("href") {
-                    if let Ok(url) = page.join(&href) {
-                        base = url;
-                    }
+                if let Some(url) = tag.attr("href").and_then(|href| page.join(&href).ok()) {
+                    base = url;
                 }
             }
             "link" => {
-                let alternate = tag.attr("rel").is_some_and(|rel| {
-                    rel.split_ascii_whitespace()
-                        .any(|t| t.eq_ignore_ascii_case("alternate"))
-                });
-                let is_feed = tag.attr("type").is_some_and(|t| {
-                    let t = t
-                        .split(';')
-                        .next()
-                        .unwrap_or("")
-                        .trim()
-                        .to_ascii_lowercase();
-                    FEED_TYPES.contains(&t.as_str())
-                });
-                if let (true, true, Some(href)) = (alternate, is_feed, tag.attr("href")) {
-                    if let Ok(url) = base.join(href.trim()) {
-                        let url = url.to_string();
-                        if !links.contains(&url) {
-                            links.push(url);
-                        }
-                    }
+                if let Some(href) = tag.attr("href").and_then(|h| base.join(h.trim()).ok()) {
+                    links.push(Link {
+                        rel: tag.attr("rel").unwrap_or_default(),
+                        kind: tag.attr("type"),
+                        href,
+                    });
                 }
             }
             _ => {}
         }
     }
     links
+}
+
+/// Whether a space-separated `rel` holds `token`, ignoring case.
+pub(crate) fn has_token(rel: &str, token: &str) -> bool {
+    rel.split_ascii_whitespace()
+        .any(|t| t.eq_ignore_ascii_case(token))
 }
 
 /// `/feed`, `/rss`, `/atom.xml` on the root of the page's site.
