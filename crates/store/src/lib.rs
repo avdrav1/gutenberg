@@ -371,6 +371,17 @@ impl Store {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
+    /// Whether a feed has never been fetched: added since the last refresh
+    /// (the Add sources screen, `--add`).
+    pub fn has_unchecked_feeds(&self) -> Result<bool> {
+        Ok(self.conn.query_row(
+            "SELECT EXISTS(SELECT 1 FROM source
+                           WHERE kind = 'feed' AND url IS NOT NULL AND checked_at IS NULL)",
+            [],
+            |row| row.get(0),
+        )?)
+    }
+
     pub fn fetch_state(&self, source_id: i64) -> Result<FetchState> {
         Ok(self.conn.query_row(
             "SELECT etag, last_modified, checked_at, error, failures, retry_at

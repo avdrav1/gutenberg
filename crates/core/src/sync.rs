@@ -315,6 +315,10 @@ fn run(store_path: &std::path::Path, minutes: &AtomicU32) -> Result<(), String> 
             if every > 0 && since.elapsed().as_secs() >= every {
                 break;
             }
+            // Feeds added since the last refresh fetch now.
+            if every > 0 && store.has_unchecked_feeds().map_err(|e| e.to_string())? {
+                break;
+            }
         }
     }
 }

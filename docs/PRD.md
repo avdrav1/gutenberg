@@ -131,6 +131,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | S2.4 | Folders, drag to reorder, unread counts per source and folder | Counts update as items are read; order persists |
 | S2.5 | OPML import and export | Round-trips the user's Feedly export without losing a feed or folder |
 | S2.6 | Favicons cached to disk | Shown in the source list; no network call after the first fetch |
+| S2.7 | Onboarding: an Add sources screen with a verified catalog of feeds, keyword presets and MCP servers | A fresh install opens on Add sources with 12 starter feeds checked; Enter adds them and articles appear within 10 s; keyword and MCP entries show greyed out |
 
 ### E3 Reading
 
@@ -158,7 +159,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 
 | ID | Story | Acceptance |
 | --- | --- | --- |
-| S5.1 | Add a keyword source; query Google News RSS search | "Cory Booker" returns stories as a source |
+| S5.1 | Add a keyword source; query Google News RSS search | "Cory Booker" returns stories as a source; the catalog's keyword presets become addable on the Add sources screen |
 | S5.2 | Add Bing News RSS and GDELT as providers; merge and dedupe | The same story from three providers appears once |
 | S5.3 | Query syntax: quotes, `-exclude`, `site:`, language and region | Passed through to each provider that supports it |
 | S5.4 | Group near-duplicate headlines into one story with a source count | Jaccard over title shingles; "5 sources" badge |
@@ -168,7 +169,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | ID | Story | Acceptance |
 | --- | --- | --- |
 | S6.1 | Add an MCP server by command (stdio) or URL (streamable HTTP) with `rmcp` | Lists the server's tools; connection errors are one line in the source pane |
-| S6.2 | Pick a tool and an argument template; call it on refresh | A Cronkite or filesystem server's results show as articles |
+| S6.2 | Pick a tool and an argument template; call it on refresh | A Cronkite or filesystem server's results show as articles; the catalog's MCP servers become addable on the Add sources screen |
 | S6.3 | Map tool results to articles: JSON array, feed document, Markdown with links, or plain text | Fixtures for each shape; unknown shapes become one article |
 | S6.4 | Secrets for HTTP servers from the system keyring or an env var | No token stored in `config.toml` |
 
