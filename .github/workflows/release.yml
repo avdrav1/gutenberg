@@ -1,7 +1,8 @@
 name: Release
 
 # A v* tag builds both targets, publishes a GitHub release with
-# SHA256SUMS and build attestations, and deploys site/ to GitHub Pages.
+# SHA256SUMS and build attestations, and deploys site/ to the Cloudflare
+# Worker behind gutenbergapp.com and to GitHub Pages (the old avdrav1.github.io address).
 # A pull request that touches any of this runs the same build and an
 # install.sh test against the fresh tarballs, and publishes nothing.
 
@@ -120,7 +121,7 @@ jobs:
             echo "::error::CHANGELOG.md has no section for $version"
             exit 1
           fi
-          printf '\nInstall: `curl -fsSL https://avdrav1.github.io/gutenberg/install.sh | sh`\n' >> notes.md
+          printf '\nInstall: `curl -fsSL https://gutenbergapp.com/install.sh | sh`\n' >> notes.md
           cat notes.md
       - name: Publish
         env:
@@ -147,3 +148,18 @@ jobs:
           path: site
       - id: deploy
         uses: actions/deploy-pages@v4
+
+  # gutenbergapp.com is the Worker in wrangler.jsonc. Secrets: CLOUDFLARE_API_TOKEN
+  # (the "Edit Cloudflare Workers" template) and CLOUDFLARE_ACCOUNT_ID.
+  cloudflare:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: release
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
+          command: deploy

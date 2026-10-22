@@ -24,11 +24,11 @@ Take what's on `main` plus any PRs the user names from "reviewed" to "installed 
 
 1. The `release` GitHub Actions workflow builds on the tag: `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`, stripped, with `cargo auditable`. Watch it with `gh run watch`. If it fails, read the log, fix on a branch, delete the tag, and start over at Version.
 2. The workflow attaches `gutenberg-<target>.tar.gz` for each target and a `SHA256SUMS` to the GitHub release, with notes from the changelog, and attests each tarball's build provenance. Check them with `gh release view v<version>` and `gh attestation verify <tarball> -R avdrav1/gutenberg`.
-3. The same run deploys `site/` (the install page and `install.sh`) to GitHub Pages at https://avdrav1.github.io/gutenberg/. Check that the page and `install.sh` return 200.
+3. The same run deploys `site/` (the install page and `install.sh`) twice: the `cloudflare` job runs `wrangler deploy` for the `gutenberg` Worker in `wrangler.jsonc`, served at https://gutenbergapp.com/, and the `pages` job deploys to GitHub Pages at https://avdrav1.github.io/gutenberg/, so one-liners from 0.1.0–0.3.0 keep working. Check that both pages and both `install.sh` return 200, and that the served `install.sh` is byte-for-byte `site/install.sh` (`curl -fsSL https://gutenbergapp.com/install.sh | diff - site/install.sh`).
 
 ## Verify
 
-1. On an Omarchy machine: `curl -fsSL https://avdrav1.github.io/gutenberg/install.sh | sh`, then `~/.local/bin/gutenberg --version` prints the new version.
+1. On an Omarchy machine: `curl -fsSL https://gutenbergapp.com/install.sh | sh`, then `~/.local/bin/gutenberg --version` prints the new version.
 2. Launch under Hyprland; the window opens. Once theme sync ships (E4), run `omarchy theme set <another>` and confirm the app follows.
 3. Once S7.1 ships, `gutenberg --unread` prints a number.
 

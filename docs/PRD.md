@@ -103,7 +103,7 @@ Omarchy keeps the palette in one file and tells apps when it changes. The app re
 | Change signal | `omarchy-theme-set` runs `omarchy-hook theme-set <name>`, which runs `~/.config/omarchy/hooks/theme-set` and every script in `theme-set.d/` | Install a drop-in `theme-set.d/gutenberg` that sends `gutenberg --reload-theme` (a Unix socket message). Also watch the theme directory with inotify as a fallback, since the hook may not be installed |
 | Font | fontconfig is the canonical source; `omarchy-font-set` writes a `monospace` rule to `~/.config/fontconfig/fonts.conf` and runs the `font-set` hook | Resolve with `fc-match monospace` at launch and on the `font-set` hook. Default is CaskaydiaMono Nerd Font, so Nerd Font glyphs are safe for icons |
 | Window chrome | Hyprland draws borders; `omarchy-shell` uses `shell.toml` for its own surfaces | No client-side decorations. Use the theme's border radius and the shell's spacing scale so the app matches Walker and the notifications |
-| Install | A page on GitHub Pages with `curl -fsSL https://avdrav1.github.io/gutenberg/install.sh \| sh`; binaries from GitHub Releases | `install.sh` picks the x86_64 or aarch64 tarball, checks it against `SHA256SUMS`, installs to `~/.local/bin`. CI attaches a build attestation (`gh attestation verify`). A `.desktop` file so Walker lists it comes in S7.1. No AUR package |
+| Install | A page at gutenbergapp.com (a Cloudflare Worker serving `site/`) with `curl -fsSL https://gutenbergapp.com/install.sh \| sh`; binaries from GitHub Releases | `install.sh` picks the x86_64 or aarch64 tarball, checks it against `SHA256SUMS`, installs to `~/.local/bin`. CI attaches a build attestation (`gh attestation verify`). A `.desktop` file so Walker lists it comes in S7.1. No AUR package |
 | Keybind | Users bind apps in `~/.config/hypr/bindings.conf` | Document `bindd = SUPER, N, News, exec, gutenberg` and offer to add it on first run |
 
 Fact check before building: the theme path moved between Omarchy 2 and 3. Read `bin/omarchy-theme-set` in the installed version and check both paths at runtime.
@@ -178,7 +178,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | ID | Story | Acceptance |
 | --- | --- | --- |
 | S7.1 | `.desktop` file, icon, Walker entry, `gutenberg --unread` for Waybar | Appears in Walker; Waybar module shows the count |
-| S7.2 | GitHub release workflow and an install page on GitHub Pages with a `curl` one-liner | `curl -fsSL https://avdrav1.github.io/gutenberg/install.sh \| sh` installs a checksum-verified, attested binary; `gutenberg --version` prints the release |
+| S7.2 | GitHub release workflow and an install page on GitHub Pages with a `curl` one-liner | `curl -fsSL https://gutenbergapp.com/install.sh \| sh` installs a checksum-verified, attested binary; `gutenberg --version` prints the release |
 | S7.3 | Single-instance: a second launch focuses the first | Unix socket; `gutenberg --reload-theme` and `--refresh` work from scripts |
 | S7.4 | Image cache on disk with size cap | Under 150 MB RAM with 10k articles |
 | S7.5 | Crash-free week: panic handler writes a report; fuzz the parsers | `cargo fuzz` runs on feed and HTML inputs in CI |

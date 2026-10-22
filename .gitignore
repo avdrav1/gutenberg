@@ -2,3 +2,4 @@ target/
 .github/PR_DRAFT.md
 docs/screenshots/
 .DS_Store
+.wrangler/

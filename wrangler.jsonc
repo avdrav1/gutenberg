@@ -1,0 +1,8 @@
+// The install page at gutenbergapp.com: a Worker that serves site/ as static
+// assets. The release workflow deploys it on each v* tag (`wrangler deploy`).
+{
+  "name": "gutenberg",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./site" },
+  "routes": [{ "pattern": "gutenbergapp.com", "custom_domain": true }]
+}
