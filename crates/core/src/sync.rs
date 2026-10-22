@@ -11,11 +11,13 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use futures::stream::{FuturesUnordered, StreamExt};
-use gutenberg_sources::feed::{self, Feed, Fetched};
+use gutenberg_sources::favicon::{self, Format};
+use gutenberg_sources::feed::{self, Feed, FeedError, Fetched};
 use gutenberg_store::{DueFeed, NewArticle, Store, Validators};
 use tokio::sync::Semaphore;
 
 use crate::config::{self, Config};
+use crate::favicon::Icons;
 
 /// How hard a refresh may hit the network.
 #[derive(Debug, Clone)]
@@ -81,12 +83,19 @@ pub fn backoff(failures: i64, retry_after: Option<u64>) -> i64 {
 
 /// Refreshes every feed due at `now`. Store errors stop the refresh;
 /// a feed's own failure is recorded on it and the refresh goes on.
+///
+/// With `icons`, a feed with nothing in the cache is fetched in full once,
+/// for its site link, and the site's icon is saved before the feed's
+/// articles are, so a reader of the store finds it. After that the site
+/// isn't asked again.
 pub async fn refresh(
     store: &mut Store,
     now: i64,
     limits: &Limits,
+    icons: Option<&Icons>,
 ) -> Result<Summary, gutenberg_store::Error> {
     let due = store.feeds_due(now)?;
+    let settled = icons.map(Icons::settled).unwrap_or_default();
     let mut summary = Summary {
         feeds: due.len(),
         ..Summary::default()
@@ -107,8 +116,15 @@ pub async fn refresh(
         .into_iter()
         .map(|due| {
             let (client, hosts) = (&client, &hosts);
+            let icons = icons.filter(|_| !settled.contains(&Icons::key(&due.url)));
             async move {
-                let outcome = fetch_one(client, hosts, &due, now).await;
+                let outcome = fetch_one(client, hosts, &due, now, icons.is_some()).await;
+                if let (Some(icons), Outcome::Fetched { site_url, .. }) = (icons, &outcome) {
+                    let page = site_url.clone().or_else(|| site_root(&due.url));
+                    if let Some(page) = page {
+                        save_icon(icons, &due.url, fetch_icon(client, hosts, &page).await);
+                    }
+                }
                 (due, outcome)
             }
         })
@@ -123,6 +139,7 @@ pub async fn refresh(
             Outcome::Fetched {
                 articles,
                 validators,
+                ..
             } => {
                 let new = store.record_fetched(due.source_id, &articles, &validators, now)?;
                 if new > 0 {
@@ -164,6 +181,8 @@ enum Outcome {
     Fetched {
         articles: Vec<NewArticle>,
         validators: Validators,
+        /// The page the feed says it belongs to.
+        site_url: Option<String>,
     },
     Failed {
         error: String,
@@ -171,19 +190,23 @@ enum Outcome {
     },
 }
 
-async fn fetch_one(client: &feed::Client, hosts: &Hosts, due: &DueFeed, now: i64) -> Outcome {
-    let host = hosts.get(&due.url);
-    let _host = host.in_flight.acquire().await;
-    host.wait_turn(hosts.spacing).await;
-    let _sending = hosts.sending.acquire().await;
-
-    let fetched = feed::fetch_conditional(
-        client,
-        &due.url,
-        due.validators.etag.as_deref(),
-        due.validators.last_modified.as_deref(),
-    )
-    .await;
+/// `fresh` drops the validators, so the server sends the feed in full.
+async fn fetch_one(
+    client: &feed::Client,
+    hosts: &Hosts,
+    due: &DueFeed,
+    now: i64,
+    fresh: bool,
+) -> Outcome {
+    let (etag, last_modified) = if fresh {
+        (None, None)
+    } else {
+        (
+            due.validators.etag.as_deref(),
+            due.validators.last_modified.as_deref(),
+        )
+    };
+    let fetched = get(client, hosts, &due.url, etag, last_modified).await;
     match fetched {
         Ok(Fetched::NotModified) => Outcome::NotModified,
         Ok(Fetched::Body {
@@ -197,6 +220,7 @@ async fn fetch_one(client: &feed::Client, hosts: &Hosts, due: &DueFeed, now: i64
                     etag,
                     last_modified,
                 },
+                site_url: parsed.site_url,
             },
             Err(err) => Outcome::Failed {
                 error: err.to_string(),
@@ -205,12 +229,82 @@ async fn fetch_one(client: &feed::Client, hosts: &Hosts, due: &DueFeed, now: i64
         },
         Err(err) => Outcome::Failed {
             retry_after: match &err {
-                feed::FeedError::Status { retry_after, .. } => *retry_after,
+                FeedError::Status { retry_after, .. } => *retry_after,
                 _ => None,
             },
             error: err.to_string(),
         },
     }
+}
+
+/// One GET within the overall and per-host limits. The permits are held
+/// only while it's in flight, so a feed's icon requests never wait on a
+/// permit its own feed request still holds.
+async fn get(
+    client: &feed::Client,
+    hosts: &Hosts,
+    url: &str,
+    etag: Option<&str>,
+    last_modified: Option<&str>,
+) -> Result<Fetched, FeedError> {
+    let host = hosts.get(url);
+    let _host = host.in_flight.acquire().await;
+    host.wait_turn(hosts.spacing).await;
+    let _sending = hosts.sending.acquire().await;
+    feed::fetch_conditional(client, url, etag, last_modified).await
+}
+
+/// Icon URLs tried per site, best first, before giving up on it.
+const ICON_TRIES: usize = 3;
+
+enum IconFetch {
+    Found(Vec<u8>, Format),
+    /// The site answered and has no icon we can use.
+    Missing,
+    /// The site didn't answer; ask again next refresh.
+    Later,
+}
+
+/// The icon `page_url` names, else `/favicon.ico` on its site.
+async fn fetch_icon(client: &feed::Client, hosts: &Hosts, page_url: &str) -> IconFetch {
+    let page = match get(client, hosts, page_url, None, None).await {
+        Ok(Fetched::Body { bytes, .. }) => bytes,
+        Ok(Fetched::NotModified) => Vec::new(),
+        // A missing page can still leave /favicon.ico; a broken server can't.
+        Err(FeedError::Status { status, .. }) if status.is_client_error() => Vec::new(),
+        Err(_) => return IconFetch::Later,
+    };
+    let mut candidates = favicon::icon_links(&String::from_utf8_lossy(&page), page_url);
+    if let Some(root) = favicon::root_icon(page_url) {
+        if !candidates.contains(&root) {
+            candidates.push(root);
+        }
+    }
+    for url in candidates.iter().take(ICON_TRIES) {
+        if let Ok(Fetched::Body { bytes, .. }) = get(client, hosts, url, None, None).await {
+            if let Some(format) = favicon::sniff(&bytes) {
+                return IconFetch::Found(bytes, format);
+            }
+        }
+    }
+    IconFetch::Missing
+}
+
+fn save_icon(icons: &Icons, feed_url: &str, fetched: IconFetch) {
+    let saved = match &fetched {
+        IconFetch::Found(bytes, format) => icons.save(feed_url, Some((bytes, *format))),
+        IconFetch::Missing => icons.save(feed_url, None),
+        IconFetch::Later => return,
+    };
+    if let Err(err) = saved {
+        eprintln!("gutenberg: saving the icon for {feed_url}: {err}");
+    }
+}
+
+/// The root of the feed's own site, for a feed that names no site.
+fn site_root(feed_url: &str) -> Option<String> {
+    let url = url::Url::parse(feed_url).ok()?.join("/").ok()?;
+    Some(url.into())
 }
 
 /// The overall limit, and per-host limits created on first use.
@@ -296,6 +390,7 @@ pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config)
 
 fn run(store_path: &std::path::Path, minutes: &AtomicU32) -> Result<(), String> {
     let mut store = Store::open(store_path).map_err(|e| e.to_string())?;
+    let icons = Icons::beside(store_path);
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -304,7 +399,7 @@ fn run(store_path: &std::path::Path, minutes: &AtomicU32) -> Result<(), String> 
     loop {
         if minutes.load(Ordering::Relaxed) > 0 {
             runtime
-                .block_on(refresh(&mut store, unix_now(), &limits))
+                .block_on(refresh(&mut store, unix_now(), &limits, Some(&icons)))
                 .map_err(|e| e.to_string())?;
         }
         // Wait out the interval, re-reading it so an edit applies now.

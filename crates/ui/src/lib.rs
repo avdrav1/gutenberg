@@ -10,14 +10,19 @@ use std::time::{Duration, Instant};
 
 use gutenberg_core::catalog;
 use gutenberg_core::config::{self, Config};
+use gutenberg_core::favicon::Icons;
 use gutenberg_core::sync::unix_now;
 use gutenberg_store::{ArticleRow, Filter, Folder, Source, SourceKind, Store};
 use gutenberg_theme::{Rgb, Tokens};
 use iced::futures::Stream;
 use iced::keyboard;
 use iced::mouse::ScrollDelta;
-use iced::widget::{column, container, mouse_area, scrollable, text, Column, Row, Space};
-use iced::{border, font, window, Border, Color, Element, Font, Length, Size, Subscription, Task};
+use iced::widget::{
+    column, container, image, mouse_area, scrollable, svg, text, Column, Row, Space,
+};
+use iced::{
+    border, font, window, Alignment, Border, Color, Element, Font, Length, Size, Subscription, Task,
+};
 
 use list::Action;
 use sidebar::{Entry, Move};
@@ -26,6 +31,8 @@ use sidebar::{Entry, Move};
 const LIST_LIMIT: u32 = 100_000;
 /// How often to look for writes from the refresh thread or a terminal.
 const STORE_POLL: Duration = Duration::from_secs(1);
+/// Site icons in the sources pane, square.
+const ICON_SIZE: f32 = 16.0;
 
 /// Opens the window and blocks until it closes. When `config_path` is set,
 /// edits to that file apply while the window is open. `store_path` is the
@@ -68,6 +75,10 @@ struct App {
     source_titles: HashMap<i64, String>,
     folders: Vec<Folder>,
     sources: Vec<Source>,
+    /// The favicon cache the refresh thread fills.
+    icons: Option<Icons>,
+    /// Each source's cached site icon, read at reload.
+    source_icons: HashMap<i64, Icon>,
     /// Unread articles per source.
     unread: HashMap<i64, i64>,
     /// A press in the sources pane, which becomes a drag once it moves.
@@ -89,6 +100,45 @@ struct App {
 struct Drag {
     origin: Entry,
     over: Entry,
+}
+
+/// A cached site icon: SVG draws through its own widget.
+#[derive(Debug, Clone)]
+enum Icon {
+    Raster(image::Handle),
+    Vector(svg::Handle),
+}
+
+impl Icon {
+    /// What's cached for each source with a feed URL.
+    fn for_sources(icons: &Icons, sources: &[Source]) -> HashMap<i64, Icon> {
+        let found = icons.found();
+        sources
+            .iter()
+            .filter_map(|s| {
+                let path = found.get(&Icons::key(s.url.as_deref()?))?;
+                let icon = if path.extension().is_some_and(|ext| ext == "svg") {
+                    Icon::Vector(svg::Handle::from_path(path))
+                } else {
+                    Icon::Raster(image::Handle::from_path(path))
+                };
+                Some((s.id, icon))
+            })
+            .collect()
+    }
+
+    fn view<'a>(&self) -> Element<'a, Message> {
+        match self {
+            Icon::Raster(handle) => image(handle.clone())
+                .width(ICON_SIZE)
+                .height(ICON_SIZE)
+                .into(),
+            Icon::Vector(handle) => svg(handle.clone())
+                .width(ICON_SIZE)
+                .height(ICON_SIZE)
+                .into(),
+        }
+    }
 }
 
 /// The article shown in the article pane.
@@ -133,13 +183,14 @@ impl App {
             Some(path) => Store::open(path).map_err(|e| e.to_string()),
             None => Err("no data directory".to_owned()),
         };
-        Self::with_store(config, config_path, store)
+        Self::with_store(config, config_path, store, store_path.map(Icons::beside))
     }
 
     fn with_store(
         config: Config,
         config_path: Option<PathBuf>,
         store: Result<Store, String>,
+        icons: Option<Icons>,
     ) -> Self {
         let bench = std::env::var("GUTENBERG_SCROLL_BENCH")
             .ok()
@@ -159,6 +210,8 @@ impl App {
             source_titles: HashMap::new(),
             folders: Vec::new(),
             sources: Vec::new(),
+            icons,
+            source_icons: HashMap::new(),
             unread: HashMap::new(),
             drag: None,
             data_version: 0,
@@ -243,6 +296,9 @@ impl App {
             Ok((rows, sources, folders, unread)) => {
                 self.rows = rows;
                 self.source_titles = sources.iter().map(|s| (s.id, s.title.clone())).collect();
+                if let Some(icons) = &self.icons {
+                    self.source_icons = Icon::for_sources(icons, &sources);
+                }
                 self.sources = sources;
                 self.folders = folders;
                 self.unread = unread;
@@ -546,7 +602,22 @@ impl App {
         .color(color(t.muted));
         let chosen = entry.filter() == Some(self.filter);
         let background = chosen.then(|| color(t.selection).into());
-        let row = container(Row::new().push(label).push(count).spacing(8))
+        // Feeds get their site's icon, or a blank of its size so titles align.
+        let icon = match entry {
+            Entry::Source { id, .. } => Some(self.source_icons.get(&id).map_or_else(
+                || Space::new().width(ICON_SIZE).height(ICON_SIZE).into(),
+                Icon::view,
+            )),
+            _ => None,
+        };
+        let line = Row::new()
+            .push(icon)
+            // A long title stops at the count instead of running under it.
+            .push(container(label).width(Length::Fill).clip(true))
+            .push(count)
+            .spacing(8)
+            .align_y(Alignment::Center);
+        let row = container(line)
             .padding(iced::Padding::from([6, 12]).left(indent as f32))
             .width(Length::Fill)
             .clip(true)
@@ -681,7 +752,7 @@ pub mod bench {
                 })
                 .collect();
             store.insert_articles(&rows).expect("articles");
-            let mut app = App::with_store(Config::default(), None, Ok(store));
+            let mut app = App::with_store(Config::default(), None, Ok(store), None);
             app.height = height;
             Self(app)
         }
@@ -781,6 +852,7 @@ fn color(c: Rgb) -> Color {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gutenberg_core::favicon::Format;
     use gutenberg_store::{NewArticle, NewSource, SourceKind};
 
     fn app_with(articles: usize) -> App {
@@ -807,7 +879,7 @@ mod tests {
             })
             .collect();
         store.insert_articles(&rows).unwrap();
-        let mut app = App::with_store(Config::default(), None, Ok(store));
+        let mut app = App::with_store(Config::default(), None, Ok(store), None);
         app.height = 520.0; // 10 whole rows
         app
     }
@@ -918,7 +990,7 @@ mod tests {
                 article(b, "b1", 1),
             ])
             .unwrap();
-        let mut app = App::with_store(Config::default(), None, Ok(store));
+        let mut app = App::with_store(Config::default(), None, Ok(store), None);
         app.height = 520.0;
         (app, tech, a, b)
     }
@@ -954,6 +1026,25 @@ mod tests {
         // And a reload from the store agrees.
         app.reload();
         assert_eq!(counts(&app, Entry::Folder(tech)), 1);
+    }
+
+    #[test]
+    fn icons_the_refresh_saves_show_at_the_next_reload() {
+        let (mut app, _, a, b) = app_with_folders();
+        let dir = tempfile::tempdir().unwrap();
+        let icons = Icons::new(dir.path());
+        app.icons = Some(icons.clone());
+        app.reload();
+        assert!(app.source_icons.is_empty());
+
+        let svg = b"<svg xmlns=\"http://www.w3.org/2000/svg\"/>";
+        icons
+            .save("https://a.example/feed", Some((svg, Format::Svg)))
+            .unwrap();
+        icons.save("https://b.example/feed", None).unwrap();
+        app.reload();
+        assert!(matches!(app.source_icons.get(&a), Some(Icon::Vector(_))));
+        assert!(!app.source_icons.contains_key(&b), "a miss draws no icon");
     }
 
     #[test]
@@ -1006,6 +1097,7 @@ mod tests {
             Config::default(),
             None,
             Ok(Store::open_in_memory().unwrap()),
+            None,
         );
         assert_eq!(app.onboarding.as_ref().unwrap().picks().len(), 12);
         let _ = app.update(Message::Onboarding(onboarding::Action::Add));

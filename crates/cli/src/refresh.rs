@@ -3,6 +3,7 @@
 
 use std::process::ExitCode;
 
+use gutenberg_core::favicon::Icons;
 use gutenberg_core::sync::{self, Limits};
 use gutenberg_store::Store;
 
@@ -34,6 +35,7 @@ fn refresh() -> Result<sync::Summary, String> {
             &mut store,
             sync::unix_now(),
             &Limits::default(),
+            Some(&Icons::beside(&path)),
         ))
         .map_err(|e| e.to_string())
 }
