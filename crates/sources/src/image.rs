@@ -1,6 +1,10 @@
-//! Telling an image download from a page served in its place.
+//! Images: telling one from a page served in its place, and downloading
+//! one without holding more than a cap in memory.
 
 use crate::discover;
+
+/// Larger than any image an article pane needs.
+pub const MAX_BYTES: usize = 10 * 1024 * 1024;
 
 /// An image format, told from the first bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,6 +67,28 @@ pub fn sniff(bytes: &[u8]) -> Option<Format> {
 fn is_svg(bytes: &[u8]) -> bool {
     let head = String::from_utf8_lossy(&bytes[..bytes.len().min(1024)]).to_ascii_lowercase();
     head.contains("<svg") && !discover::looks_like_html(bytes)
+}
+
+/// Downloads an image. `None` when the server fails, the body is bigger
+/// than [`MAX_BYTES`], or it isn't an image.
+pub async fn fetch(client: &reqwest::Client, url: &str) -> Option<(Vec<u8>, Format)> {
+    let mut response = client.get(url).send().await.ok()?;
+    if !response.status().is_success()
+        || response
+            .content_length()
+            .is_some_and(|n| n > MAX_BYTES as u64)
+    {
+        return None;
+    }
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response.chunk().await.ok()? {
+        if bytes.len() + chunk.len() > MAX_BYTES {
+            return None;
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    let format = sniff(&bytes)?;
+    Some((bytes, format))
 }
 
 #[cfg(test)]
