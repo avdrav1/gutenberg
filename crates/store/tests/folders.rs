@@ -1,6 +1,6 @@
 //! S2.4: folders, source order and unread counts; order survives reopening.
 
-use gutenberg_store::{Filter, NewArticle, NewSource, SourceKind, SourceTarget, Store};
+use gutenberg_store::{Filter, NewArticle, NewSource, SourceKind, SourceTarget, Store, View};
 
 fn feed(store: &Store, name: &str, folder: Option<i64>) -> i64 {
     store
@@ -100,18 +100,27 @@ fn unread_counts_follow_reading_and_folders_filter() {
     let counts = store.unread_counts().unwrap();
     assert_eq!((counts[&a], counts[&b]), (2, 1));
 
-    let first = store.list_articles_in(Filter::Source(a), 10).unwrap()[0].id;
+    let first = store
+        .list_articles_in(Filter::Source(a), View::All, 10)
+        .unwrap()[0]
+        .id;
     store.set_read(first, true).unwrap();
     assert_eq!(store.unread_counts().unwrap()[&a], 1);
 
     assert_eq!(
         store
-            .list_articles_in(Filter::Folder(tech), 10)
+            .list_articles_in(Filter::Folder(tech), View::All, 10)
             .unwrap()
             .len(),
         2
     );
-    assert_eq!(store.list_articles_in(Filter::All, 10).unwrap().len(), 3);
+    assert_eq!(
+        store
+            .list_articles_in(Filter::All, View::All, 10)
+            .unwrap()
+            .len(),
+        3
+    );
 }
 
 #[test]
@@ -143,17 +152,23 @@ fn marking_a_folder_read_leaves_the_rest_unread() {
         ])
         .unwrap();
     // One already read: it isn't counted again.
-    let a1 = store.list_articles_in(Filter::Source(a), 10).unwrap()[0].id;
+    let a1 = store
+        .list_articles_in(Filter::Source(a), View::All, 10)
+        .unwrap()[0]
+        .id;
     store.set_read(a1, true).unwrap();
 
-    assert_eq!(store.mark_read_in(Filter::Folder(tech)).unwrap(), 2);
+    assert_eq!(
+        store.mark_read_in(Filter::Folder(tech), View::All).unwrap(),
+        2
+    );
     let counts = store.unread_counts().unwrap();
     assert!(!counts.contains_key(&a) && !counts.contains_key(&b));
     assert_eq!((counts[&c], counts[&d]), (1, 1));
 
-    assert_eq!(store.mark_read_in(Filter::Source(d)).unwrap(), 1);
+    assert_eq!(store.mark_read_in(Filter::Source(d), View::All).unwrap(), 1);
     assert_eq!(store.unread_counts().unwrap().get(&c), Some(&1));
 
-    assert_eq!(store.mark_read_in(Filter::All).unwrap(), 1);
+    assert_eq!(store.mark_read_in(Filter::All, View::All).unwrap(), 1);
     assert!(store.unread_counts().unwrap().is_empty());
 }

@@ -15,8 +15,48 @@ use rusqlite::{params, Connection, OptionalExtension};
 pub use migrate::LATEST as SCHEMA_VERSION;
 pub use model::{
     ArticleRow, DueFeed, FetchState, Filter, Folder, NewArticle, NewSource, Source, SourceKind,
-    SourceTarget, Validators,
+    SourceTarget, Validators, View, ViewCounts,
 };
+
+/// The articles a filter and view pick, as SQL over `article`: `?1` a
+/// source, `?2` a folder, `?3` the view's code. A macro, so the queries
+/// that use it are built at compile time.
+macro_rules! in_view_sql {
+    () => {
+        concat!(
+            "(?1 IS NULL OR source_id = ?1)
+             AND (?2 IS NULL OR source_id IN (SELECT id FROM source WHERE folder_id = ?2))
+             AND (?3 <> 1 OR read = 0)
+             AND (?3 <> 2 OR starred = 1)
+             AND (?3 <> 3 OR sort_at >= ",
+            today_sql!(),
+            ")"
+        )
+    };
+}
+
+/// When today began: local midnight, from the system's time zone.
+macro_rules! today_sql {
+    () => {
+        "unixepoch('now', 'localtime', 'start of day', 'utc')"
+    };
+}
+
+/// `in_view_sql!`'s parameters for a filter and view.
+fn in_view(filter: Filter, view: View) -> (Option<i64>, Option<i64>, i64) {
+    let (source, folder) = match filter {
+        Filter::All => (None, None),
+        Filter::Source(id) => (Some(id), None),
+        Filter::Folder(id) => (None, Some(id)),
+    };
+    let code = match view {
+        View::All => 0,
+        View::Unread => 1,
+        View::Starred => 2,
+        View::Today => 3,
+    };
+    (source, folder, code)
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -213,22 +253,24 @@ impl Store {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
-    /// Newest first, for everything, one source or one folder.
-    pub fn list_articles_in(&self, filter: Filter, limit: u32) -> Result<Vec<ArticleRow>> {
-        let (source, folder) = match filter {
-            Filter::All => (None, None),
-            Filter::Source(id) => (Some(id), None),
-            Filter::Folder(id) => (None, Some(id)),
-        };
-        let mut stmt = self.conn.prepare_cached(
+    /// Newest first, for everything, one source or one folder, narrowed to
+    /// a view.
+    pub fn list_articles_in(
+        &self,
+        filter: Filter,
+        view: View,
+        limit: u32,
+    ) -> Result<Vec<ArticleRow>> {
+        let (source, folder, view) = in_view(filter, view);
+        let mut stmt = self.conn.prepare_cached(concat!(
             "SELECT id, source_id, title, url, author, sort_at, read, starred
              FROM article
-             WHERE (?1 IS NULL OR source_id = ?1)
-               AND (?2 IS NULL OR source_id IN (SELECT id FROM source WHERE folder_id = ?2))
-             ORDER BY sort_at DESC, id DESC
-             LIMIT ?3",
-        )?;
-        let rows = stmt.query_map(params![source, folder, limit], |row| {
+             WHERE ",
+            in_view_sql!(),
+            " ORDER BY sort_at DESC, id DESC
+             LIMIT ?4"
+        ))?;
+        let rows = stmt.query_map(params![source, folder, view, limit], |row| {
             Ok(ArticleRow {
                 id: row.get(0)?,
                 source_id: row.get(1)?,
@@ -393,19 +435,39 @@ impl Store {
         Ok(())
     }
 
-    /// Marks every unread article the filter shows as read; returns how many.
-    pub fn mark_read_in(&self, filter: Filter) -> Result<usize> {
-        let (source, folder) = match filter {
-            Filter::All => (None, None),
-            Filter::Source(id) => (Some(id), None),
-            Filter::Folder(id) => (None, Some(id)),
-        };
+    /// Marks every unread article the filter and view show as read; returns
+    /// how many.
+    pub fn mark_read_in(&self, filter: Filter, view: View) -> Result<usize> {
+        let (source, folder, view) = in_view(filter, view);
         Ok(self.conn.execute(
-            "UPDATE article SET read = 1
-             WHERE read = 0
-               AND (?1 IS NULL OR source_id = ?1)
-               AND (?2 IS NULL OR source_id IN (SELECT id FROM source WHERE folder_id = ?2))",
-            params![source, folder],
+            concat!(
+                "UPDATE article SET read = 1 WHERE read = 0 AND ",
+                in_view_sql!()
+            ),
+            params![source, folder, view],
+        )?)
+    }
+
+    /// Unread, starred and today's articles across every feed.
+    pub fn view_counts(&self) -> Result<ViewCounts> {
+        Ok(self.conn.query_row(
+            concat!(
+                "SELECT
+                   count(*) FILTER (WHERE read = 0),
+                   count(*) FILTER (WHERE starred = 1),
+                   count(*) FILTER (WHERE sort_at >= ",
+                today_sql!(),
+                ")
+                 FROM article"
+            ),
+            [],
+            |row| {
+                Ok(ViewCounts {
+                    unread: row.get(0)?,
+                    starred: row.get(1)?,
+                    today: row.get(2)?,
+                })
+            },
         )?)
     }
 

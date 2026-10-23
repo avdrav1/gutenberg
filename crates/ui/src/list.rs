@@ -1,6 +1,7 @@
 //! The article list: which rows are on screen, and what keys do. Pure, so
 //! it can be tested without a window.
 
+use gutenberg_store::View;
 use iced::keyboard::{Key, Modifiers};
 
 /// Height of one row in logical pixels: a title line and a meta line.
@@ -30,7 +31,8 @@ pub enum Action {
     Star,
     /// Marks the selected article unread, or read again.
     ToggleRead,
-    /// Marks everything in the folder or feed chosen in the sources pane read.
+    /// Marks everything the list shows for the chosen folder or feed and
+    /// view read.
     MarkFolderRead,
     OpenInBrowser,
     CopyLink,
@@ -38,6 +40,8 @@ pub enum Action {
     Search,
     /// Ends a search and shows the list it replaced.
     ClearSearch,
+    /// Narrows the chosen folder or feed to a view.
+    View(View),
 }
 
 /// `pending_g` is whether the last key was a lone `g`.
@@ -65,6 +69,10 @@ pub fn action_for(key: &Key, modifiers: Modifiers, pending_g: bool) -> Option<Ac
         Key::Character("y") => Some(Action::CopyLink),
         Key::Character("/") => Some(Action::Search),
         Key::Named(Named::Escape) => Some(Action::ClearSearch),
+        Key::Character("A") => Some(Action::View(View::All)),
+        Key::Character("u") => Some(Action::View(View::Unread)),
+        Key::Character("S") => Some(Action::View(View::Starred)),
+        Key::Character("t") => Some(Action::View(View::Today)),
         _ => None,
     }
 }
