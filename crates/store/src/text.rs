@@ -6,8 +6,9 @@ pub const INDEX_ARTICLE: &str =
     "INSERT INTO article_fts (rowid, title, author, body) VALUES (?1, ?2, ?3, ?4)";
 
 /// The text of an HTML fragment: tags dropped (with the contents of
-/// `script` and `style`), entities decoded, whitespace runs made one space.
-/// Words in attributes, link URLs among them, never come through.
+/// `script` and `style`), an image's alt text kept, entities decoded,
+/// whitespace runs made one space. Other attributes, link URLs among them,
+/// never come through.
 pub fn plain(html: &str) -> String {
     let mut out = String::with_capacity(html.len());
     let mut rest = html;
@@ -24,6 +25,12 @@ pub fn plain(html: &str) -> String {
             .take_while(|c| c.is_ascii_alphanumeric())
             .collect::<String>()
             .to_ascii_lowercase();
+        if name == "img" {
+            if let Some(alt) = attribute(&tag[..close], "alt") {
+                out.push_str(alt);
+                out.push(' ');
+            }
+        }
         rest = &tag[close + 1..];
         // Skip what scripts and styles contain, up to their end tag.
         if name == "script" || name == "style" {
@@ -34,6 +41,31 @@ pub fn plain(html: &str) -> String {
     out.push_str(rest);
     let decoded = html_escape::decode_html_entities(&out);
     decoded.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// An attribute's raw value in a tag's text (`img src=… alt="…"`).
+fn attribute<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
+    let mut rest = tag;
+    while let Some(at) = find_ignoring_case(rest, name) {
+        let before = rest[..at].chars().next_back();
+        let after = rest[at + name.len()..].trim_start();
+        rest = &rest[at + name.len()..];
+        if !before.is_some_and(char::is_whitespace) {
+            continue;
+        }
+        let Some(value) = after.strip_prefix('=') else {
+            continue;
+        };
+        let value = value.trim_start();
+        return Some(match value.chars().next() {
+            Some(q @ ('"' | '\'')) => {
+                let inner = &value[1..];
+                &inner[..inner.find(q).unwrap_or(inner.len())]
+            }
+            _ => &value[..value.find(char::is_whitespace).unwrap_or(value.len())],
+        });
+    }
+    None
 }
 
 fn find_ignoring_case(haystack: &str, needle: &str) -> Option<usize> {
@@ -73,6 +105,13 @@ mod tests {
             "before after end"
         );
         assert_eq!(plain("cut off <a href"), "cut off");
+        assert_eq!(
+            plain(
+                r#"<img src="https://cdn.example/harrisburg.jpg" data-alt="x" alt="Museum in Harrisburg">"#
+            ),
+            "Museum in Harrisburg"
+        );
+        assert_eq!(plain("<IMG ALT='a b' SRC=x.png>"), "a b");
         assert_eq!(plain("a<br>b"), "a b");
     }
 
