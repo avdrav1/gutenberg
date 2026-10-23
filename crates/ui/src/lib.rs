@@ -17,7 +17,7 @@ use gutenberg_core::config::{self, Config};
 use gutenberg_core::favicon::Icons;
 use gutenberg_core::sync::unix_now;
 use gutenberg_core::web::{self, Answer, Web};
-use gutenberg_store::{ArticleRow, Filter, Folder, Source, SourceKind, Store};
+use gutenberg_store::{ArticleRow, Filter, Folder, Source, SourceKind, Store, View, ViewCounts};
 use gutenberg_theme::{Rgb, Tokens};
 use iced::futures::Stream;
 use iced::keyboard;
@@ -79,8 +79,12 @@ struct App {
     config: Config,
     config_path: Option<PathBuf>,
     store: Result<Store, String>,
-    /// Which articles the list shows; picked in the sources pane.
+    /// Which feeds the list shows; picked in the sources pane.
     filter: Filter,
+    /// Which of their articles: all, unread, starred or today's.
+    view: View,
+    /// Articles in each view across every feed, for the view rows.
+    view_counts: ViewCounts,
     /// What the store held at the last reload, newest first.
     rows: Vec<ArticleRow>,
     source_titles: HashMap<i64, String>,
@@ -287,6 +291,8 @@ impl App {
             config_path,
             store,
             filter: Filter::All,
+            view: View::All,
+            view_counts: ViewCounts::default(),
             rows: Vec::new(),
             source_titles: HashMap::new(),
             folders: Vec::new(),
@@ -373,15 +379,16 @@ impl App {
             Ok::<_, gutenberg_store::Error>((
                 match self.search.as_ref().map(|s| s.query.as_str()) {
                     Some(query) => store.search(query, SEARCH_LIMIT)?,
-                    None => store.list_articles_in(self.filter, LIST_LIMIT)?,
+                    None => store.list_articles_in(self.filter, self.view, LIST_LIMIT)?,
                 },
                 store.sources()?,
                 store.folders()?,
                 store.unread_counts()?,
+                store.view_counts()?,
             ))
         })();
         match read {
-            Ok((rows, sources, folders, unread)) => {
+            Ok((rows, sources, folders, unread, view_counts)) => {
                 self.rows = rows;
                 self.source_titles = sources.iter().map(|s| (s.id, s.title.clone())).collect();
                 if let Some(icons) = &self.icons {
@@ -390,6 +397,7 @@ impl App {
                 self.sources = sources;
                 self.folders = folders;
                 self.unread = unread;
+                self.view_counts = view_counts;
             }
             Err(e) => eprintln!("gutenberg: reading the store: {e}"),
         }
@@ -436,6 +444,7 @@ impl App {
                 }
             },
             Message::Key(Action::ClearSearch) => self.clear_search(),
+            Message::Key(Action::View(view)) => self.show_view(view),
             Message::Search(input) => self.search_input(input),
             Message::Key(Action::CopyLink) => {
                 if let Some(url) = self.selected_link() {
@@ -542,10 +551,17 @@ impl App {
     }
 
     /// Shows the articles a sources-pane row stands for, ending a search.
+    /// A view row shows that view across every feed; a folder or feed keeps
+    /// the view.
     fn choose(&mut self, entry: Entry) {
         let Some(filter) = entry.filter() else { return };
-        if filter != self.filter || self.search.is_some() {
+        let view = match entry {
+            Entry::View(view) => view,
+            _ => self.view,
+        };
+        if filter != self.filter || view != self.view || self.search.is_some() {
             self.filter = filter;
+            self.view = view;
             self.search = None;
             self.show_from_top();
         }
@@ -623,14 +639,15 @@ impl App {
         self.rows.get(self.selected)?.url.clone()
     }
 
+    /// Stars or unstars the selected article; the starred count follows.
     fn toggle_star(&mut self) {
-        let (Ok(store), Some(row)) = (&self.store, self.rows.get_mut(self.selected)) else {
+        let (Ok(store), Some(row)) = (&self.store, self.rows.get(self.selected)) else {
             return;
         };
-        match store.set_starred(row.id, !row.starred) {
-            Ok(()) => row.starred = !row.starred,
-            Err(e) => eprintln!("gutenberg: starring: {e}"),
+        if let Err(e) = store.set_starred(row.id, !row.starred) {
+            eprintln!("gutenberg: starring: {e}");
         }
+        self.reload();
     }
 
     /// Read becomes unread and back; the feed's count follows.
@@ -644,14 +661,21 @@ impl App {
         self.reload();
     }
 
-    /// Everything in the folder or feed chosen in the sources pane, or in
-    /// "All articles", becomes read.
+    /// Everything the list shows for the chosen folder or feed and view
+    /// becomes read.
     fn mark_chosen_read(&mut self) {
         let Ok(store) = &self.store else { return };
-        if let Err(e) = store.mark_read_in(self.filter) {
+        if let Err(e) = store.mark_read_in(self.filter, self.view) {
             eprintln!("gutenberg: marking read: {e}");
         }
         self.reload();
+    }
+
+    /// Narrows the chosen folder or feed to a view, ending a search.
+    fn show_view(&mut self, view: View) {
+        self.view = view;
+        self.search = None;
+        self.show_from_top();
     }
 
     /// Shows the article and marks it read.
@@ -667,6 +691,7 @@ impl App {
                         if let Some(n) = self.unread.get_mut(&row.source_id) {
                             *n = (*n - 1).max(0);
                         }
+                        self.view_counts.unread = (self.view_counts.unread - 1).max(0);
                     }
                     Err(e) => eprintln!("gutenberg: marking read: {e}"),
                 }
@@ -1020,7 +1045,7 @@ impl App {
     fn sidebar_row(&self, entry: Entry) -> Element<'_, Message> {
         let t = &self.tokens;
         let (name, bold, indent) = match entry {
-            Entry::All => ("All articles".to_owned(), true, 12),
+            Entry::View(view) => (sidebar::view_name(view).to_owned(), true, 12),
             Entry::Folder(id) => (
                 self.folders
                     .iter()
@@ -1036,7 +1061,7 @@ impl App {
             ),
             Entry::Unfiled => (String::new(), false, 12),
         };
-        let count = sidebar::count(entry, &self.sources, &self.unread);
+        let count = sidebar::count(entry, &self.sources, &self.unread, &self.view_counts);
         // The row being dragged dims until it's dropped.
         let dragged = self
             .drag
@@ -1063,7 +1088,11 @@ impl App {
         })
         .size(12)
         .color(color(t.muted));
-        let chosen = entry.filter() == Some(self.filter);
+        // The view row and the chosen folder or feed are both lit.
+        let chosen = match entry {
+            Entry::View(view) => view == self.view,
+            _ => self.filter != Filter::All && entry.filter() == Some(self.filter),
+        };
         let background = chosen.then(|| color(t.selection).into());
         // Feeds get their site's icon, or a blank of its size so titles align.
         let icon = match entry {
@@ -1789,8 +1818,10 @@ mod tests {
     }
 
     fn counts(app: &App, entry: Entry) -> i64 {
-        sidebar::count(entry, &app.sources, &app.unread)
+        sidebar::count(entry, &app.sources, &app.unread, &app.view_counts)
     }
+
+    const ALL: Entry = Entry::View(View::All);
 
     #[test]
     fn counts_drop_as_articles_are_read() {
@@ -1798,7 +1829,7 @@ mod tests {
         let a_row = Entry::Source { id: a, filed: true };
         assert_eq!(
             (
-                counts(&app, Entry::All),
+                counts(&app, ALL),
                 counts(&app, Entry::Folder(tech)),
                 counts(&app, a_row)
             ),
@@ -1807,7 +1838,7 @@ mod tests {
         let _ = app.update(Message::Key(Action::Open)); // a1, newest
         assert_eq!(
             (
-                counts(&app, Entry::All),
+                counts(&app, ALL),
                 counts(&app, Entry::Folder(tech)),
                 counts(&app, a_row)
             ),
@@ -1815,7 +1846,7 @@ mod tests {
         );
         // Opening it again doesn't count twice.
         let _ = app.update(Message::Key(Action::Open));
-        assert_eq!(counts(&app, Entry::All), 2);
+        assert_eq!(counts(&app, ALL), 2);
         // And a reload from the store agrees.
         app.reload();
         assert_eq!(counts(&app, Entry::Folder(tech)), 1);
@@ -1854,7 +1885,7 @@ mod tests {
         let _ = app.update(Message::Press(Entry::Folder(tech)));
         let _ = app.update(Message::Release);
         assert_eq!(app.rows.len(), 2);
-        let _ = app.update(Message::Press(Entry::All));
+        let _ = app.update(Message::Press(ALL));
         let _ = app.update(Message::Release);
         assert_eq!(app.rows.len(), 3);
     }
@@ -2041,9 +2072,9 @@ mod tests {
         );
         assert!(app.rows.iter().all(|r| r.read));
 
-        app.choose(Entry::All);
+        app.choose(ALL);
         let _ = app.update(Message::Key(Action::MarkFolderRead));
-        assert_eq!(counts(&app, Entry::All), 0);
+        assert_eq!(counts(&app, ALL), 0);
     }
 
     fn search_keys(app: &mut App, typed: &str) {
@@ -2104,5 +2135,68 @@ mod tests {
         app.choose(Entry::Folder(tech));
         assert!(app.search.is_none());
         assert_eq!(titles(&app), ["a1", "a2"]);
+    }
+
+    #[test]
+    fn a_view_key_narrows_the_chosen_folder_and_a_returns() {
+        let (mut app, tech, ..) = app_with_folders();
+        let _ = app.update(Message::Key(Action::Open)); // a1 is read
+        let _ = app.update(Message::Key(Action::View(View::Unread)));
+        assert_eq!(titles(&app), ["a2", "b1"]);
+        // Choosing a folder keeps the view.
+        app.choose(Entry::Folder(tech));
+        assert_eq!(titles(&app), ["a2"]);
+        let _ = app.update(Message::Key(Action::View(View::All)));
+        assert_eq!(titles(&app), ["a1", "a2"]);
+        assert_eq!(app.filter, Filter::Folder(tech));
+    }
+
+    #[test]
+    fn a_view_row_shows_that_view_everywhere() {
+        let (mut app, tech, ..) = app_with_folders();
+        app.choose(Entry::Folder(tech));
+        let _ = app.update(Message::Press(Entry::View(View::Unread)));
+        let _ = app.update(Message::Release);
+        assert_eq!((app.filter, app.view), (Filter::All, View::Unread));
+        assert_eq!(titles(&app), ["a1", "a2", "b1"]);
+    }
+
+    #[test]
+    fn starring_fills_the_starred_view_and_its_count() {
+        let (mut app, ..) = app_with_folders();
+        let starred = Entry::View(View::Starred);
+        let _ = app.update(Message::Key(Action::Last)); // b1
+        let _ = app.update(Message::Key(Action::Star));
+        assert_eq!(counts(&app, starred), 1);
+        let _ = app.update(Message::Key(Action::View(View::Starred)));
+        assert_eq!(titles(&app), ["b1"]);
+        // Unstarring takes it out of the view and the count.
+        let _ = app.update(Message::Key(Action::Star));
+        assert!(app.rows.is_empty());
+        assert_eq!(counts(&app, starred), 0);
+    }
+
+    #[test]
+    fn today_holds_what_came_since_midnight() {
+        let (mut app, _, a, _) = app_with_folders();
+        let _ = app.update(Message::Key(Action::View(View::Today)));
+        assert!(app.rows.is_empty(), "the fixture's articles are from 1970");
+        app.store
+            .as_mut()
+            .unwrap()
+            .insert_articles(&[NewArticle {
+                source_id: a,
+                guid: "now".into(),
+                url: None,
+                title: "Just in".into(),
+                author: None,
+                summary_html: None,
+                published_at: Some(unix_now()),
+                fetched_at: unix_now(),
+            }])
+            .unwrap();
+        app.reload();
+        assert_eq!(titles(&app), ["Just in"]);
+        assert_eq!(counts(&app, Entry::View(View::Today)), 1);
     }
 }

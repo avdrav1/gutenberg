@@ -120,6 +120,25 @@ pub enum Filter {
     Folder(i64),
 }
 
+/// Which of the filter's articles the list shows.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum View {
+    #[default]
+    All,
+    Unread,
+    Starred,
+    /// Since midnight, local time.
+    Today,
+}
+
+/// How many articles each view holds, across every feed.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ViewCounts {
+    pub unread: i64,
+    pub starred: i64,
+    pub today: i64,
+}
+
 /// Where a dragged source lands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SourceTarget {

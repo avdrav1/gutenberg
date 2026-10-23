@@ -2,6 +2,8 @@
 //! palette searches and what help lists. One row here, one line in
 //! `docs/KEYS.md`, and a key in `list::action_for` make a new action.
 
+use gutenberg_store::View;
+
 use crate::list::Action;
 
 /// An action as a person finds it: by name, or by its keys.
@@ -79,6 +81,26 @@ pub const ALL: &[Command] = &[
         action: Action::ClearSearch,
         name: "Clear search",
         keys: &["Esc"],
+    },
+    Command {
+        action: Action::View(View::All),
+        name: "View all articles",
+        keys: &["A"],
+    },
+    Command {
+        action: Action::View(View::Unread),
+        name: "View unread articles only",
+        keys: &["u"],
+    },
+    Command {
+        action: Action::View(View::Starred),
+        name: "View starred articles",
+        keys: &["S"],
+    },
+    Command {
+        action: Action::View(View::Today),
+        name: "View today's articles",
+        keys: &["t"],
     },
     Command {
         action: Action::AddSources,
@@ -230,7 +252,8 @@ mod tests {
             | A::OpenInBrowser
             | A::CopyLink
             | A::Search
-            | A::ClearSearch => true,
+            | A::ClearSearch
+            | A::View(_) => true,
         };
         let every = [
             A::Quit,
@@ -251,6 +274,10 @@ mod tests {
             A::CopyLink,
             A::Search,
             A::ClearSearch,
+            A::View(View::All),
+            A::View(View::Unread),
+            A::View(View::Starred),
+            A::View(View::Today),
         ];
         for action in every.into_iter().filter(|a| needs_row(*a)) {
             assert!(

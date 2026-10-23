@@ -3,12 +3,16 @@
 
 use std::collections::HashMap;
 
-use gutenberg_store::{Filter, Folder, Source, SourceTarget};
+use gutenberg_store::{Filter, Folder, Source, SourceTarget, View, ViewCounts};
+
+/// The views, in the order their rows show at the top of the pane.
+pub const VIEWS: [View; 4] = [View::All, View::Unread, View::Starred, View::Today];
 
 /// One row of the sources pane, or the empty space under the last row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Entry {
-    All,
+    /// A view across every feed: all articles, unread, starred or today.
+    View(View),
     Folder(i64),
     /// A source; `filed` when it sits in a folder (and is indented).
     Source {
@@ -20,10 +24,11 @@ pub enum Entry {
 }
 
 impl Entry {
-    /// The list filter a click on this row selects.
+    /// The folder or feed a click on this row shows; a view row shows
+    /// every feed.
     pub fn filter(self) -> Option<Filter> {
         match self {
-            Entry::All => Some(Filter::All),
+            Entry::View(_) => Some(Filter::All),
             Entry::Folder(id) => Some(Filter::Folder(id)),
             Entry::Source { id, .. } => Some(Filter::Source(id)),
             Entry::Unfiled => None,
@@ -31,10 +36,20 @@ impl Entry {
     }
 }
 
-/// "All", then each folder followed by its sources, then unfiled sources.
-/// `folders` and `sources` come in stored order.
+/// What a view's row is called.
+pub fn view_name(view: View) -> &'static str {
+    match view {
+        View::All => "All articles",
+        View::Unread => "Unread",
+        View::Starred => "Starred",
+        View::Today => "Today",
+    }
+}
+
+/// The views, then each folder followed by its sources, then unfiled
+/// sources. `folders` and `sources` come in stored order.
 pub fn entries(folders: &[Folder], sources: &[Source]) -> Vec<Entry> {
-    let mut rows = vec![Entry::All];
+    let mut rows: Vec<Entry> = VIEWS.into_iter().map(Entry::View).collect();
     for folder in folders {
         rows.push(Entry::Folder(folder.id));
         rows.extend(
@@ -60,12 +75,20 @@ pub fn entries(folders: &[Folder], sources: &[Source]) -> Vec<Entry> {
     rows
 }
 
-/// Unread counts for a row: a source's own, a folder's sources' sum, or
-/// everything for "All".
-pub fn count(entry: Entry, sources: &[Source], unread: &HashMap<i64, i64>) -> i64 {
+/// The number beside a row: a feed's unread articles, a folder's feeds'
+/// sum, unread everywhere for "All articles" and "Unread", and how many
+/// articles are starred or came today for those views.
+pub fn count(
+    entry: Entry,
+    sources: &[Source],
+    unread: &HashMap<i64, i64>,
+    views: &ViewCounts,
+) -> i64 {
     let of = |id: i64| unread.get(&id).copied().unwrap_or(0);
     match entry {
-        Entry::All => unread.values().sum(),
+        Entry::View(View::All | View::Unread) => views.unread,
+        Entry::View(View::Starred) => views.starred,
+        Entry::View(View::Today) => views.today,
         Entry::Folder(folder) => sources
             .iter()
             .filter(|s| s.folder_id == Some(folder))
@@ -130,13 +153,16 @@ mod tests {
     }
 
     #[test]
-    fn folders_hold_their_sources_and_unfiled_come_last() {
+    fn views_come_first_then_folders_hold_their_sources_and_unfiled_come_last() {
         let folders = [folder(1), folder(2)];
         let sources = [source(10, None), source(11, Some(2)), source(12, Some(1))];
         assert_eq!(
             entries(&folders, &sources),
             [
-                Entry::All,
+                Entry::View(View::All),
+                Entry::View(View::Unread),
+                Entry::View(View::Starred),
+                Entry::View(View::Today),
                 Entry::Folder(1),
                 Entry::Source {
                     id: 12,
@@ -156,22 +182,24 @@ mod tests {
     }
 
     #[test]
-    fn folder_counts_add_up_their_sources() {
+    fn folder_counts_add_up_their_sources_and_views_use_their_own() {
         let sources = [source(10, Some(1)), source(11, Some(1)), source(12, None)];
         let unread = HashMap::from([(10, 3), (11, 4), (12, 5)]);
-        assert_eq!(count(Entry::Folder(1), &sources, &unread), 7);
-        assert_eq!(count(Entry::All, &sources, &unread), 12);
+        let views = ViewCounts {
+            unread: 12,
+            starred: 2,
+            today: 6,
+        };
+        let count = |entry| count(entry, &sources, &unread, &views);
+        assert_eq!(count(Entry::Folder(1)), 7);
         assert_eq!(
-            count(
-                Entry::Source {
-                    id: 12,
-                    filed: false
-                },
-                &sources,
-                &unread
-            ),
+            count(Entry::Source {
+                id: 12,
+                filed: false
+            }),
             5
         );
+        assert_eq!(VIEWS.map(|v| count(Entry::View(v))), [12, 12, 2, 6]);
     }
 
     #[test]
@@ -195,6 +223,6 @@ mod tests {
             Some(Move::Folder(7, Some(8)))
         );
         assert_eq!(drop_on(Entry::Folder(7), s(1)), None);
-        assert_eq!(drop_on(s(1), Entry::All), None);
+        assert_eq!(drop_on(s(1), Entry::View(View::All)), None);
     }
 }
