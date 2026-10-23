@@ -1663,6 +1663,7 @@ version = "0.7.0"
 dependencies = [
  "criterion",
  "directories",
+ "html-escape",
  "rusqlite",
  "tempfile",
  "thiserror 1.0.69",
