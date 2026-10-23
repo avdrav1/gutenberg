@@ -1,0 +1,18 @@
+<p>The Varnish project has <a href="https://vinyl-cache.org/organization/on_vinyl_cache_and_varnish_cache.html#org-vinyl-varnish">renamed itself to Vinyl Cache</a>.
+We followed this rename with a <a href="https://gitlab.archlinux.org/archlinux/packaging/packages/vinyl-cache">new <code>vinyl-cache</code> package</a>.
+This upgrade results in <a href="https://vinyl-cache.org/docs/9.0/whats-new/upgrading-9.0.html">breaking changes</a> and users are advised to study these changes and how it affects them before following the replacement.
+All references to "<code>varnish</code>" have been changed to "<code>vinyl</code>" in all binaries and directories.</p>
+<p>At minimum, users will have to:</p>
+<ul>
+<li>rename <code>/etc/varnish</code> to <code>/etc/vinyl-cache</code></li>
+<li>rename <code>/var/lib/varnish</code> to <code>/var/lib/vinyl-cache</code></li>
+<li>fix up ownership of files inside <code>/var/lib/varnish</code></li>
+<li>user <code>varnish</code> becomes <code>vinyl</code></li>
+<li>group <code>varnish</code> becomes <code>vinyl</code></li>
+<li>user <code>varnishlog</code> becomes <code>vinyllog</code></li>
+<li>user <code>vcache</code> remains the same</li>
+<li>disable the old <code>varnish.service</code> and <code>varnishncsa.service</code> systemd units</li>
+<li>enable the new <code>vinyl-cache.service</code> and <code>vinylncsa.service</code> systemd units</li>
+</ul>
+<p>Meanwhile, the <code>varnish</code> package has been dropped from <code>[extra]</code>.
+We're not currently planning to maintain a new <code>varnish</code> package as it's a different upstream project.</p>

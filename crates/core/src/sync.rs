@@ -11,8 +11,9 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use futures::stream::{FuturesUnordered, StreamExt};
-use gutenberg_sources::favicon::{self, Format};
+use gutenberg_sources::favicon;
 use gutenberg_sources::feed::{self, Feed, FeedError, Fetched};
+use gutenberg_sources::image::Format;
 use gutenberg_store::{DueFeed, NewArticle, Store, Validators};
 use tokio::sync::Semaphore;
 

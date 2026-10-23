@@ -1,47 +1,10 @@
 //! Site icons: which URLs a page names as its icon, and whether a download
-//! is an image at all. Pure; fetching and caching belong to the sync engine.
+//! is an icon at all. Pure; fetching and caching belong to the sync engine.
 
 use url::Url;
 
 use crate::discover;
-
-/// An icon's image format, told from its first bytes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Format {
-    Png,
-    Ico,
-    Gif,
-    Jpeg,
-    Webp,
-    Svg,
-}
-
-impl Format {
-    pub const ALL: [Format; 6] = [
-        Format::Png,
-        Format::Ico,
-        Format::Gif,
-        Format::Jpeg,
-        Format::Webp,
-        Format::Svg,
-    ];
-
-    /// The file extension, which is how an image decoder picks the format.
-    pub const fn ext(self) -> &'static str {
-        match self {
-            Format::Png => "png",
-            Format::Ico => "ico",
-            Format::Gif => "gif",
-            Format::Jpeg => "jpg",
-            Format::Webp => "webp",
-            Format::Svg => "svg",
-        }
-    }
-
-    pub fn from_ext(ext: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|f| f.ext() == ext)
-    }
-}
+use crate::image::{self, Format};
 
 /// Larger than any favicon; a bigger download isn't one.
 pub const MAX_BYTES: usize = 512 * 1024;
@@ -77,32 +40,13 @@ pub fn root_icon(page_url: &str) -> Option<String> {
     Some(url.into())
 }
 
-/// The format of a download, or `None` when it isn't an image: an HTML
-/// error page served with a 200, an empty body, or something too big.
+/// The format of an icon download, or `None` when it isn't an image or is
+/// too big to be an icon.
 pub fn sniff(bytes: &[u8]) -> Option<Format> {
-    if bytes.is_empty() || bytes.len() > MAX_BYTES {
+    if bytes.len() > MAX_BYTES {
         return None;
     }
-    if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
-        Some(Format::Png)
-    } else if bytes.starts_with(&[0, 0, 1, 0]) {
-        Some(Format::Ico)
-    } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
-        Some(Format::Gif)
-    } else if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
-        Some(Format::Jpeg)
-    } else if bytes.len() >= 12 && &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
-        Some(Format::Webp)
-    } else if is_svg(bytes) {
-        Some(Format::Svg)
-    } else {
-        None
-    }
-}
-
-fn is_svg(bytes: &[u8]) -> bool {
-    let head = String::from_utf8_lossy(&bytes[..bytes.len().min(1024)]).to_ascii_lowercase();
-    head.contains("<svg") && !discover::looks_like_html(bytes)
+    image::sniff(bytes)
 }
 
 #[cfg(test)]
@@ -168,19 +112,10 @@ mod tests {
     }
 
     #[test]
-    fn real_icons_are_told_apart_from_pages() {
-        assert_eq!(sniff(&fixture("icons/archlinux.png")), Some(Format::Png));
-        assert_eq!(
-            sniff(&fixture("icons/daringfireball.ico")),
-            Some(Format::Ico)
-        );
-        assert_eq!(sniff(&fixture("icons/rust-lang.svg")), Some(Format::Svg));
-        // A soft 404: a page with an inline <svg>, served with 200.
-        assert_eq!(
-            sniff(b"<!DOCTYPE html><html><body><svg></svg>Not found</body></html>"),
-            None
-        );
-        assert_eq!(sniff(b""), None);
-        assert_eq!(sniff(&vec![0x89; MAX_BYTES + 1]), None);
+    fn an_image_too_big_for_an_icon_is_refused() {
+        let mut png = fixture("icons/archlinux.png");
+        assert_eq!(sniff(&png), Some(Format::Png));
+        png.resize(MAX_BYTES + 1, 0);
+        assert_eq!(sniff(&png), None);
     }
 }

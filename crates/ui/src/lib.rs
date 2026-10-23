@@ -1,16 +1,19 @@
 //! See CLAUDE.md for what this crate owns.
 
+mod article;
 mod list;
 mod onboarding;
 mod sidebar;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use gutenberg_core::catalog;
 use gutenberg_core::config::{self, Config};
 use gutenberg_core::favicon::Icons;
+use gutenberg_core::images::{self, Images, Loaded};
 use gutenberg_core::sync::unix_now;
 use gutenberg_store::{ArticleRow, Filter, Folder, Source, SourceKind, Store};
 use gutenberg_theme::{Rgb, Tokens};
@@ -90,6 +93,10 @@ struct App {
     /// Height of the panes, from the window.
     height: f32,
     opened: Option<Opened>,
+    /// Fetches the open article's images; set once its worker starts.
+    images: Option<Images>,
+    /// The open article's images, by URL.
+    pictures: HashMap<String, article::Picture>,
     pending_g: bool,
     bench: Option<Bench>,
     /// The Add sources screen, shown instead of the panes while open.
@@ -145,7 +152,7 @@ impl Icon {
 struct Opened {
     title: String,
     meta: String,
-    body: String,
+    body: Vec<article::Block>,
 }
 
 /// `GUTENBERG_SCROLL_BENCH=<frames>`: scroll a row per frame, then report.
@@ -171,6 +178,13 @@ enum Message {
     /// Mouse up anywhere: a click if it never left the row, else a drop.
     Release,
     Onboarding(onboarding::Action),
+    /// A link in the article pane was clicked.
+    OpenLink(String),
+    /// The image worker is up and takes requests.
+    ImagesReady(Images),
+    ImageLoaded(Arc<Loaded>),
+    /// A fetched raster image is decoded and ready to draw, or isn't.
+    ImageAllocated(String, Result<image::Allocation, image::Error>),
 }
 
 impl App {
@@ -219,6 +233,8 @@ impl App {
             top: 0,
             height: 768.0,
             opened: None,
+            images: None,
+            pictures: HashMap::new(),
             pending_g: false,
             bench,
             onboarding: None,
@@ -377,6 +393,20 @@ impl App {
                     }
                 }
             }
+            Message::OpenLink(url) => open_in_browser(&url),
+            Message::ImagesReady(images) => {
+                self.images = Some(images);
+                self.request_pictures();
+            }
+            Message::ImageLoaded(loaded) => return self.image_loaded(loaded),
+            Message::ImageAllocated(url, allocated) => {
+                if let Some(slot) = self.pictures.get_mut(&url) {
+                    *slot = match allocated {
+                        Ok(allocation) => article::Picture::Raster(allocation),
+                        Err(_) => article::Picture::Failed,
+                    };
+                }
+            }
         }
         Task::none()
     }
@@ -442,11 +472,63 @@ impl App {
             .unwrap_or_default();
         let mut meta = vec![source, list::age(row.sort_at, unix_now())];
         meta.extend(row.author.clone());
+        // Relative links in a summary point into the article's own site.
+        let base = row.url.clone().or_else(|| {
+            self.sources
+                .iter()
+                .find(|s| s.id == row.source_id)
+                .and_then(|s| s.url.clone())
+        });
+        let body = summary
+            .as_deref()
+            .map(|html| article::parse(html, base.as_deref()))
+            .unwrap_or_default();
         self.opened = Some(Opened {
             title: row.title.clone(),
             meta: meta.join(" · "),
-            body: summary.as_deref().map(list::plain_text).unwrap_or_default(),
+            body,
         });
+        self.request_pictures();
+    }
+
+    /// Takes a fetched image for the open article. A raster image is
+    /// decoded and uploaded first, so it appears at its size in one step.
+    fn image_loaded(&mut self, loaded: Arc<Loaded>) -> Task<Message> {
+        let (url, fetched) = fetched(loaded);
+        // An answer for an article that's no longer open is dropped.
+        let Some(slot) = self.pictures.get_mut(&url) else {
+            return Task::none();
+        };
+        match fetched {
+            None => *slot = article::Picture::Failed,
+            Some((bytes, images::Format::Svg)) => {
+                *slot = article::Picture::Vector(svg::Handle::from_memory(bytes));
+            }
+            Some((bytes, _)) => {
+                return image::allocate(image::Handle::from_bytes(bytes))
+                    .map(move |allocated| Message::ImageAllocated(url.clone(), allocated));
+            }
+        }
+        Task::none()
+    }
+
+    /// Keeps the open article's images, drops the rest, and asks the
+    /// worker for the ones not yet fetched.
+    fn request_pictures(&mut self) {
+        let urls = self
+            .opened
+            .as_ref()
+            .map(|o| article::image_urls(&o.body))
+            .unwrap_or_default();
+        self.pictures.retain(|url, _| urls.contains(&url.as_str()));
+        let Some(images) = &self.images else { return };
+        for url in urls {
+            if !self.pictures.contains_key(url) {
+                self.pictures
+                    .insert(url.to_owned(), article::Picture::Loading);
+                images.request(url.to_owned());
+            }
+        }
     }
 
     fn bench_frame(&mut self, at: Instant) -> Task<Message> {
@@ -488,6 +570,9 @@ impl App {
         ];
         if let Some(path) = &self.config_path {
             subscriptions.push(Subscription::run_with(path.clone(), watch_config));
+        }
+        if self.bench.is_none() {
+            subscriptions.push(Subscription::run(image_worker));
         }
         if self.bench.is_some() {
             subscriptions.push(window::frames().map(Message::Frame));
@@ -708,9 +793,12 @@ impl App {
         };
         scrollable(
             column![
-                text(&opened.title).size(22).color(color(t.foreground)),
+                text(&opened.title)
+                    .size(22)
+                    .color(color(t.foreground))
+                    .wrapping(text::Wrapping::WordOrGlyph),
                 text(&opened.meta).size(13).color(color(t.muted)),
-                text(&opened.body).size(15).color(color(t.foreground)),
+                article::view(&opened.body, t, &self.pictures),
             ]
             .spacing(12)
             .padding(24),
@@ -806,6 +894,67 @@ fn watch_config(path: &PathBuf) -> impl Stream<Item = Message> + use<> {
     })
 }
 
+/// Starts the image worker, hands the app its handle, then relays each
+/// image it fetches.
+fn image_worker() -> impl Stream<Item = Message> {
+    use iced::futures::{SinkExt, StreamExt};
+    iced::stream::channel(16, async |mut output| {
+        let (loaded_tx, mut loaded) = iced::futures::channel::mpsc::unbounded();
+        let images = match Images::spawn(move |l| {
+            let _ = loaded_tx.unbounded_send(l);
+        }) {
+            Ok(images) => images,
+            Err(err) => {
+                eprintln!("gutenberg: images: {err}");
+                return;
+            }
+        };
+        if output.send(Message::ImagesReady(images)).await.is_err() {
+            return;
+        }
+        while let Some(l) = loaded.next().await {
+            if output
+                .send(Message::ImageLoaded(Arc::new(l)))
+                .await
+                .is_err()
+            {
+                return;
+            }
+        }
+    })
+}
+
+/// A fetched image's URL, and its bytes and format when it loaded.
+fn fetched(loaded: Arc<Loaded>) -> (String, Option<(Vec<u8>, images::Format)>) {
+    match Arc::try_unwrap(loaded) {
+        Ok(Loaded::Image { url, bytes, format }) => (url, Some((bytes, format))),
+        Ok(Loaded::Failed { url }) => (url, None),
+        // Never shared in practice: the worker sends each answer once.
+        Err(shared) => match &*shared {
+            Loaded::Image { url, bytes, format } => (url.clone(), Some((bytes.clone(), *format))),
+            Loaded::Failed { url } => (url.clone(), None),
+        },
+    }
+}
+
+/// Opens `url` in the default browser. `xdg-open` runs detached; a thread
+/// reaps it so the window never waits on it.
+fn open_in_browser(url: &str) {
+    use std::process::{Command, Stdio};
+    let spawned = Command::new("xdg-open")
+        .arg(url)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn();
+    match spawned {
+        Ok(mut child) => {
+            std::thread::spawn(move || child.wait());
+        }
+        Err(err) => eprintln!("gutenberg: opening {url}: {err}"),
+    }
+}
+
 /// Where a dragged row will land.
 fn drop_line<'a>(accent: Rgb) -> Element<'a, Message> {
     container(Space::new())
@@ -833,6 +982,8 @@ fn pane<'a>(
     container(content)
         .width(Length::FillPortion(portion))
         .height(Length::Fill)
+        // Whatever a pane holds is drawn inside it, never over its neighbor.
+        .clip(true)
         .style(move |_| container::Style {
             background: Some(color(background).into()),
             border: Border {
@@ -893,7 +1044,62 @@ mod tests {
         assert!(app.rows[1].read);
         let stored = app.store.as_ref().unwrap().list_articles(None, 10).unwrap();
         assert!(stored.iter().find(|r| r.id == id).unwrap().read);
-        assert_eq!(app.opened.as_ref().unwrap().body, "Body 1");
+        assert_eq!(
+            app.opened.as_ref().unwrap().body,
+            [article::Block::Paragraph(vec![article::Span {
+                text: "Body 1".into(),
+                style: article::Style::default(),
+                link: None,
+            }])]
+        );
+    }
+
+    #[test]
+    fn images_load_for_the_open_article_only() {
+        let mut app = app_with(2);
+        // Port 9 on loopback: the worker's own request fails without
+        // leaving the machine; the answers below are delivered by hand.
+        let url = "http://127.0.0.1:9/a.png".to_owned();
+        let source_id = app.rows[0].source_id;
+        app.store
+            .as_mut()
+            .unwrap()
+            .insert_articles(&[NewArticle {
+                source_id,
+                guid: "pic".into(),
+                url: None,
+                title: "With a picture".into(),
+                author: None,
+                summary_html: Some(format!("<p>Look</p><img src=\"{url}\">")),
+                published_at: Some(5_000),
+                fetched_at: 1,
+            }])
+            .unwrap();
+        app.reload();
+        let _ = app.update(Message::ImagesReady(Images::spawn(|_| {}).unwrap()));
+
+        // Newest first: the article with the picture is the top row.
+        let _ = app.update(Message::Key(Action::First));
+        let _ = app.update(Message::Key(Action::Open));
+        assert!(matches!(
+            app.pictures.get(&url),
+            Some(article::Picture::Loading)
+        ));
+        let failed = Loaded::Failed { url: url.clone() };
+        let _ = app.update(Message::ImageLoaded(Arc::new(failed)));
+        assert!(matches!(
+            app.pictures.get(&url),
+            Some(article::Picture::Failed)
+        ));
+
+        // Another article: its images replace the last one's, and a late
+        // answer for the old one is dropped.
+        let _ = app.update(Message::Key(Action::Down));
+        let _ = app.update(Message::Key(Action::Open));
+        assert!(app.pictures.is_empty());
+        let late = Loaded::Failed { url: url.clone() };
+        let _ = app.update(Message::ImageLoaded(Arc::new(late)));
+        assert!(app.pictures.is_empty());
     }
 
     #[test]

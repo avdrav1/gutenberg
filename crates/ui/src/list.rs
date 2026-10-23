@@ -110,92 +110,6 @@ fn civil(days: i64) -> (i64, i64, i64) {
     (yoe + era * 400 + i64::from(m <= 2), m, d)
 }
 
-/// Text of an HTML summary, for the article pane until S3.2 renders HTML.
-/// Block tags start paragraphs; line breaks in the source are just spaces.
-pub fn plain_text(html: &str) -> String {
-    const BLOCKS: &[&str] = &[
-        "p",
-        "br",
-        "div",
-        "li",
-        "h1",
-        "h2",
-        "h3",
-        "h4",
-        "blockquote",
-        "pre",
-        "tr",
-    ];
-    let mut paragraphs = vec![String::new()];
-    let mut rest = html;
-    while let Some(open) = rest.find('<') {
-        paragraphs.last_mut().unwrap().push_str(&rest[..open]);
-        let close = rest[open..].find('>').map_or(rest.len(), |c| open + c + 1);
-        let name: String = rest[open + 1..close.saturating_sub(1).max(open + 1)]
-            .trim_start_matches('/')
-            .chars()
-            .take_while(char::is_ascii_alphanumeric)
-            .collect::<String>()
-            .to_ascii_lowercase();
-        if BLOCKS.contains(&name.as_str()) {
-            paragraphs.push(String::new());
-        } else {
-            paragraphs.last_mut().unwrap().push(' ');
-        }
-        rest = &rest[close.min(rest.len())..];
-    }
-    paragraphs.last_mut().unwrap().push_str(rest);
-    paragraphs
-        .iter()
-        .map(|p| decode_entities(&p.split_whitespace().collect::<Vec<_>>().join(" ")))
-        .filter(|p| !p.is_empty())
-        .collect::<Vec<_>>()
-        .join("\n\n")
-}
-
-/// Named entities feeds use most, and numeric ones (`&#160;`, `&#xA0;`).
-fn decode_entities(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut rest = text;
-    while let Some(amp) = rest.find('&') {
-        out.push_str(&rest[..amp]);
-        rest = &rest[amp..];
-        let Some(semi) = rest.find(';').filter(|&n| n <= 10) else {
-            out.push('&');
-            rest = &rest[1..];
-            continue;
-        };
-        let entity = &rest[1..semi];
-        let decoded = match entity {
-            "amp" => Some('&'),
-            "lt" => Some('<'),
-            "gt" => Some('>'),
-            "quot" => Some('"'),
-            "apos" => Some('\''),
-            "nbsp" => Some(' '),
-            _ => entity
-                .strip_prefix("#x")
-                .or_else(|| entity.strip_prefix("#X"))
-                .and_then(|hex| u32::from_str_radix(hex, 16).ok())
-                .or_else(|| entity.strip_prefix('#').and_then(|d| d.parse().ok()))
-                .and_then(char::from_u32)
-                .map(|c| if c == '\u{a0}' { ' ' } else { c }),
-        };
-        match decoded {
-            Some(c) => {
-                out.push(c);
-                rest = &rest[semi + 1..];
-            }
-            None => {
-                out.push('&');
-                rest = &rest[1..];
-            }
-        }
-    }
-    out.push_str(rest);
-    out
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -253,22 +167,5 @@ mod tests {
         assert_eq!(age(now - 2 * 86_400, now), "2d");
         assert_eq!(age(1_790_068_167, now), "Sep 22");
         assert_eq!(age(1_596_818_676, now), "Aug 7 2020");
-    }
-
-    #[test]
-    fn source_line_breaks_are_spaces_and_entities_decode() {
-        assert_eq!(
-            plain_text("<p>Mozilla has\nannounced that\n<a href=x>keys</a> leaked on October&#160;17 &amp; 18.</p>\n<p>Two</p>"),
-            "Mozilla has announced that keys leaked on October 17 & 18.\n\nTwo"
-        );
-        assert_eq!(plain_text("caf&#xE9; &bogus; AT&T"), "café &bogus; AT&T");
-    }
-
-    #[test]
-    fn summaries_become_paragraphs() {
-        assert_eq!(
-            plain_text("<p>One &amp; two</p><p>Three<br>four</p>"),
-            "One & two\n\nThree\n\nfour"
-        );
     }
 }
