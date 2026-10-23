@@ -41,7 +41,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 
 | ID | Story | Acceptance | Status |
 | --- | --- | --- | --- |
-| S4.1 | Read `colors.toml` from both Omarchy theme paths and map to UI tokens | Each stock Omarchy theme renders with readable contrast; screenshots in `docs/themes/` | doing |
+| S4.1 | Read `colors.toml` from both Omarchy theme paths and map to UI tokens | Each stock Omarchy theme renders with readable contrast; screenshots in `docs/themes/` | review |
 | S4.2 | Font from `fc-match monospace`; size from config | Changing the font with `omarchy-font-set` changes the app | todo |
 | S4.3 | Hook drop-in and inotify fallback reload the theme live | `omarchy theme set` changes the app within 1 s with no restart | todo |
 | S4.4 | Built-in fallback theme when no Omarchy is found | Runs on stock Ubuntu with a sane look | todo |
