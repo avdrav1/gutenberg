@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- New keys, also in the `:` palette and `?` help: `s` stars an article (a ★ shows in the list), `m` marks it unread or read again, `M` marks everything in the chosen folder or feed read, `O` opens the article in your browser, and `y` copies its link.
+
 ## 0.6.0 — 2026-10-23
 
 - Press `:` for the command palette: type a few letters of what you want to do (`rv` for reader view) and press Enter. Press `?` for a list of every key.

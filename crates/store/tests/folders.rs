@@ -113,3 +113,47 @@ fn unread_counts_follow_reading_and_folders_filter() {
     );
     assert_eq!(store.list_articles_in(Filter::All, 10).unwrap().len(), 3);
 }
+
+#[test]
+fn marking_a_folder_read_leaves_the_rest_unread() {
+    let mut store = Store::open_in_memory().unwrap();
+    let tech = store.folder_named("Tech").unwrap().id;
+    let news = store.folder_named("News").unwrap().id;
+    let a = feed(&store, "a", Some(tech));
+    let b = feed(&store, "b", Some(tech));
+    let c = feed(&store, "c", Some(news));
+    let d = feed(&store, "d", None);
+    let article = |source_id, guid: &str| NewArticle {
+        source_id,
+        guid: guid.to_owned(),
+        url: None,
+        title: guid.to_owned(),
+        author: None,
+        summary_html: None,
+        published_at: Some(1),
+        fetched_at: 1,
+    };
+    store
+        .insert_articles(&[
+            article(a, "a1"),
+            article(a, "a2"),
+            article(b, "b1"),
+            article(c, "c1"),
+            article(d, "d1"),
+        ])
+        .unwrap();
+    // One already read: it isn't counted again.
+    let a1 = store.list_articles_in(Filter::Source(a), 10).unwrap()[0].id;
+    store.set_read(a1, true).unwrap();
+
+    assert_eq!(store.mark_read_in(Filter::Folder(tech)).unwrap(), 2);
+    let counts = store.unread_counts().unwrap();
+    assert!(!counts.contains_key(&a) && !counts.contains_key(&b));
+    assert_eq!((counts[&c], counts[&d]), (1, 1));
+
+    assert_eq!(store.mark_read_in(Filter::Source(d)).unwrap(), 1);
+    assert_eq!(store.unread_counts().unwrap().get(&c), Some(&1));
+
+    assert_eq!(store.mark_read_in(Filter::All).unwrap(), 1);
+    assert!(store.unread_counts().unwrap().is_empty());
+}

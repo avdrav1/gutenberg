@@ -98,3 +98,32 @@ fn ten_thousand_articles_list_in_under_20_ms() {
     println!("list 10k: {best:?}");
     assert!(best < Duration::from_millis(20), "took {best:?}");
 }
+
+#[test]
+fn a_star_lasts_and_comes_off() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("g.db");
+    let id = {
+        let mut store = Store::open(&path).unwrap();
+        let sources = add_feeds(&store, 1);
+        store.insert_articles(&articles(&sources, 2)).unwrap();
+        let id = store.list_articles(None, 10).unwrap()[1].id;
+        store.set_starred(id, true).unwrap();
+        id
+    };
+    let store = Store::open(&path).unwrap();
+    let starred: Vec<i64> = store
+        .list_articles(None, 10)
+        .unwrap()
+        .into_iter()
+        .filter(|r| r.starred)
+        .map(|r| r.id)
+        .collect();
+    assert_eq!(starred, [id]);
+    store.set_starred(id, false).unwrap();
+    assert!(store
+        .list_articles(None, 10)
+        .unwrap()
+        .iter()
+        .all(|r| !r.starred));
+}

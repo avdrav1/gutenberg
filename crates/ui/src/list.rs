@@ -26,6 +26,14 @@ pub enum Action {
     Reader,
     Palette,
     Help,
+    /// Stars or unstars the selected article.
+    Star,
+    /// Marks the selected article unread, or read again.
+    ToggleRead,
+    /// Marks everything in the folder or feed chosen in the sources pane read.
+    MarkFolderRead,
+    OpenInBrowser,
+    CopyLink,
 }
 
 /// `pending_g` is whether the last key was a lone `g`.
@@ -46,6 +54,11 @@ pub fn action_for(key: &Key, modifiers: Modifiers, pending_g: bool) -> Option<Ac
         Key::Character("v") => Some(Action::Reader),
         Key::Character(":") => Some(Action::Palette),
         Key::Character("?") => Some(Action::Help),
+        Key::Character("s") => Some(Action::Star),
+        Key::Character("m") => Some(Action::ToggleRead),
+        Key::Character("M") => Some(Action::MarkFolderRead),
+        Key::Character("O") => Some(Action::OpenInBrowser),
+        Key::Character("y") => Some(Action::CopyLink),
         _ => None,
     }
 }
