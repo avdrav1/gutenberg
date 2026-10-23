@@ -1,0 +1,4 @@
+# SOURCE https://www.bbc.co.uk/news/articles/c54g1kxw4nvvo fetched 2026-10-23
+url = "https://www.bbc.co.uk/news/articles/c54g1kxw4nvvo"
+fetched = 2026-10-23
+covers = "BBC News article page; scripts, styles, svg bodies, comments and srcset stripped"

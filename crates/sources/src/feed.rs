@@ -51,6 +51,8 @@ pub enum FeedError {
         if *.page_had_links { "the page's feed links," } else { "no <link rel=\"alternate\"> on the page;" }
     )]
     NoFeedFound { page_had_links: bool },
+    #[error("larger than {} MB", .0 / (1024 * 1024))]
+    TooLarge(usize),
 }
 
 /// A feed and the URL it was actually found at.
@@ -130,6 +132,34 @@ pub async fn fetch(url: &str) -> Result<Vec<u8>, FeedError> {
         // Without validators a server has nothing to compare against.
         Fetched::NotModified => Err(FeedError::Http("304 without a conditional request".into())),
     }
+}
+
+/// Downloads any body, refusing one bigger than `max` bytes without
+/// holding more than that in memory.
+pub async fn download(
+    client: &reqwest::Client,
+    url: &str,
+    max: usize,
+) -> Result<Vec<u8>, FeedError> {
+    let mut response = client.get(url).send().await.map_err(http_error)?;
+    let status = response.status();
+    if !status.is_success() {
+        return Err(FeedError::Status {
+            status,
+            retry_after: None,
+        });
+    }
+    if response.content_length().is_some_and(|n| n > max as u64) {
+        return Err(FeedError::TooLarge(max));
+    }
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(http_error)? {
+        if bytes.len() + chunk.len() > max {
+            return Err(FeedError::TooLarge(max));
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    Ok(bytes)
 }
 
 /// Fetches with `If-None-Match` / `If-Modified-Since` from the last 200.

@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+dom_smoothie.workspace = true
 feed-rs.workspace = true
 quick-xml.workspace = true
 reqwest.workspace = true
