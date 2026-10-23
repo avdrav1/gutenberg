@@ -183,6 +183,8 @@ enum Message {
     /// The image worker is up and takes requests.
     ImagesReady(Images),
     ImageLoaded(Arc<Loaded>),
+    /// A fetched raster image is decoded and ready to draw, or isn't.
+    ImageAllocated(String, Result<image::Allocation, image::Error>),
 }
 
 impl App {
@@ -396,11 +398,13 @@ impl App {
                 self.images = Some(images);
                 self.request_pictures();
             }
-            Message::ImageLoaded(loaded) => {
-                let (url, picture) = picture(loaded);
-                // An answer for an article that's no longer open is dropped.
+            Message::ImageLoaded(loaded) => return self.image_loaded(loaded),
+            Message::ImageAllocated(url, allocated) => {
                 if let Some(slot) = self.pictures.get_mut(&url) {
-                    *slot = picture;
+                    *slot = match allocated {
+                        Ok(allocation) => article::Picture::Raster(allocation),
+                        Err(_) => article::Picture::Failed,
+                    };
                 }
             }
         }
@@ -485,6 +489,27 @@ impl App {
             body,
         });
         self.request_pictures();
+    }
+
+    /// Takes a fetched image for the open article. A raster image is
+    /// decoded and uploaded first, so it appears at its size in one step.
+    fn image_loaded(&mut self, loaded: Arc<Loaded>) -> Task<Message> {
+        let (url, fetched) = fetched(loaded);
+        // An answer for an article that's no longer open is dropped.
+        let Some(slot) = self.pictures.get_mut(&url) else {
+            return Task::none();
+        };
+        match fetched {
+            None => *slot = article::Picture::Failed,
+            Some((bytes, images::Format::Svg)) => {
+                *slot = article::Picture::Vector(svg::Handle::from_memory(bytes));
+            }
+            Some((bytes, _)) => {
+                return image::allocate(image::Handle::from_bytes(bytes))
+                    .map(move |allocated| Message::ImageAllocated(url.clone(), allocated));
+            }
+        }
+        Task::none()
     }
 
     /// Keeps the open article's images, drops the rest, and asks the
@@ -899,22 +924,17 @@ fn image_worker() -> impl Stream<Item = Message> {
     })
 }
 
-/// What a fetched image becomes in the article pane, and its URL.
-fn picture(loaded: Arc<Loaded>) -> (String, article::Picture) {
-    let (url, bytes, format) = match Arc::try_unwrap(loaded) {
-        Ok(Loaded::Image { url, bytes, format }) => (url, bytes, format),
-        Ok(Loaded::Failed { url }) => return (url, article::Picture::Failed),
+/// A fetched image's URL, and its bytes and format when it loaded.
+fn fetched(loaded: Arc<Loaded>) -> (String, Option<(Vec<u8>, images::Format)>) {
+    match Arc::try_unwrap(loaded) {
+        Ok(Loaded::Image { url, bytes, format }) => (url, Some((bytes, format))),
+        Ok(Loaded::Failed { url }) => (url, None),
         // Never shared in practice: the worker sends each answer once.
         Err(shared) => match &*shared {
-            Loaded::Image { url, bytes, format } => (url.clone(), bytes.clone(), *format),
-            Loaded::Failed { url } => return (url.clone(), article::Picture::Failed),
+            Loaded::Image { url, bytes, format } => (url.clone(), Some((bytes.clone(), *format))),
+            Loaded::Failed { url } => (url.clone(), None),
         },
-    };
-    let picture = match format {
-        images::Format::Svg => article::Picture::Vector(svg::Handle::from_memory(bytes)),
-        _ => article::Picture::Raster(image::Handle::from_bytes(bytes)),
-    };
-    (url, picture)
+    }
 }
 
 /// Opens `url` in the default browser. `xdg-open` runs detached; a thread
@@ -1065,19 +1085,11 @@ mod tests {
             app.pictures.get(&url),
             Some(article::Picture::Loading)
         ));
-        let png = Loaded::Image {
-            url: url.clone(),
-            bytes: std::fs::read(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/../../tests/fixtures/icons/archlinux.png"
-            ))
-            .unwrap(),
-            format: images::Format::Png,
-        };
-        let _ = app.update(Message::ImageLoaded(Arc::new(png)));
+        let failed = Loaded::Failed { url: url.clone() };
+        let _ = app.update(Message::ImageLoaded(Arc::new(failed)));
         assert!(matches!(
             app.pictures.get(&url),
-            Some(article::Picture::Raster(_))
+            Some(article::Picture::Failed)
         ));
 
         // Another article: its images replace the last one's, and a late

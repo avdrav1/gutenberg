@@ -394,7 +394,8 @@ impl Flow {
 #[derive(Debug, Clone)]
 pub enum Picture {
     Loading,
-    Raster(image::Handle),
+    /// Decoded and on the GPU, so it lays out at its real size at once.
+    Raster(image::Allocation),
     Vector(svg::Handle),
     Failed,
 }
@@ -491,7 +492,7 @@ fn block_view<'a>(
         .spacing(12)
         .into(),
         Block::Image { src, alt } => match pictures.get(src) {
-            Some(Picture::Raster(handle)) => image(handle.clone()).into(),
+            Some(Picture::Raster(allocation)) => image(allocation.handle().clone()).into(),
             Some(Picture::Vector(handle)) => svg(handle.clone()).width(Length::Fill).into(),
             Some(Picture::Loading) | None => placeholder("Loading image", alt, t),
             Some(Picture::Failed) => placeholder("Image unavailable", alt, t),
