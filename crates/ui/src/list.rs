@@ -21,6 +21,8 @@ pub enum Action {
     PendingG,
     /// Opens the Add sources screen.
     AddSources,
+    /// Swaps the open article between the feed's summary and the full page.
+    Reader,
 }
 
 /// `pending_g` is whether the last key was a lone `g`.
@@ -38,6 +40,7 @@ pub fn action_for(key: &Key, modifiers: Modifiers, pending_g: bool) -> Option<Ac
         Key::Character("G") => Some(Action::Last),
         Key::Character("o") | Key::Named(Named::Enter) => Some(Action::Open),
         Key::Character("a") => Some(Action::AddSources),
+        Key::Character("v") => Some(Action::Reader),
         _ => None,
     }
 }
