@@ -6,11 +6,11 @@
 | `gg` / `G` | first / last | list |
 | `o` / `Enter` | open article | list |
 | `v` | reader view: the full article from its page, or back to the feed's summary | list, article |
-| `O` | open in browser | list, article |
-| `m` | toggle read | list |
-| `M` | mark folder read | sources |
-| `s` | star | list, article |
-| `y` | copy link | list, article |
+| `O` | open the selected article in the browser | list, article |
+| `m` | mark the selected article unread, or read again | list |
+| `M` | mark folder read: everything in the folder or feed chosen in the sources pane (everything under "All articles") | any |
+| `s` | star or unstar the selected article (★ in the list) | list, article |
+| `y` | copy the selected article's link | list, article |
 | `/` | search | any |
 | `r` | refresh selected source; `R` all | any |
 | `u` | unread only; `S` starred; `t` today | any |
