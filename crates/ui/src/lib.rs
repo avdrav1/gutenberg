@@ -268,7 +268,9 @@ impl App {
             Some(path) => Store::open(path).map_err(|e| e.to_string()),
             None => Err("no data directory".to_owned()),
         };
-        Self::with_store(config, config_path, store, store_path.map(Icons::beside))
+        let mut app = Self::with_store(config, config_path, store, store_path.map(Icons::beside));
+        app.tokens = Tokens::load();
+        app
     }
 
     fn with_store(
@@ -1334,6 +1336,98 @@ pub mod bench {
             self.0.top = if self.0.top >= max { 0 } else { self.0.top + 1 };
             std::hint::black_box(self.0.view());
         }
+    }
+}
+
+/// For `examples/theme_shots.rs`: the real window, drawn headlessly in a
+/// theme's colors, over a small store of sample articles.
+#[cfg(feature = "shots")]
+#[doc(hidden)]
+pub mod shots {
+    use super::*;
+    use gutenberg_store::{NewArticle, NewSource};
+
+    const SUMMARY: &str = r#"<p>Lawmakers in <a href="https://example.com/capitol">Harrisburg</a>
+        passed the budget on Thursday, <em>three months late</em>.</p>
+        <h2>What changed</h2>
+        <ul><li>Transit gets <strong>$300 million</strong>.</li><li>Schools get a formula fix.</li></ul>
+        <blockquote><p>"It is a budget we can live with," the governor said.</p></blockquote>
+        <pre>total = base + 0.04 * enrollment</pre>"#;
+
+    /// Writes `path` (iced_test adds `-tiny-skia.png`): the window at `size`
+    /// in `tokens`, with an article open, read and starred rows, and a
+    /// folder chosen in the sources pane.
+    pub fn render(tokens: Tokens, size: (f32, f32), path: &std::path::Path) {
+        let mut store = Store::open_in_memory().expect("in-memory store");
+        let news = store.folder_named("News").expect("folder").id;
+        let feed = |store: &Store, title: &str, folder| {
+            store
+                .add_source(&NewSource {
+                    folder_id: folder,
+                    kind: SourceKind::Feed,
+                    title: title.into(),
+                    url: Some(format!("https://{}.example/feed", title.to_lowercase())),
+                    config: "{}".into(),
+                })
+                .expect("feed")
+                .id
+        };
+        let feeds = [
+            feed(&store, "PennLive", Some(news)),
+            feed(&store, "ProPublica", Some(news)),
+            feed(&store, "LWN", None),
+        ];
+        const TITLES: [&str; 9] = [
+            "State budget passes three months late",
+            "Transit agencies brace for winter service cuts",
+            "Kernel 7.4 merge window opens",
+            "How a small town rebuilt its water system",
+            "River flood warning lifted after record crest",
+            "School board weighs later start times",
+            "Rust 1.99 brings const traits",
+            "Museum reopens after two-year renovation",
+            "Court hears arguments over voting maps",
+        ];
+        let now = unix_now();
+        let articles: Vec<NewArticle> = TITLES
+            .iter()
+            .enumerate()
+            .map(|(i, title)| NewArticle {
+                source_id: feeds[i % feeds.len()],
+                guid: i.to_string(),
+                url: Some(format!("https://example.com/{i}")),
+                title: (*title).into(),
+                author: Some("Staff".into()),
+                summary_html: Some(SUMMARY.into()),
+                published_at: Some(now - i as i64 * 3_600),
+                fetched_at: now,
+            })
+            .collect();
+        store.insert_articles(&articles).expect("articles");
+
+        let mut app = App::with_store(Config::default(), None, Ok(store), None);
+        app.tokens = tokens;
+        app.height = size.1;
+        app.select(4);
+        let _ = app.update(Message::Key(Action::Star));
+        app.open(3);
+        app.open(4);
+        app.select(1);
+        let _ = app.update(Message::Key(Action::Star));
+        app.open(0);
+        app.choose(Entry::Folder(news));
+        app.open(0);
+
+        let mut simulator = iced_test::simulator::Simulator::with_size(
+            iced_test::core::Settings::default(),
+            iced::Size::new(size.0, size.1),
+            app.view(),
+        );
+        simulator
+            .snapshot(&iced::Theme::Dark)
+            .expect("snapshot")
+            .matches_image(path)
+            .expect("write the screenshot");
     }
 }
 

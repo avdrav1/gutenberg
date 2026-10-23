@@ -12,6 +12,11 @@ iced.workspace = true
 ego-tree.workspace = true
 scraper.workspace = true
 url.workspace = true
+iced_test = { version = "0.14", optional = true }
+
+[features]
+# Headless screenshots of the window per theme: examples/theme_shots.rs.
+shots = ["dep:iced_test"]
 
 [dev-dependencies]
 tempfile.workspace = true
@@ -20,3 +25,7 @@ criterion.workspace = true
 [[bench]]
 name = "list_view"
 harness = false
+
+[[example]]
+name = "theme_shots"
+required-features = ["shots"]
