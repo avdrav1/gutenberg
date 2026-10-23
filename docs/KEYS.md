@@ -5,6 +5,7 @@
 | `j` / `k` | next / previous item | list, sources |
 | `gg` / `G` | first / last | list |
 | `o` / `Enter` | open article | list |
+| `v` | reader view: the full article from its page, or back to the feed's summary | list, article |
 | `O` | open in browser | list, article |
 | `m` | toggle read | list |
 | `M` | mark folder read | sources |
