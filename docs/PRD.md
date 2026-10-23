@@ -50,7 +50,7 @@ Non-goals for 1.0: AI summaries and ranking (Cronkite covers that; a later MCP b
 - Three panes: sources, list, article. Any pane can be hidden; the list alone is a valid layout for a narrow tile.
 - Reader view: fetch the page, extract the body (a Rust port of Readability or `dom_smoothie`), render headings, paragraphs, images, code and blockquotes in the theme's font. Fall back to the feed's summary, then to "open in browser."
 - Keys: `j`/`k` move, `o`/`Enter` open, `m` toggle read, `s` star, `/` search, `r` refresh, `gg`/`G`, `:` command palette, `?` help. Every action is reachable from the palette.
-- Full-text search over title, summary and extracted body (SQLite FTS5). Results in under 50 ms for 100k articles.
+- Full-text search over title, author and summary (SQLite FTS5). Results in under 50 ms for 100k articles. Reader-view pages aren't stored yet, so they aren't searched; the S7.4 disk cache can index them.
 - Mark read on scroll past, mark all read in a folder, unread-only filter, starred, and a "today" view.
 - Open in the default browser (`xdg-open`), copy link, share via `wl-copy`.
 

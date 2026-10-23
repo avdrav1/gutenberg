@@ -11,7 +11,7 @@
 | `M` | mark folder read: everything in the folder or feed chosen in the sources pane (everything under "All articles") | any |
 | `s` | star or unstar the selected article (★ in the list) | list, article |
 | `y` | copy the selected article's link | list, article |
-| `/` | search | any |
+| `/` | search every article's title, author and summary as you type | any |
 | `r` | refresh selected source; `R` all | any |
 | `u` | unread only; `S` starred; `t` today | any |
 | `a` | add sources (the catalog) | any |
@@ -34,6 +34,19 @@ Opened with `:`. Type part of an action's name; letters only need to appear in o
 | `Esc` | close without running anything |
 
 Help (`?`) closes with `?`, `Esc` or `q`.
+
+## Search
+
+Opened with `/`. The list shows the newest 500 articles holding every word typed; words match their beginnings, so `harris` finds Harrisburg.
+
+| Key | Action |
+|---|---|
+| any letter | narrow the results |
+| `Backspace` | delete the last letter |
+| `↓` / `↑` | move through the results while typing |
+| `Enter` | stop typing; `j`/`k`, `o` and the rest work on the results |
+| `/` | type in the search again |
+| `Esc` | end the search; the folder or feed you were reading comes back |
 
 ## Add sources screen
 
