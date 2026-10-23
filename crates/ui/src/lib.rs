@@ -1,8 +1,10 @@
 //! See CLAUDE.md for what this crate owns.
 
 mod article;
+mod commands;
 mod list;
 mod onboarding;
+mod palette;
 mod sidebar;
 
 use std::collections::HashMap;
@@ -21,7 +23,8 @@ use iced::futures::Stream;
 use iced::keyboard;
 use iced::mouse::ScrollDelta;
 use iced::widget::{
-    column, container, image, mouse_area, scrollable, svg, text, Column, Row, Space,
+    column, container, image, mouse_area, opaque, row, scrollable, stack, svg, text, Column, Row,
+    Space,
 };
 use iced::{
     border, font, window, Alignment, Border, Color, Element, Font, Length, Size, Subscription, Task,
@@ -102,6 +105,22 @@ struct App {
     bench: Option<Bench>,
     /// The Add sources screen, shown instead of the panes while open.
     onboarding: Option<onboarding::Onboarding>,
+    /// The command palette or help, drawn over the panes.
+    overlay: Option<Overlay>,
+}
+
+enum Overlay {
+    Palette(palette::Palette),
+    Help,
+}
+
+/// Who gets the keys.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum KeyMode {
+    List,
+    Onboarding,
+    Palette,
+    Help,
 }
 
 /// A press on a sources-pane row and where the pointer is now.
@@ -203,6 +222,12 @@ enum Message {
     /// Mouse up anywhere: a click if it never left the row, else a drop.
     Release,
     Onboarding(onboarding::Action),
+    /// A key while the command palette is open.
+    Palette(palette::Input),
+    /// A command picked with the mouse in the palette.
+    RunCommand(Action),
+    /// Closes the palette or help.
+    CloseOverlay,
     /// A link in the article pane was clicked.
     OpenLink(String),
     /// The web worker is up and takes requests.
@@ -263,6 +288,7 @@ impl App {
             pending_g: false,
             bench,
             onboarding: None,
+            overlay: None,
         };
         app.reload();
         // First run: nothing to read yet, so start by picking sources.
@@ -364,6 +390,28 @@ impl App {
             Message::Key(Action::Quit) => return iced::exit(),
             Message::Key(Action::AddSources) => self.open_onboarding(),
             Message::Key(Action::Reader) => self.toggle_reader(),
+            Message::Key(Action::Palette) => {
+                self.overlay = Some(Overlay::Palette(palette::Palette::default()));
+            }
+            Message::Key(Action::Help) => self.overlay = Some(Overlay::Help),
+            Message::Palette(input) => {
+                let Some(Overlay::Palette(state)) = &mut self.overlay else {
+                    return Task::none();
+                };
+                let closes = matches!(input, palette::Input::Run | palette::Input::Close);
+                let picked = state.apply(input);
+                if closes {
+                    self.overlay = None;
+                }
+                if let Some(command) = picked {
+                    return self.update(Message::Key(command.action));
+                }
+            }
+            Message::RunCommand(action) => {
+                self.overlay = None;
+                return self.update(Message::Key(action));
+            }
+            Message::CloseOverlay => self.overlay = None,
             Message::Onboarding(action) => return self.update_onboarding(action),
             Message::Key(Action::PendingG) => self.pending_g = true,
             Message::Key(Action::Down) => self.select(self.selected.saturating_add(1)),
@@ -641,18 +689,44 @@ impl App {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        let keys = keyboard::listen()
-            .with((self.pending_g, self.onboarding.is_some()))
-            .filter_map(|((pending_g, onboarding), event)| match event {
-                // List keys must not fire under the Add sources screen.
-                keyboard::Event::KeyPressed { key, modifiers, .. } if onboarding => {
-                    onboarding::action_for(&key, modifiers).map(Message::Onboarding)
+        let mode = match (&self.onboarding, &self.overlay) {
+            (Some(_), _) => KeyMode::Onboarding,
+            (None, Some(Overlay::Palette(_))) => KeyMode::Palette,
+            (None, Some(Overlay::Help)) => KeyMode::Help,
+            (None, None) => KeyMode::List,
+        };
+        let keys = keyboard::listen().with((self.pending_g, mode)).filter_map(
+            |((pending_g, mode), event)| {
+                let keyboard::Event::KeyPressed {
+                    key,
+                    modifiers,
+                    text,
+                    ..
+                } = event
+                else {
+                    return None;
+                };
+                // Only one thing hears a key: list keys must not fire under
+                // Add sources, and typing in the palette is just typing.
+                match mode {
+                    KeyMode::Onboarding => {
+                        onboarding::action_for(&key, modifiers).map(Message::Onboarding)
+                    }
+                    KeyMode::Palette => {
+                        palette::input_for(&key, modifiers, text.as_deref()).map(Message::Palette)
+                    }
+                    KeyMode::Help => {
+                        use keyboard::key::Named;
+                        match key.as_ref() {
+                            keyboard::Key::Named(Named::Escape)
+                            | keyboard::Key::Character("?" | "q") => Some(Message::CloseOverlay),
+                            _ => None,
+                        }
+                    }
+                    KeyMode::List => list::action_for(&key, modifiers, pending_g).map(Message::Key),
                 }
-                keyboard::Event::KeyPressed { key, modifiers, .. } => {
-                    list::action_for(&key, modifiers, pending_g).map(Message::Key)
-                }
-                _ => None,
-            });
+            },
+        );
         let mut subscriptions = vec![
             keys,
             iced::time::every(STORE_POLL).map(|_| Message::PollStore),
@@ -689,14 +763,95 @@ impl App {
             (layout.list, self.list_view(), t.background),
             (layout.article, self.article_view(), t.lighter_background),
         ];
-        Row::with_children(
+        let panes = Row::with_children(
             panes
                 .into_iter()
                 .filter(|(width, _, _)| *width > 0)
                 .map(|(width, content, background)| pane(content, background, t.border, width)),
         )
-        .height(Length::Fill)
-        .into()
+        .height(Length::Fill);
+        match &self.overlay {
+            None => panes.into(),
+            Some(overlay) => stack![panes, self.overlay_view(overlay)].into(),
+        }
+    }
+
+    /// The palette or help, centered over a dimmed window; a click outside
+    /// it closes it.
+    fn overlay_view<'a>(&self, overlay: &'a Overlay) -> Element<'a, Message> {
+        let t = &self.tokens;
+        let (prompt, rows, footer) = match overlay {
+            Overlay::Palette(state) => {
+                let query = if state.query.is_empty() {
+                    text("Type to find a command").color(color(t.muted))
+                } else {
+                    text(format!("{}▏", state.query)).color(color(t.foreground))
+                };
+                let rows: Vec<Element<'a, Message>> = state
+                    .matches
+                    .iter()
+                    .enumerate()
+                    .map(|(i, c)| {
+                        mouse_area(command_row(c, i == state.cursor, t))
+                            .on_press(Message::RunCommand(c.action))
+                            .into()
+                    })
+                    .collect();
+                let prompt = row![text(":").color(color(t.accent)), query]
+                    .spacing(8)
+                    .padding([10, 12]);
+                let footer = if state.matches.is_empty() {
+                    "No command matches"
+                } else {
+                    "Enter runs · ↑↓ choose · Esc closes"
+                };
+                (Some(prompt), rows, footer)
+            }
+            Overlay::Help => {
+                let rows = commands::ALL
+                    .iter()
+                    .map(|c| command_row(c, false, t))
+                    .collect();
+                let title =
+                    row![text("Keys").size(16).color(color(t.foreground))].padding([10, 12]);
+                (
+                    Some(title),
+                    rows,
+                    "Esc or ? closes · : finds a command by name",
+                )
+            }
+        };
+        let (surface, border, backdrop) = (t.lighter_background, t.accent, t.background);
+        let card = container(
+            Column::new()
+                .push(prompt)
+                .push(Column::with_children(rows))
+                .push(container(text(footer).size(12).color(color(t.muted))).padding([8, 12]))
+                .width(Length::Fixed(560.0)),
+        )
+        .style(move |_| container::Style {
+            background: Some(color(surface).into()),
+            border: Border {
+                color: color(border),
+                width: 1.0,
+                radius: border::radius(6),
+            },
+            ..Default::default()
+        });
+        let dimmed = container(iced::widget::center(opaque(card)))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(move |_| container::Style {
+                background: Some(
+                    Color {
+                        a: 0.6,
+                        ..color(backdrop)
+                    }
+                    .into(),
+                ),
+                ..Default::default()
+            });
+        mouse_area(dimmed).on_press(Message::CloseOverlay).into()
     }
 
     fn sidebar_view(&self) -> Element<'_, Message> {
@@ -1056,6 +1211,36 @@ fn drop_line<'a>(accent: Rgb) -> Element<'a, Message> {
             ..Default::default()
         })
         .into()
+}
+
+/// A command's name and its keys, highlighted when the cursor is on it.
+fn command_row<'a>(
+    command: &'static commands::Command,
+    highlighted: bool,
+    t: &Tokens,
+) -> Element<'a, Message> {
+    let keys = command.keys.join("  ");
+    let selection = t.selection;
+    container(
+        row![
+            text(command.name)
+                .size(14)
+                .color(color(t.foreground))
+                .width(Length::Fill),
+            text(keys)
+                .size(13)
+                .font(Font::MONOSPACE)
+                .color(color(t.muted)),
+        ]
+        .spacing(16),
+    )
+    .padding([7, 12])
+    .width(Length::Fill)
+    .style(move |_| container::Style {
+        background: highlighted.then(|| color(selection).into()),
+        ..Default::default()
+    })
+    .into()
 }
 
 fn note<'a>(message: String, muted: Rgb) -> Element<'a, Message> {
@@ -1548,5 +1733,58 @@ mod tests {
         assert!(app.onboarding.as_ref().unwrap().picks().is_empty());
         let _ = app.update(Message::Onboarding(onboarding::Action::Close));
         assert!(app.onboarding.is_none());
+    }
+
+    fn type_in_palette(app: &mut App, text: &str) {
+        for c in text.chars() {
+            let _ = app.update(Message::Palette(palette::Input::Type(c.to_string())));
+        }
+    }
+
+    #[test]
+    fn the_palette_runs_what_you_pick() {
+        let mut app = app_with(3);
+        let _ = app.update(Message::Key(Action::Open));
+        let _ = app.update(Message::Key(Action::Palette));
+        // A j in the palette is a letter, not a move down the list.
+        type_in_palette(&mut app, "j");
+        assert_eq!(app.selected, 0);
+        let _ = app.update(Message::Palette(palette::Input::Backspace));
+        type_in_palette(&mut app, "reader");
+        let _ = app.update(Message::Palette(palette::Input::Run));
+        assert!(app.overlay.is_none());
+        // app_with's articles have no link, so the reader view says why.
+        assert!(matches!(
+            &app.opened.as_ref().unwrap().reader,
+            Reader::Failed(_)
+        ));
+    }
+
+    #[test]
+    fn esc_closes_the_palette_without_running_anything() {
+        let mut app = app_with(3);
+        let _ = app.update(Message::Key(Action::Palette));
+        type_in_palette(&mut app, "next");
+        let _ = app.update(Message::Palette(palette::Input::Close));
+        assert!(app.overlay.is_none());
+        assert_eq!(app.selected, 0);
+    }
+
+    #[test]
+    fn a_click_in_the_palette_runs_that_command() {
+        let mut app = app_with(3);
+        let _ = app.update(Message::Key(Action::Palette));
+        let _ = app.update(Message::RunCommand(Action::Last));
+        assert!(app.overlay.is_none());
+        assert_eq!(app.selected, 2);
+    }
+
+    #[test]
+    fn help_opens_and_closes() {
+        let mut app = app_with(3);
+        let _ = app.update(Message::Key(Action::Help));
+        assert!(matches!(app.overlay, Some(Overlay::Help)));
+        let _ = app.update(Message::CloseOverlay);
+        assert!(app.overlay.is_none());
     }
 }
