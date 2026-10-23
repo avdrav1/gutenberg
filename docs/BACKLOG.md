@@ -35,7 +35,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | S3.5 | Command palette (`:`) and help (`?`) (before S3.4, so its actions land with palette entries) | Every action listed; fuzzy match; keys shown | done |
 | S3.4 | Star, mark unread, mark folder read, open in browser, copy link (each a `list::Action`, a key in `action_for`, a row in `commands::ALL`; the test there holds them together) | Each has a key and a palette entry | done |
 | S3.6 | Full-text search with FTS5 | `/` finds "Harrisburg" across 100k articles in under 50 ms | done |
-| S3.7 | Views: all, unread, starred, today (a starred view lists what `s` stars since S3.4; `Filter` grows a view alongside its folder/feed part, and `mark_read_in` follows it) | Each a key and a palette entry; counts in the source pane | doing |
+| S3.7 | Views: all, unread, starred, today (a starred view lists what `s` stars since S3.4; `Filter` grows a view alongside its folder/feed part, and `mark_read_in` follows it) | Each a key and a palette entry; counts in the source pane | review |
 
 ### E4 Theme sync
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The top of the left pane has four views with their counts: All articles, Unread, Starred and Today (published since midnight). Click one to see it across every feed, or press `u`, `S`, `t` or `A` to narrow the folder or feed you're reading. `M` marks read only what the view shows.
+
 ## 0.8.0 — 2026-10-23
 
 - Press `/` to search every article you have. Type a few letters and the list shows matching titles, authors and summaries as you type, newest first; `Enter` lets you move through the results, `Esc` brings your list back. The first launch after updating builds the search index for articles you already have, which takes a moment on a large collection.

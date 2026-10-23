@@ -8,12 +8,12 @@
 | `v` | reader view: the full article from its page, or back to the feed's summary | list, article |
 | `O` | open the selected article in the browser | list, article |
 | `m` | mark the selected article unread, or read again | list |
-| `M` | mark folder read: everything in the folder or feed chosen in the sources pane (everything under "All articles") | any |
+| `M` | mark read: everything the list shows for the folder or feed chosen in the sources pane and the current view | any |
 | `s` | star or unstar the selected article (★ in the list) | list, article |
 | `y` | copy the selected article's link | list, article |
 | `/` | search every article's title, author and summary as you type | any |
 | `r` | refresh selected source; `R` all | any |
-| `u` | unread only; `S` starred; `t` today | any |
+| `u` / `S` / `t` / `A` | view unread only / starred / today's (published since midnight) / all; keeps the chosen folder or feed | any |
 | `a` | add sources (the catalog) | any |
 | `Tab` / `Shift-Tab` | next / previous pane | any |
 | `1` `2` `3` | toggle sources / list / article pane | any |
