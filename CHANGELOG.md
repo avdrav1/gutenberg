@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.0 — 2026-10-23
+
 - Press `/` to search every article you have. Type a few letters and the list shows matching titles, authors and summaries as you type, newest first; `Enter` lets you move through the results, `Esc` brings your list back. The first launch after updating builds the search index for articles you already have, which takes a moment on a large collection.
 
 ## 0.7.0 — 2026-10-23
