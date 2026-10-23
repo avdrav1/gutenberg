@@ -31,7 +31,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | --- | --- | --- | --- |
 | S3.1 | Article list with `j`/`k`, unread styling, mark read on open | 10k rows scroll at 60 fps on a 4K monitor; only visible rows render. tiny-skia managed ~10 fps at 4K, so this moves to wgpu (Vulkan) and the cold-start budget to 250 ms | done |
 | S3.2 | Article pane renders the feed's HTML summary as styled text | Headings, links, lists, images, code, blockquotes; nothing escapes the pane | review |
-| S3.3 | Reader view extracts the full page (draw it with S3.2's `article::parse` blocks) | Works on 9 of 10 outlets in `tests/reader_sites.txt`; falls back to the summary | todo |
+| S3.3 | Reader view extracts the full page (draw it with S3.2's `article::parse` blocks) | Works on 9 of 10 outlets in `tests/reader_sites.txt`; falls back to the summary | review |
 | S3.4 | Star, mark unread, mark folder read, open in browser, copy link | Each has a key and a palette entry | todo |
 | S3.5 | Command palette (`:`) and help (`?`) | Every action listed; fuzzy match; keys shown | todo |
 | S3.6 | Full-text search with FTS5 | `/` finds "Harrisburg" across 100k articles in under 50 ms | todo |
@@ -72,8 +72,8 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | S7.1 | `.desktop` file, icon, Walker entry, `gutenberg --unread` for Waybar | Appears in Walker; Waybar module shows the count | todo |
 | S7.2 | GitHub release workflow and an install page on GitHub Pages with a `curl` one-liner | `curl -fsSL https://avdrav1.github.io/gutenberg/install.sh \| sh` installs a checksum-verified, attested binary; `gutenberg --version` prints the release | done |
 | S7.3 | Single-instance: a second launch focuses the first | Unix socket; `gutenberg --reload-theme` and `--refresh` work from scripts | todo |
-| S7.4 | Image cache on disk with size cap (also prunes `favicons/` files of feeds no longer in the store, which S2.6 never deletes; article images, held in memory only since S3.2, are fetched again each time an article opens) | Under 150 MB RAM with 10k articles | todo |
-| S7.5 | Crash-free week: panic handler writes a report; fuzz the parsers | `cargo fuzz` runs on feed, OPML and HTML inputs in CI | todo |
+| S7.4 | Image cache on disk with size cap (also prunes `favicons/` files of feeds no longer in the store, which S2.6 never deletes; article images, held in memory only since S3.2, and reader pages since S3.3, are fetched again each time an article opens) | Under 150 MB RAM with 10k articles | todo |
+| S7.5 | Crash-free week: panic handler writes a report; fuzz the parsers | `cargo fuzz` runs on feed, OPML, HTML and reader-extraction inputs in CI | todo |
 
 ### E8 Later
 

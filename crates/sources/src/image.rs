@@ -72,21 +72,7 @@ fn is_svg(bytes: &[u8]) -> bool {
 /// Downloads an image. `None` when the server fails, the body is bigger
 /// than [`MAX_BYTES`], or it isn't an image.
 pub async fn fetch(client: &reqwest::Client, url: &str) -> Option<(Vec<u8>, Format)> {
-    let mut response = client.get(url).send().await.ok()?;
-    if !response.status().is_success()
-        || response
-            .content_length()
-            .is_some_and(|n| n > MAX_BYTES as u64)
-    {
-        return None;
-    }
-    let mut bytes = Vec::new();
-    while let Some(chunk) = response.chunk().await.ok()? {
-        if bytes.len() + chunk.len() > MAX_BYTES {
-            return None;
-        }
-        bytes.extend_from_slice(&chunk);
-    }
+    let bytes = crate::feed::download(client, url, MAX_BYTES).await.ok()?;
     let format = sniff(&bytes)?;
     Some((bytes, format))
 }

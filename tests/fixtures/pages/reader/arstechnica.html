@@ -1,0 +1,906 @@
+<!doctype html>
+<html lang="en" class="view-grid">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Switch 2 security takes a hit as hackers unlock homebrew access - Ars Technica</title>
+
+<meta name="robots" content="max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
+<link rel="canonical" href="https://arstechnica.com/gaming/2026/10/switch-2-jailbreak-gives-hackers-new-ways-to-run-homebrew-and-mod-games/" />
+<meta name="description" content="Userland&quot; exploit relies on integer overflow found in &quot;SmileBasic&quot; interpreter." />
+<meta property="og:type" content="article" />
+<meta property="og:locale" content="en_US" />
+<meta property="og:site_name" content="Ars Technica" />
+<meta property="og:title" content="Switch 2 security takes a hit as hackers unlock homebrew access" />
+<meta property="og:description" content="Userland&quot; exploit relies on integer overflow found in &quot;SmileBasic&quot; interpreter." />
+<meta property="og:url" content="https://arstechnica.com/gaming/2026/10/switch-2-jailbreak-gives-hackers-new-ways-to-run-homebrew-and-mod-games/" />
+<meta property="og:image" content="https://cdn.arstechnica.net/wp-content/uploads/2026/10/switch2hack-1152x648-1792704912.png" />
+<meta property="og:image:width" content="1152" />
+<meta property="og:image:height" content="648" />
+<meta property="article:published_time" content="2026-10-22T22:25:33+00:00" />
+<meta property="article:modified_time" content="2026-10-22T22:36:06+00:00" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Switch 2 security takes a hit as hackers unlock homebrew access" />
+<meta name="twitter:description" content="Userland&quot; exploit relies on integer overflow found in &quot;SmileBasic&quot; interpreter." />
+<meta name="twitter:image" content="https://cdn.arstechnica.net/wp-content/uploads/2026/10/switch2hack-1152x648-1792704912.png" />
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://arstechnica.com/#/schema/WebSite","url":"https://arstechnica.com/","name":"Ars Technica","description":"Serving the Technologist since 1998. News, reviews, and analysis.","inLanguage":"en-US","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://arstechnica.com/search/{search_term_string}/"},"query-input":"required name=search_term_string"},"publisher":{"@type":"Organization","@id":"https://arstechnica.com/#/schema/Organization","name":"Ars Technica","url":"https://arstechnica.com/","logo":{"@type":"ImageObject","url":"https://cdn.arstechnica.net/wp-content/uploads/2016/10/cropped-ars-logo-512_480.png","contentUrl":"https://cdn.arstechnica.net/wp-content/uploads/2016/10/cropped-ars-logo-512_480.png","width":512,"height":512,"contentSize":"34417"}}},{"@type":"WebPage","@id":"https://arstechnica.com/gaming/2026/10/switch-2-jailbreak-gives-hackers-new-ways-to-run-homebrew-and-mod-games/","url":"https://arstechnica.com/gaming/2026/10/switch-2-jailbreak-gives-hackers-new-ways-to-run-homebrew-and-mod-games/","name":"Switch 2 security takes a hit as hackers unlock homebrew access - Ars Technica","description":"Userland\" exploit relies on integer overflow found in \"SmileBasic\" interpreter.","inLanguage":"en-US","isPartOf":{"@id":"https://arstechnica.com/#/schema/WebSite"},"breadcrumb":{"@type":"BreadcrumbList","@id":"https://arstechnica.com/#/schema/BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"item":"https://arstechnica.com/","name":"Ars Technica"},{"@type":"ListItem","position":2,"item":"https://arstechnica.com/gaming/","name":"Category: Gaming"},{"@type":"ListItem","position":3,"name":"Switch 2 security takes a hit as hackers unlock homebrew access"}]},"potentialAction":{"@type":"ReadAction","target":"https://arstechnica.com/gaming/2026/10/switch-2-jailbreak-gives-hackers-new-ways-to-run-homebrew-and-mod-games/"},"datePublished":"2026-10-22T22:25:33+00:00","dateModified":"2026-10-22T22:36:06+00:00","author":{"@type":"Person","@id":"https://arstechnica.com/#/schema/Person/74f0d9775196252f3b0d1a0162526136","name":"Kyle Orland","description":"Kyle Orland has been the Senior Gaming Editor at Ars Technica since 2012, covering topics ranging from retro games to new gaming hardware, business and legal developments in the industry, fan communities, gaming mods and hacks, virtual reality..."}}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"NewsArticle","mainEntityOfPage":{"@type":"WebPage","@id":"https://arstechnica.com/gaming/2026/10/switch-2-jailbreak-gives-hackers-new-ways-to-run-homebrew-and-mod-games/"},"headline":"Switch 2 security takes a hit as hackers unlock homebrew access","image":{"@type":"ImageObject","url":"https://cdn.arstechnica.net/wp-content/uploads/2026/10/switch2hack-1152x648-1792704912.png","width":1152,"height":648},"datePublished":"2026-10-22T22:25:33+00:00","dateModified":"2026-10-22T22:36:06+00:00","author":{"@type":"Person","name":"Kyle Orland","url":"https://arstechnica.com/author/kyle-orland/"},"publisher":{"@type":"Organization","name":"Ars Technica","logo":{"@type":"ImageObject","url":"https://cdn.arstechnica.net/wp-content/uploads/2024/10/ars-logo-186x60.png","width":186,"height":60}},"description":"Userland\" exploit relies on integer overflow found in \"SmileBasic\" interpreter."}</script>
+<link rel='stylesheet' id='ep_general_styles-css' href='https://cdn.arstechnica.net/wp-content/mu-plugins/_composer_elasticpress/dist/css/general-styles.css?ver=66295efe92a630617c00' media='all' />
+<link rel='stylesheet' id='searchterm-highlighting-css' href='https://cdn.arstechnica.net/wp-content/mu-plugins/_composer_elasticpress/dist/css/highlighting-styles.css?ver=252562c4ed9241547293' media='all' />
+<link rel='stylesheet' id='app/0-css' href='https://cdn.arstechnica.net/wp-content/themes/ars-v9/public/css/app.111084.css' media='all' />
+<link rel='stylesheet' id='ads/0-css' href='https://cdn.arstechnica.net/wp-content/themes/ars-v9/public/css/ads.01e938.css' media='all' />
+<meta property="article:published_time" content="2026-10-22T22:25:33+00:00">
+<meta property="article:modified_time" content="2026-10-22T22:36:06+00:00">
+<meta name="twitter:site" content="@arstechnica" />
+<meta name="twitter:domain" content="arstechnica.com" />
+<meta property="facebook-domain-verification" content="qptjyerza2q11uv3fe6aay6hbsncr8" />
+
+
+<meta name="twitter:partner" content="tfwp"><meta name='parsely-page' content='{"title":"Switch 2 security takes a hit as hackers unlock homebrew access","link":"https:\/\/arstechnica.com\/gaming\/2026\/10\/switch-2-jailbreak-gives-hackers-new-ways-to-run-homebrew-and-mod-games\/","type":"post","author":"Kyle Orland","post_id":2178446,"pub_date":"2026-10-22T18:25:33-04:00","section":"Gaming","tags":["exploit","hack","nintendo","smilebasic","switch","switch-2"],"image_url":"https:\/\/cdn.arstechnica.net\/wp-content\/uploads\/2026\/10\/switch2hack-500x500-1792704893.png"}'>
+<meta name='parsely-metadata' content='{"type":"post","title":"Switch 2 security takes a hit as hackers unlock homebrew access","post_id":2178446,"lower_deck":"\u0022Userland\u0022 exploit relies on integer overflow found in \u0022SmileBasic\u0022 interpreter.","image_url":"https:\/\/cdn.arstechnica.net\/wp-content\/uploads\/2026\/10\/switch2hack-500x500-1792704893.png","listing_image_url":"https:\/\/cdn.arstechnica.net\/wp-content\/uploads\/2026\/10\/switch2hack-768x432-1792704910.png"}'>
+<link rel="icon" href="https://cdn.arstechnica.net/wp-content/uploads/2016/10/cropped-ars-logo-512_480-60x60.png" />
+<link rel="icon" href="https://cdn.arstechnica.net/wp-content/uploads/2016/10/cropped-ars-logo-512_480-300x300.png" />
+<link rel="apple-touch-icon" href="https://cdn.arstechnica.net/wp-content/uploads/2016/10/cropped-ars-logo-512_480-300x300.png" />
+<meta name="msapplication-TileImage" content="https://cdn.arstechnica.net/wp-content/uploads/2016/10/cropped-ars-logo-512_480-300x300.png" />
+</head>
+<body class="wp-singular post-template-default single single-post postid-2178446 single-format-standard wp-embed-responsive wp-theme-ars-v9 switch-2-jailbreak-gives-hackers-new-ways-to-run-homebrew-and-mod-games bg-white dusk:bg-gray-100 text-gray-700 dark:text-gray-250 dark:bg-gray-50 singular is-guest">
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NLXNPCQ" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <div id="app">
+    <a class="sr-only focus:not-sr-only" href="#main">
+  Skip to content
+</a>
+<div class="ad-wrapper is-fullwidth is-hero">
+      <div class="ad-wrapper-inner">
+        <div class="ad ad--hero"></div>
+      </div>
+    </div>
+<header
+  class="banner font-impact xxl:max-w-xxl mdl:rounded-sm sticky top-0 z-30 mx-auto flex h-14 max-w-6xl flex-row flex-nowrap items-center justify-between bg-gray-700 px-[15px] font-semibold uppercase transition-[top] duration-500 sm:px-5 md:my-5 md:h-10 lg:my-10 dark:bg-black"
+  id="site-header">
+  <a id = "header-logo" href="https://arstechnica.com/" aria-label="Ars Technica home">
+    <span class="sr-only">Ars Technica home</span>
+          <svg></svg>
+      </a>
+  <div class="flex flex-row flex-nowrap items-center gap-3 md:gap-5 xl:gap-4">
+          <div class="xxl:hidden">
+  <div x-data="arsDropdown()" @keydown.escape.prevent.stop="close($refs.button)"
+    @focusin.window="! $refs.panel.contains($event.target) && close()" x-id="['dropdown-button']">
+    <button type="button" x-ref="button"
+      x-on:click="
+      toggle();
+      $dispatch('dropdown-opened', { panel: $refs.panel });
+      "
+      :aria-expanded="open" :aria-controls="$id('dropdown-button')" :class="{ selected: open }"
+      class="group flex items-center focus:outline-none" arial-label="" aria-label="Open Sections menu dropdown">
+      <svg></svg>
+          <span
+            class="group-with-selected:text-gray-100 hidden flex-row flex-nowrap items-center gap-1 uppercase text-gray-300 hover:text-gray-100 group-focus:text-gray-100 sm:flex xl:text-sm">
+            Sections
+            <svg></svg>
+          </span>
+    </button>
+    <div x-cloak x-ref="panel" x-show="open" x-transition.origin.top.center x-on:click.outside="close()"
+      :id="$id('dropdown-button')" class="absolute overflow-hidden z-50 bg-gray-550 xxs:max-w-[400px] absolute right-0 top-14 mt-[1px] w-full rounded-sm sm:right-auto sm:max-w-[200px] md:top-10">
+      <nav class="topnav-sections">
+            <div
+              class="flex flex-row flex-nowrap items-center justify-between bg-gray-700 px-10 py-2 sm:hidden sm:flex-col sm:items-start">
+              <a class="text-green-400 hover:text-green-500 focus:text-green-500" href="/civis/">
+                Forum
+              </a>
+                <div class="h-5 w-[1px] bg-gray-400"></div>
+                <a class="text-orange-400 hover:text-orange-500 focus:text-orange-500" href="/subscribe/">
+                  Subscribe
+                </a>
+              <div class="h-5 w-[1px] bg-gray-400"></div>
+              <a class="flex flex-row flex-nowrap items-center gap-2 text-gray-300 hover:text-gray-100 focus:text-gray-100"
+                href="/search/">
+                <svg></svg>
+                Search
+              </a>
+            </div>
+            <ul class="my-3 grid grid-cols-2 sm:grid-cols-1">
+                              <li>
+                  <a class="group flex flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                    href="https://arstechnica.com/ai/">
+                    <svg></svg>
+                    AI
+                  </a>
+                </li>
+                              <li>
+                  <a class="group flex flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                    href="https://arstechnica.com/information-technology/">
+                    <svg></svg>
+                    Biz &amp; IT
+                  </a>
+                </li>
+                              <li>
+                  <a class="group flex flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                    href="https://arstechnica.com/cars/">
+                    <svg></svg>
+                    Cars
+                  </a>
+                </li>
+                              <li>
+                  <a class="group flex flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                    href="https://arstechnica.com/culture/">
+                    <svg></svg>
+                    Culture
+                  </a>
+                </li>
+                              <li>
+                  <a class="group flex flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                    href="https://arstechnica.com/gaming/">
+                    <svg></svg>
+                    Gaming
+                  </a>
+                </li>
+                              <li>
+                  <a class="group flex flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                    href="https://arstechnica.com/health/">
+                    <svg></svg>
+                    Health
+                  </a>
+                </li>
+                              <li>
+                  <a class="group flex flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                    href="https://arstechnica.com/tech-policy/">
+                    <svg></svg>
+                    Policy
+                  </a>
+                </li>
+                              <li>
+                  <a class="group flex flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                    href="https://arstechnica.com/science/">
+                    <svg></svg>
+                    Science
+                  </a>
+                </li>
+                              <li>
+                  <a class="group flex flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                    href="https://arstechnica.com/security/">
+                    <svg></svg>
+                    Security
+                  </a>
+                </li>
+                              <li>
+                  <a class="group flex flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                    href="https://arstechnica.com/space/">
+                    <svg></svg>
+                    Space
+                  </a>
+                </li>
+                              <li>
+                  <a class="group flex flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                    href="https://arstechnica.com/gadgets/">
+                    <svg></svg>
+                    Tech
+                  </a>
+                </li>
+                          </ul>
+            <div class="mx-3 h-[1px] bg-gray-400"></div>
+            <ul class="my-3 grid grid-cols-2 sm:grid-cols-1">
+              <li>
+                <a class="group flex flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                  href="/features/">
+                  <svg></svg>
+                  Feature
+                </a>
+              </li>
+              <li>
+                <a class="group flex flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                  href="/reviews/">
+                  <svg></svg>
+                  Reviews
+                </a>
+              </li>
+            </ul>
+          </nav>
+    </div>
+  </div>
+</div>
+    <ul class="xxl:flex hidden gap-4 text-sm">
+              <li>
+          <a class="text-gray-250 hover:text-green-400 focus:text-green-400" href="https://arstechnica.com/ai/">
+            AI
+          </a>
+        </li>
+              <li>
+          <a class="text-gray-250 hover:text-green-400 focus:text-green-400" href="https://arstechnica.com/information-technology/">
+            Biz &amp; IT
+          </a>
+        </li>
+              <li>
+          <a class="text-gray-250 hover:text-green-400 focus:text-green-400" href="https://arstechnica.com/cars/">
+            Cars
+          </a>
+        </li>
+              <li>
+          <a class="text-gray-250 hover:text-green-400 focus:text-green-400" href="https://arstechnica.com/culture/">
+            Culture
+          </a>
+        </li>
+              <li>
+          <a class="text-gray-250 hover:text-green-400 focus:text-green-400" href="https://arstechnica.com/gaming/">
+            Gaming
+          </a>
+        </li>
+              <li>
+          <a class="text-gray-250 hover:text-green-400 focus:text-green-400" href="https://arstechnica.com/health/">
+            Health
+          </a>
+        </li>
+              <li>
+          <a class="text-gray-250 hover:text-green-400 focus:text-green-400" href="https://arstechnica.com/tech-policy/">
+            Policy
+          </a>
+        </li>
+              <li>
+          <a class="text-gray-250 hover:text-green-400 focus:text-green-400" href="https://arstechnica.com/science/">
+            Science
+          </a>
+        </li>
+              <li>
+          <a class="text-gray-250 hover:text-green-400 focus:text-green-400" href="https://arstechnica.com/security/">
+            Security
+          </a>
+        </li>
+              <li>
+          <a class="text-gray-250 hover:text-green-400 focus:text-green-400" href="https://arstechnica.com/space/">
+            Space
+          </a>
+        </li>
+              <li>
+          <a class="text-gray-250 hover:text-green-400 focus:text-green-400" href="https://arstechnica.com/gadgets/">
+            Tech
+          </a>
+        </li>
+          </ul>
+    <a class="hidden text-green-400 sm:block xl:text-sm" href="/civis/">
+      Forum
+    </a>
+      <div class="hidden h-5 w-[1px] bg-gray-400 lg:block"></div>
+      <a class="hidden text-orange-400 lg:block xl:text-sm" href="/subscribe/">
+        Subscribe
+      </a>
+    <div class="h-5 w-[1px] bg-gray-400"></div>
+          <div class="text-settings-dropdown-nav">
+  <div x-data="arsDropdown()" @keydown.escape.prevent.stop="close($refs.button)"
+    @focusin.window="! $refs.panel.contains($event.target) && close()" x-id="['dropdown-button']">
+    <button type="button" x-ref="button"
+      x-on:click="
+      toggle();
+      $dispatch('dropdown-opened', { panel: $refs.panel });
+      "
+      :aria-expanded="open" :aria-controls="$id('dropdown-button')" :class="{ selected: open }"
+      class="group flex items-center group" arial-label="" aria-label="Open text settings dropdown">
+      <svg></svg>
+    </button>
+    <div x-cloak x-ref="panel" x-show="open" x-transition.origin.top.center x-on:click.outside="close()"
+      :id="$id('dropdown-button')" class="absolute overflow-hidden z-50 bg-gray-550 absolute right-0 top-14 mt-[1px] min-w-[200px] rounded-sm md:top-10">
+      <div class="text-settings">
+      <div class="text-settings-menu bg-gray-550 w-60">
+        <div class="flex items-center bg-gray-600 px-5 py-2">
+          <span class="font-impact text-gray-350 text-base font-semibold uppercase">Story text</span>
+        </div>
+        <div class="grid grid-cols-3 items-center gap-3 px-5 py-2">
+          <label class="font-impact w-20 text-base font-semibold uppercase text-gray-100" for="text-settings-size">Size</label>
+<select name="text-settings-size" class="text-settings-size col-span-2 bg-gray-600 text-sm text-gray-300">
+  <option value="small">Small</option>
+  <option value="standard" selected>Standard</option>
+  <option value="large">Large</option>
+</select>
+<label class="font-impact hidden w-20 text-base font-semibold uppercase text-gray-100 md:block"
+  for="text-settings-width">Width
+      <span class="text-gray-400">*</span>
+  </label>
+<select name="text-settings-width"
+  class="text-settings-width col-span-2 hidden bg-gray-600 text-sm text-gray-300 md:block">
+  <option value="standard" selected>Standard</option>
+  <option value="wide">Wide</option>
+</select>
+<label class="font-impact w-20 text-base font-semibold uppercase text-gray-100" for="text-settings-links">Links</label>
+<select name="text-settings-links" class="text-settings-links col-span-2 bg-gray-600 text-sm text-gray-300">
+  <option value="standard" selected>Standard</option>
+  <option value="orange">Orange</option>
+</select>
+  <div class="font-impact col-span-3 hidden text-sm font-semibold uppercase text-gray-400 md:block">
+    <span class="mb-0 italic">* Subscribers only</span><br>
+    &nbsp;&nbsp;<a href="/store/product/subscriptions/" class="text-green-400">Learn more</a>
+  </div>
+          <button
+            class="font-impact text-settings-position col-span-3 mx-auto my-3 block rounded-sm border-2 border-green-400 px-3 py-1 text-base font-semibold uppercase text-gray-100"
+            value="story">
+            Pin to story
+          </button>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+    <div class="">
+  <div x-data="arsDropdown()" @keydown.escape.prevent.stop="close($refs.button)"
+    @focusin.window="! $refs.panel.contains($event.target) && close()" x-id="['dropdown-button']">
+    <button type="button" x-ref="button"
+      x-on:click="
+      toggle();
+      $dispatch('dropdown-opened', { panel: $refs.panel });
+      "
+      :aria-expanded="open" :aria-controls="$id('dropdown-button')" :class="{ selected: open }"
+      class="group flex items-center theme-selection-active group" arial-label="" aria-label="Open Theme selection dropdown">
+      <span class="sr-only">Theme</span>
+        <svg></svg>
+        <svg></svg>
+        <svg></svg>
+    </button>
+    <div x-cloak x-ref="panel" x-show="open" x-transition.origin.top.center x-on:click.outside="close()"
+      :id="$id('dropdown-button')" class="absolute overflow-hidden z-50 bg-gray-550 absolute right-0 top-14 mt-[1px] min-w-[200px] rounded-sm py-3 md:top-10">
+      <nav>
+          <ul class="theme-selection-dropdown">
+                          <li
+                class="theme-selection-item group flex w-full cursor-pointer flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                data-theme="light"
+                data-selected="false">
+                <svg></svg>
+                HyperLight
+              </li>
+                          <li
+                class="theme-selection-item group flex w-full cursor-pointer flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                data-theme="dusk"
+                data-selected="false">
+                <svg></svg>
+                Day & Night
+              </li>
+                          <li
+                class="theme-selection-item group flex w-full cursor-pointer flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                data-theme="dark"
+                data-selected="false">
+                <svg></svg>
+                Dark
+              </li>
+                          <li
+                class="theme-selection-item group flex w-full cursor-pointer flex-row items-center px-5 py-2 text-gray-300 hover:bg-gray-700 hover:text-green-400 focus:bg-gray-700 focus:text-green-400"
+                data-theme="system"
+                data-selected="true">
+                <svg></svg>
+                System
+              </li>
+                      </ul>
+        </nav>
+    </div>
+  </div>
+</div>
+    <a class="flex flex-row flex-nowrap items-center gap-2 text-gray-300 hover:text-gray-100 focus:text-gray-100"
+      href="/search/" title="Search" aria-label="Open search page">
+      <svg></svg>
+      <span class="sr-only">Search</span>
+    </a>
+    <div class="h-5 w-[1px] bg-gray-400"></div>
+      <div class="flex md:justify-center" data-modal-id="sign-in" x-data="arsModal()">
+  <button type="button" aria-label="Sign in dialog..." class="whitespace-nowrap text-gray-300 hover:text-gray-100" aria-label="Open sign in dialog" x-on:click="show()">
+    Sign In
+  </button>
+  <template x-teleport="body">
+    <div class="fixed inset-0 z-[99999] overflow-y-auto" role="dialog" aria-modal="true" x-cloak x-show="open"
+      x-on:keydown.escape.window.prevent.stop="hide()" x-id="['modal-title']" x-ref="panel"
+      :aria-labelledby="$id('modal-title')">
+      <div class="fixed inset-0 bg-slate-900/80 opacity-100 backdrop-blur" x-show="open" x-transition.duration.150ms>
+      </div>
+      <div class="relative flex min-h-screen items-center justify-center" x-on:click="hide()" x-show="open"
+        x-transition.duration.150ms>
+        <div  x-on:click.stop x-trap.noscroll.inert="open">
+          <span class="sr-only" :id="$id('modal-title')">
+            Sign in dialog...
+          </span>
+          <div
+  class="sign-in-panel absolute left-1/2 top-1/2 w-3/4 min-w-[320px] max-w-xl -translate-x-1/2 -translate-y-1/2"
+>
+  <header
+    class="font-impact flex items-center justify-between bg-gray-600 px-7 py-4 font-semibold uppercase"
+  >
+    <div class="text-gray-350 flex items-center gap-3">
+      <svg></svg>
+      Sign in
+    </div>
+    <button
+      class="text-gray-300 hover:text-gray-100 focus:text-gray-100"
+      x-on:click="open = false"
+    >
+      <svg></svg>
+    </button>
+  </header>
+  <div class="sign-in-panel-body bg-gray-700 px-7 py-4">
+    <div
+      class="col-span-3 normal-case text-gray-300"
+      x-data="arsSignInPanel()"
+      x-on:modal-opened.window="onModalOpened($event)"
+    >
+      <div class="sign-in-form" x-ref="form"></div>
+    </div>
+  </div>
+</div>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>
+  </div>
+</header>
+<main class="main relative -mt-4 lg:mt-6" id="main">
+            <article class="double-column h-entry post-2178446 post type-post status-publish format-standard has-post-thumbnail hentry category-gaming tag-exploit tag-hack tag-nintendo tag-smilebasic tag-switch tag-switch-2" data-id="2178446">
+  <header>
+  <div class="dusk:bg-gray-700 my-4 bg-gray-100 pt-2 md:mt-10 md:pt-5 lg:pb-2 lg:pt-7 dark:bg-gray-700">
+  <div class="mx-auto grid-cols-2 gap-8 md:px-5 lg:grid lg:max-w-5xl lg:px-8 xl:px-0">
+    <div class="">
+      <div class="mb-1 px-[15px] sm:px-5 md:px-0">
+        <div
+  class="upper-deck font-impact text-green-450 dusk:text-green-400 inline-flex flex-row flex-nowrap items-center gap-2 text-left text-sm font-semibold uppercase leading-tight dark:text-green-400">
+  <span class="upper-deck__icon">
+    <svg></svg>
+  </span>
+  <span class="upper-deck__text">
+    Flipping the switch
+  </span>
+</div>
+      </div>
+      <h1
+        class="dusk:text-gray-100 mb-3 px-[15px] font-serif text-3xl font-semibold leading-none text-gray-700 sm:px-5 md:px-0 md:text-4xl lg:text-5xl dark:text-gray-100">
+        Switch 2 security takes a hit as hackers unlock homebrew access
+      </h1>
+      <p
+        class="text-gray-550 dark:text-gray-250 dusk:text-gray-250 mt-4 px-[15px] text-lg leading-tight sm:px-5 md:px-0">
+        &#8220;Userland&#8221; exploit relies on integer overflow found in &#8220;SmileBasic&#8221; interpreter.
+      </p>
+              <div class="mt-2 px-[15px] sm:px-5 md:px-0">
+          <div class="font-impact text-xs font-semibold uppercase text-gray-300"><a class="text-orange-400 hover:text-orange-500" href="https://arstechnica.com/author/kyle-orland/">
+    Kyle Orland
+  </a>
+  –
+  <span class="whitespace-nowrap">
+    <time class="mr-[2px] inline-block cursor-default" title="2026-10-22T18:25:33-04:00" datetime="2026-10-22T18:25:33-04:00" data-mode="dateTime"
+  data-time-separator=" " data-updated-timestamp="false"
+  x-data="arsTimestamp()" x-text="format()">
+  Oct 22, 2026 6:25 pm
+</time>
+    <span class="text-gray-550">|</span> <a class="view-comments text-gray-300 hover:text-gray-500"
+    href="https://arstechnica.com/gaming/2026/10/switch-2-jailbreak-gives-hackers-new-ways-to-run-homebrew-and-mod-games/#comments" title="22 comments">
+    <svg></svg>
+    22
+  </a>
+  </span></div>
+        </div>
+          </div>
+    <div class="mt-4 min-h-1 lg:mt-0">
+              <div class="relative aspect-video overflow-hidden">
+                      <div class="ars-lightbox">
+              <div class="ars-lightbox-item">
+                <a class="cursor-zoom-in" data-pswp-width="2544"
+                  data-pswp-height="1283" data-pswp-srcset="https://cdn.arstechnica.net/wp-content/uploads/2026/10/switch2hack.png 2544w, https://cdn.arstechnica.net/wp-content/uploads/2026/10/switch2hack-640x323.png 640w, https://cdn.arstechnica.net/wp-content/uploads/2026/10/switch2hack-1024x516.png 1024w, https://cdn.arstechnica.net/wp-content/uploads/2026/10/switch2hack-768x387.png 768w, https://cdn.arstechnica.net/wp-content/uploads/2026/10/switch2hack-1536x775.png 1536w, https://cdn.arstechnica.net/wp-content/uploads/2026/10/switch2hack-2048x1033.png 2048w, https://cdn.arstechnica.net/wp-content/uploads/2026/10/switch2hack-980x494.png 980w, https://cdn.arstechnica.net/wp-content/uploads/2026/10/switch2hack-1440x726.png 1440w"
+                  data-cropped="true" href="https://cdn.arstechnica.net/wp-content/uploads/2026/10/switch2hack.png" target="_blank">
+                  <img width="640" height="323" src="https://cdn.arstechnica.net/wp-content/uploads/2026/10/switch2hack-640x323.png" class="absolute inset-0 w-full h-full object-cover hidden" alt="" loading="eager" decoding="async" />
+                  <img width="1152" height="648" src="https://cdn.arstechnica.net/wp-content/uploads/2026/10/switch2hack-1152x648-1792704912.png" class="intro-image absolute min-w-full min-h-full h-auto object-cover" alt="" loading="eager" decoding="async" fetchpriority="high" />
+                </a>
+                <div class="pswp-caption-content" id="caption-2178449">
+                  <div
+    class="caption font-impact dusk:text-gray-300 mb-4 mt-2 inline-flex flex-row items-stretch gap-1 text-base leading-tight text-gray-400 dark:text-gray-300">
+    <div class="caption-icon bg-[left_top_5px] w-[10px] shrink-0"></div>
+    <div class="caption-content">
+      A proof of concept showing new characters being modded into <em>Mario Kart World</em> thanks to a new console hack.
+              <span class="caption-credit mt-2 text-xs">
+          Credit:
+                      <a class="caption-credit-link text-gray-400 no-underline hover:text-gray-500" href="https://pepsipu.com/blog/2026-10-switch2-jailbreak-ns2jb/"
+              target="_blank">
+          Pepsipu.com
+                      </a>
+                  </span>
+          </div>
+  </div>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="px-[15px] sm:px-5 md:px-0"><div
+    class="caption font-impact dusk:text-gray-300 mb-4 mt-2 inline-flex flex-row items-stretch gap-1 text-base leading-tight text-gray-400 dark:text-gray-300">
+    <div class="caption-icon bg-[left_top_5px] w-[10px] shrink-0"></div>
+    <div class="caption-content">
+      A proof of concept showing new characters being modded into <em>Mario Kart World</em> thanks to a new console hack.
+              <span class="caption-credit mt-2 text-xs">
+          Credit:
+                      <a class="caption-credit-link text-gray-400 no-underline hover:text-gray-500" href="https://pepsipu.com/blog/2026-10-switch2-jailbreak-ns2jb/"
+              target="_blank">
+          Pepsipu.com
+                      </a>
+                  </span>
+          </div>
+  </div></div>
+          </div>
+  </div>
+</div>
+</header>
+<div class="text-settings-dropdown-story mdl:absolute mdl:z-10 mdl:mb-0 mdl:mt-1 relative -mt-4 mb-2">
+  <div x-data="arsDropdown()" @keydown.escape.prevent.stop="close($refs.button)"
+    @focusin.window="! $refs.panel.contains($event.target) && close()" x-id="['dropdown-button']">
+    <button type="button" x-ref="button"
+      x-on:click="
+      toggle();
+      $dispatch('dropdown-opened', { panel: $refs.panel });
+      "
+      :aria-expanded="open" :aria-controls="$id('dropdown-button')" :class="{ selected: open }"
+      class="group flex items-center bg-gray-150 dark:bg-gray-550 mdl:flex-col mdl:bg-transparent mdl:p-0 mdl:dark:bg-transparent flex w-full items-center justify-between px-[15px] py-2.5 sm:px-5 lg:px-8" arial-label="" aria-label="Open text settings dropdown">
+      <div class="flex items-center gap-2">
+      <svg></svg>
+      <span
+        class="font-impact settings-text dark:text-gray-250 mdl:hidden text-xs font-semibold uppercase text-gray-300">Text
+        settings</span>
+    </div>
+    <span class="settings-icon">
+      <svg></svg>
+      <svg></svg>
+    </span>
+    </button>
+    <div x-cloak x-ref="panel" x-show="open" x-transition.origin.top.center x-on:click.outside="close()"
+      :id="$id('dropdown-button')" class="absolute overflow-hidden z-50 bg-gray-550 absolute left-0 top-0">
+      <div class="text-settings">
+      <div class="text-settings-menu bg-gray-550 w-60">
+        <div class="flex items-center justify-between bg-gray-600 px-5 py-2">
+          <div class="flex items-center gap-2">
+            <svg></svg>
+            <span class="font-impact text-gray-350 text-base font-semibold uppercase">Story text</span>
+          </div>
+          <span class="text-settings-close" x-on:click="close();">
+            <svg></svg>
+          </span>
+        </div>
+        <div class="grid grid-cols-3 items-center gap-3 px-5 py-2">
+          <label class="font-impact w-20 text-base font-semibold uppercase text-gray-100" for="text-settings-size">Size</label>
+<select name="text-settings-size" class="text-settings-size col-span-2 bg-gray-600 text-sm text-gray-300">
+  <option value="small">Small</option>
+  <option value="standard" selected>Standard</option>
+  <option value="large">Large</option>
+</select>
+<label class="font-impact hidden w-20 text-base font-semibold uppercase text-gray-100 md:block"
+  for="text-settings-width">Width
+      <span class="text-gray-400">*</span>
+  </label>
+<select name="text-settings-width"
+  class="text-settings-width col-span-2 hidden bg-gray-600 text-sm text-gray-300 md:block">
+  <option value="standard" selected>Standard</option>
+  <option value="wide">Wide</option>
+</select>
+<label class="font-impact w-20 text-base font-semibold uppercase text-gray-100" for="text-settings-links">Links</label>
+<select name="text-settings-links" class="text-settings-links col-span-2 bg-gray-600 text-sm text-gray-300">
+  <option value="standard" selected>Standard</option>
+  <option value="orange">Orange</option>
+</select>
+  <div class="font-impact col-span-3 hidden text-sm font-semibold uppercase text-gray-400 md:block">
+    <span class="mb-0 italic">* Subscribers only</span><br>
+    &nbsp;&nbsp;<a href="/store/product/subscriptions/" class="text-green-400">Learn more</a>
+  </div>
+          <button
+            class="font-impact text-settings-position col-span-3 mx-auto my-3 block rounded-sm border-2 border-green-400 px-3 py-1 text-base font-semibold uppercase text-gray-100"
+            value="nav">
+            Minimize to nav
+          </button>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+    <div
+      class="my-2.5 mx-auto px-[15px] sm:px-5 lg:grid lg:max-w-5xl lg:grid-cols-3 lg:gap-6 lg:px-8 xl:px-0">
+      <div class="relative lg:col-span-2">
+        <div class="post-content post-content-double">
+          <p>A security researcher has demonstrated a software-only partial jailbreak of the Switch 2, gaining “userland” access that he says “lets us run homebrew, reverse engineer and mod Switch 2 games, back up save files off the Switch, and access most of the Switch 2’s peripherals through MMIO.”</p>
+<p><a href="https://gitlab.com/pepsipu/ns2jb">The hack</a> relies on the original Switch version of <a href="https://www.petc4.smilebasic.com/about?lang=en">SmileBasic 4</a>, the latest in a long-running series of programming environments and interpreters that run on Nintendo hardware. The so-called “tethered” hack also requires access to a macOS or Linux PC on the same network to run a node.js package that helps enable privileged system access.</p>
+<p>Researcher Sammy Hajhamid <a href="https://pepsipu.com/blog/2026-10-switch2-jailbreak-ns2jb/">writes</a> that he used <a href="https://chatgpt.com/codex/">OpenAI’s Codex</a> to poke at SmileBasic’s language interpreter, using a custom harness that could send USB commands to the system and view results via HDMI (as well as power cycling via a Bluetooth light switch flipping device). After “substantial effort for ~2 weeks,” that harness discovered a 32-bit integer overflow that occurs when removing items from an array in SmileBasic. That error gives access to an array pointer, which in turn allows read and write access to portions of system memory.</p>
+<p>From there, Hajhamid writes that he started poking around for access to the Switch 2’s internal sysmodules, looking for ones that could provide more privileged access to the console’s core functions. Eventually, he found a buffer overflow in the console’s FileSystem services module that exposed a cached data pointer, granting arbitrary read and write privileges. From there, Hajhamid writes that he could execute “privileged filesystem actions” and eventually achieve native code execution through a faked filesystem process.</p>
+<p>Hajhamid, who goes by Pepsipu online, <a href="https://x.com/pepsipu/status/2113117920373137622">showed off a host of new modded characters in <em>Mario Kart World</em></a> as a proof of concept for the exploit. Others are <a href="https://x.com/byizmysh/status/2113330728368791818">similarly</a> showing off <a href="https://www.reddit.com/r/switch2hacks/comments/1xcrvhb/full_vulkan_gpu_working_in_userland/">simple demos</a> and <a href="https://www.reddit.com/r/switch2hacks/comments/1xchm69/other_people_already_working_on_stuff/">in-progress developer tools</a> running on exploited hardware.</p>
+                      <div class="ars-interlude-container in-content-interlude mx-auto max-w-xl">
+            </div>
+                  </div>
+              </div>
+      <div class="dusk:bg-gray-100 hidden min-w-[300px] justify-self-end lg:block dark:bg-gray-50">
+                  <div class="ad-wrapper is-sticky is-rail">
+      <div class="ad-wrapper-inner">
+        <div class="ad ad--rail"></div>
+      </div>
+    </div>
+                </div>
+    </div>
+        <div class="ad-wrapper with-label is-fullwidth">
+      <div class="ad-wrapper-inner">
+        <div class="ad ad--mid-content">
+          </div>
+      </div>
+    </div>
+    <div
+      class="mt-2.5 mx-auto px-[15px] sm:px-5 lg:grid lg:max-w-5xl lg:grid-cols-3 lg:gap-6 lg:px-8 xl:px-0">
+      <div class="relative lg:col-span-2">
+        <div class="post-content post-content-double">
+<blockquote class="reddit-embed-bq" style="height: 500px;" data-embed-height="545"><p><a href="https://www.reddit.com/r/switch2hacks/comments/1xcrvhb/full_vulkan_gpu_working_in_userland/">Full Vulkan GPU working in userland</a><br>
+by<br>
+<a href="https://www.reddit.com/user/Icy-ConcentrationC/">u/Icy-ConcentrationC</a> in<br>
+<a href="https://www.reddit.com/r/switch2hacks/">switch2hacks</a></p></blockquote>
+<p></p>
+<p>Still, the current “userland” exploit keeps any Switch 2 homebrew developers trapped in a relatively small sandbox, and falls well short of the kernel-level access that would provide full control of the hardware.</p>
+<h2>Putting the genie back in</h2>
+<p>If the SmileBasic name sounds familiar to you, it’s probably because the 3DS version of the same software was <a href="https://github.com/zoogie/smilehax-IIe">key to the so-called smilehax exploit</a> on that handheld back in 2016. Nintendo <a href="https://www.nintendolife.com/news/2016/07/smilebasic_gets_taken_down_from_the_3ds_eshop_due_to_a_homebrew_exploit">removed SmileBasic from the 3DS eShop</a> shortly after that hack became public, and SmileBasic 4 has similarly <a href="https://www.nintendo.com/us/store/products/smilebasic-4-switch/">already been delisted</a> from the Switch eShop worldwide (though <a href="https://store-jp.nintendo.com/item/software/D70010000010547">a Japanese demo version</a> that may work similarly is still accessible as of this story’s publication).</p>
+<p>That delisting could help slow the spread of this exploit to the wider base of Switch 2 owners that haven’t previously purchased and/or downloaded SmileBasic. But others in the Switch 2 hacking community are <a href="https://x.com/__alula/status/2113293024210072059">already teasing</a> some <a href="https://x.com/gezine_dev/status/2113328261753385227">similar exploits</a> that appear to work using other games. And while the current exploit works on the latest Switch 2 firmware version (23.0.1), this particular vulnerability seems likely to be patched out in imminent firmware releases, which will be required for continued access to many Nintendo services and future game releases.</p>
+<p>So while this exploit is definitely unwelcome news for Nintendo, it’s not nearly as problematic as the <a href="https://arstechnica.com/gaming/2018/04/the-unpatchable-exploit-that-makes-every-current-nintendo-switch-hackable/">“unpatchable” original Switch exploit that surfaced in 2018</a>. That hack required <a href="https://arstechnica.com/gaming/2018/07/nintendo-reportedly-rolling-out-new-more-hack-proof-switch-hardware/">a complete hardware redesign</a> to ensure that future systems were not susceptible.</p>
+<p>Still, the fact that Switch 2 hackers have gotten this far just over a year after the console’s release is not a good sign for the overall impregnability of Nintendo’s system software. Get ready for another never-ending cycle between console hackers and the hardware makers trying to keep them out of their console’s deepest recesses.</p>
+                  </div>
+          <div class="-mx-2.5 sm:mx-0">
+  </div>
+  <div class="author-mini-bio">
+    <div class="flex flex-col items-start gap-5 border-t-4 py-5 sm:flex-row dark:border-gray-700">
+  <div class="flex items-center gap-3">
+          <a class="relative block aspect-square h-24 w-24 shrink-0 overflow-hidden rounded-full border-4 border-green-400"
+        href="https://arstechnica.com/author/kyle-orland/"><img class="absolute left-0 top-0 min-h-full min-w-full object-cover"
+          src="https://cdn.arstechnica.net/wp-content/uploads/2016/05/k.orland-13.jpg" alt="Photo of Kyle Orland"></a>
+        <div class="font-impact mb-0 text-left text-base font-semibold uppercase sm:hidden">
+      <a href="https://arstechnica.com/author/kyle-orland/">
+                  Kyle Orland
+              </a>
+      <span class="block font-sans text-sm font-normal italic sm:inline-block">Senior Gaming Editor</span>
+    </div>
+  </div>
+  <div>
+    <div class="font-impact mb-0 hidden text-left text-base font-semibold uppercase sm:block">
+      <a href="https://arstechnica.com/author/kyle-orland/">
+                  Kyle Orland
+              </a>
+      <span class="block font-sans text-sm font-normal italic sm:ml-2 sm:inline-block">Senior Gaming Editor</span>
+    </div>
+    <div class="text-left text-base leading-5 text-gray-400" itemprop="description">
+      Kyle Orland has been the Senior Gaming Editor at Ars Technica since 2012, writing primarily about the business, tech, and culture behind video games. He has journalism and computer science degrees from University of Maryland. He once <a href="https://bossfightbooks.com/collections/books/products/minesweeper-by-kyle-orland">wrote a whole book about <em>Minesweeper</em></a>.
+    </div>
+  </div>
+</div>
+  </div>
+  <div
+    class="story-tools flex items-center justify-between border-b-4 border-t-4 text-sm sm:text-lg dark:border-gray-700">
+    <a class="view-comments font-impact my-5 flex items-center gap-2 whitespace-nowrap font-semibold uppercase"
+    href="https://arstechnica.com/gaming/2026/10/switch-2-jailbreak-gives-hackers-new-ways-to-run-homebrew-and-mod-games/#comments" title="22 comments">
+    <svg></svg>
+    22 Comments
+  </a>
+      </div>
+              </div>
+      <div class="dusk:bg-gray-100 hidden min-w-[300px] justify-self-end lg:block dark:bg-gray-50">
+                  <div class="ad-wrapper is-sticky is-rail">
+      <div class="ad-wrapper-inner">
+        <div class="ad ad--rail"></div>
+      </div>
+    </div>
+                </div>
+    </div>
+  </article>
+  <div class="relative">
+    <section class="dusk:bg-none bg-gray-100 dark:bg-gray-50" id="comments">
+  <div
+    class="comments-container mx-auto px-[15px] sm:px-5 lg:grid lg:max-w-5xl lg:grid-cols-3 lg:gap-y-6 lg:px-8 xl:px-0">
+        <div class="comments-wrapper col-span-3 hidden py-5">
+      <div class="lg:grid lg:grid-cols-3 lg:gap-6">
+        <div class="lg:col-span-2">
+          <div class="wp-forum-connect-comments relative">
+  <div
+    class="comments-title font-impact xs:justify-center flex flex-row items-center gap-2 bg-gray-600 px-5 py-2 text-xl font-extrabold uppercase text-green-400 lg:text-2xl">
+    <svg></svg>
+    Comments
+  </div>
+  <a class="font-impact absolute bottom-0 right-5 top-0 flex flex-row items-center gap-2 text-base font-semibold uppercase text-gray-300 hover:text-gray-200"
+    href="https://arstechnica.com/civis/threads/switch-2-jailbreak-gives-hackers-new-ways-to-run-homebrew-and-mod-games.1515371/" target="_blank">
+    <svg></svg>
+    <span class="hidden sm:inline">Forum view</span>
+  </a>
+</div>
+<div class="xf_thread_iframe_wrapper relative min-h-screen">
+  <div class="xf_thread_iframe_loading flex items-center justify-center">
+    <div class="my-20">
+      <img class="h-10 w-10" src="https://cdn.arstechnica.net/wp-content/themes/ars-v9/public/images/firework-loader.75ab30.gif" alt="Loading" />
+      Loading comments...
+    </div>
+  </div>
+  <div class="xf_thread_iframe_container" id="xf_thread_iframe_container" data-thread-id="1515371"
+    data-url="https://arstechnica.com/civis/threads/switch-2-jailbreak-gives-hackers-new-ways-to-run-homebrew-and-mod-games.1515371/unread?in_iframe=1&amp;theme=auto&amp;wp_data=eyJ1cmwiOiJodHRwczpcL1wvYXJzdGVjaG5pY2EuY29tXC9nYW1pbmdcLzIwMjZcLzEwXC9zd2l0Y2gtMi1qYWlsYnJlYWstZ2l2ZXMtaGFja2Vycy1uZXctd2F5cy10by1ydW4taG9tZWJyZXctYW5kLW1vZC1nYW1lc1wvIiwib3Blbl9jb21tZW50cyI6ImNvbW1lbnRzPTEifQ==&amp;"
+    data-open="0"
+    data-open-default="0"></div>
+</div>
+        </div>
+        <div class="dusk:bg-gray-100 row-span-2 hidden min-w-[300px] justify-self-end dark:bg-gray-50 lg:block">
+                      <div class="ad-wrapper is-sticky is-rail">
+      <div class="ad-wrapper-inner">
+        <div class="ad ad--rail"></div>
+      </div>
+    </div>
+                    </div>
+      </div>
+    </div>
+  </div>
+</section>
+  </div>
+  <div class="mx-auto mb-2.5 px-[15px] sm:px-5 lg:grid lg:max-w-5xl lg:grid-cols-3 lg:gap-6 lg:px-8 xl:px-0">
+    <div class="col-span-2 py-5">
+      <div class="post-navigation">
+  <div class="nav-previous post-navigation-link-wrapper">
+          <a class="post-navigation-link" rel="nofollow" href="https://arstechnica.com/health/2026/10/personalized-mrna-cancer-vaccine-cut-melanoma-death-recurrence-by-42/"
+        title="Go to: Moderna and Merck say their mRNA cancer vaccine cut death, recurrence by 42%"><svg></svg>
+<span class="post-navigation-link-text">Prev story</span></a>
+      </div>
+  <div class="nav-next post-navigation-link-wrapper">
+      </div>
+</div>
+    </div>
+  </div>
+  <div class="mx-auto -mt-2 mb-5 max-w-md sm:max-w-3xl sm:px-5 lg:grid lg:max-w-6xl lg:grid-cols-3 lg:gap-16 xl:px-0">
+    <div class="single-most-read dusk:bg-gray-700 relative col-span-2 bg-gray-100 dark:bg-gray-700">
+      <div
+  class="component-most-read font-impact flex h-full min-h-[300px] flex-col flex-nowrap gap-5 pb-5 uppercase text-white">
+  <div>
+    <header class="flex flex-row flex-nowrap items-center justify-center gap-2 bg-gray-600 px-5 py-2">
+      <svg></svg>
+      <div class="font-impact inline text-xl font-extrabold uppercase text-green-400">
+        Most Read</div>
+    </header>
+    <ol>
+              <li class="group relative">
+                      <a href="https://arstechnica.com/security/2026/10/the-internet-goes-on-high-alert-after-discovery-of-8-compromised-tls-certs/">
+              <img class="aspect-video h-auto w-full rounded-sm object-cover group-hover:saturate-150"
+                src="https://cdn.arstechnica.net/wp-content/uploads/2026/07/broken-encryption-lock-500x500.jpg"
+                alt="Listing image for first story in Most Read: The Internet goes on high alert after discovery of 8 compromised TLS certs"
+                decoding="async" loading="lazy">
+            </a>
+                    <div class="relative px-[15px] py-4 sm:px-5">
+                          <div class="most-read-divider absolute left-5 top-[-3px] h-[5px] w-1/4 bg-green-400">
+              </div>
+              <span
+                class="flex flex-row flex-nowrap items-start gap-4 font-serif text-xl font-bold normal-case leading-tight">
+                <span class="shrink-0 text-green-400">1.</span>
+                <a class="most-read-title text-gray-100 visited:text-gray-400 hover:text-orange-400"
+                  href="https://arstechnica.com/security/2026/10/the-internet-goes-on-high-alert-after-discovery-of-8-compromised-tls-certs/">The Internet goes on high alert after discovery of 8 compromised TLS certs</a>
+              </span>
+                      </div>
+        </li>
+                      <li class="group relative">
+                    <div class="relative px-[15px] py-4 sm:px-5">
+                          <div class="most-read-divider absolute left-5 top-0 h-[1px] w-1/4 bg-gray-400">
+              </div>
+              <span
+                class="flex flex-row flex-nowrap items-start gap-4 font-serif text-xl font-bold normal-case leading-tight">
+                <span class="shrink-0 text-green-400">2.</span>
+                <a class="most-read-title text-gray-100 visited:text-gray-400 hover:text-orange-400"
+                  href="https://arstechnica.com/tech-policy/2026/10/meta-whines-new-mexico-is-impossible-to-please-after-historic-25-billion-fine/">Meta shocked by $25B fine after N.M. refused to join multistate settlement</a>
+              </span>
+                      </div>
+        </li>
+                      <li class="group relative">
+                    <div class="relative px-[15px] py-4 sm:px-5">
+                          <div class="most-read-divider absolute left-5 top-0 h-[1px] w-1/4 bg-gray-400">
+              </div>
+              <span
+                class="flex flex-row flex-nowrap items-start gap-4 font-serif text-xl font-bold normal-case leading-tight">
+                <span class="shrink-0 text-green-400">3.</span>
+                <a class="most-read-title text-gray-100 visited:text-gray-400 hover:text-orange-400"
+                  href="https://arstechnica.com/gaming/2026/10/xbox-wants-you-to-pay-24-to-40-cents-per-hour-to-stream-games-you-already-bought/">Xbox wants you to pay 24 to 40 cents per hour to stream games you already bought</a>
+              </span>
+                      </div>
+        </li>
+                      <li class="group relative">
+                    <div class="relative px-[15px] py-4 sm:px-5">
+                          <div class="most-read-divider absolute left-5 top-0 h-[1px] w-1/4 bg-gray-400">
+              </div>
+              <span
+                class="flex flex-row flex-nowrap items-start gap-4 font-serif text-xl font-bold normal-case leading-tight">
+                <span class="shrink-0 text-green-400">4.</span>
+                <a class="most-read-title text-gray-100 visited:text-gray-400 hover:text-orange-400"
+                  href="https://arstechnica.com/culture/2026/10/sauron-recruits-his-future-ringwraiths-in-rings-of-power-s3-trailer/">Sauron recruits his future Ringwraiths in Rings of Power S3 trailer</a>
+              </span>
+                      </div>
+        </li>
+                      <li class="group relative">
+                    <div class="relative px-[15px] py-4 sm:px-5">
+                          <div class="most-read-divider absolute left-5 top-0 h-[1px] w-1/4 bg-gray-400">
+              </div>
+              <span
+                class="flex flex-row flex-nowrap items-start gap-4 font-serif text-xl font-bold normal-case leading-tight">
+                <span class="shrink-0 text-green-400">5.</span>
+                <a class="most-read-title text-gray-100 visited:text-gray-400 hover:text-orange-400"
+                  href="https://arstechnica.com/security/2026/10/disgraced-emudhra-drops-out-of-tls-business-following-certificate-debacle/">Disgraced eMudhra drops out of TLS business after using cert private key of 4</a>
+              </span>
+                      </div>
+        </li>
+                      </ol>
+  </div>
+  <div class="most-read-customize text-center">
+    <button
+      class="btn-customize font-impact mt-5 inline-flex flex-row flex-nowrap items-center justify-center gap-2 font-semibold uppercase text-gray-300 hover:text-gray-100"
+      aria-label="Customize view settings" x-data x-on:click="$dispatch('view-settings-bar-open');">
+      <svg></svg>
+      <span>Customize</span>
+    </button>
+  </div>
+</div>
+    </div>
+  </div>
+  </main>
+<div class="ad-wrapper is-fullwidth">
+      <div class="ad-wrapper-inner">
+        <div class="ad ad--footer"></div>
+      </div>
+    </div>
+<footer class="site-footer bg-black">
+  <div class="mx-auto max-w-6xl px-4 text-gray-300">
+    <div class="justify-between gap-10 py-8 md:flex">
+      <div class="site-footer-statement text-center md:w-3/5 md:text-left">
+        <a href="/"><svg></svg>
+</a>
+        <p>Ars Technica has been separating the signal from
+          the noise for over 25 years. With our unique combination of
+          technical savvy and wide-ranging interest in the technological arts
+          and sciences, Ars is the trusted source in a sea of information. After
+          all, you don’t need to know everything, only what’s important.</p>
+        <p class="mt-4">
+          <a href="https://bsky.app/profile/arstechnica.com" aria-label="Follow Ars Technica on Bluesky">
+            <svg></svg>
+          </a>
+          <a href="https://mastodon.social/@arstechnica" aria-label="Follow Ars Technica on Mastodon">
+            <svg></svg>
+          </a>
+          <a href="https://www.facebook.com/arstechnica" aria-label="Follow Ars Technica on Facebook">
+            <svg></svg>
+          </a>
+          <a href="https://www.youtube.com/@arstechnica" aria-label="Follow Ars Technica on YouTube">
+            <svg></svg>
+          </a>
+          <a href="https://www.instagram.com/arstechnica/" aria-label="Follow Ars Technica on Instagram">
+            <svg></svg>
+          </a>
+        </p>
+      </div>
+      <div class="text-center md:w-1/5 md:text-left">
+        <span class="font-impact mb-4 mt-6 block font-semibold uppercase">More
+          from Ars
+        </span>
+        <ul id="menu-more_navigation" class="menu"><li id="menu-item-1971876" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1971876"><a href="https://arstechnica.com/about-us/">About Us</a></li>
+<li id="menu-item-1971877" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1971877"><a href="https://arstechnica.com/staff-directory/">Staff Directory</a></li>
+<li id="menu-item-2174180" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-2174180"><a href="/newsletters/">Newsletters</a></li>
+<li id="menu-item-1971879" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1971879"><a href="https://arstechnica.com/general-faq/">General FAQ</a></li>
+<li id="menu-item-2106316" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-2106316"><a href="https://arstechnica.com/ars-technica-posting-guidelines-v3-0/">Posting Guidelines</a></li>
+<li id="menu-item-2151139" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-2151139"><a href="https://arstechnica.com/ai-policy/">AI Policy</a></li>
+<li id="menu-item-1971880" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1971880"><a href="https://arstechnica.com/rss-feeds/">RSS Feeds</a></li>
+</ul>
+      </div>
+      <div class="text-center md:w-1/5 md:text-left">
+        <span class="font-impact mb-4 mt-6 block font-semibold uppercase">Contact</span>
+        <ul id="menu-contact_navigation" class="menu"><li id="menu-item-1971881" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1971881"><a href="https://arstechnica.com/contact-us/">Contact us</a></li>
+<li id="menu-item-1971884" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-1971884"><a target="_blank" href="mailto:adinquiries@condenast.com">Advertise with us</a></li>
+<li id="menu-item-1971882" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1971882"><a href="https://arstechnica.com/reprints/">Reprints</a></li>
+</ul>
+      </div>
+    </div>
+    <div class="pb-10 pt-5" id="copyright-terms">
+              <div class="mb-4 flex flex-row flex-nowrap items-center gap-2">
+          <svg></svg>
+          <button id="fides-modal-link">
+            Manage Preferences
+          </button>
+        </div>
+      © 2026 Condé Nast. All rights reserved. Use of and/or
+      registration on any portion of this site constitutes acceptance of our <a
+        href="https://www.condenast.com/user-agreement/">User Agreement</a> and
+      <a href="https://www.condenast.com/privacy-policy/">Privacy Policy and
+        Cookie Statement</a> and <a href="/amendment-to-conde-nast-user-agreement-privacy-policy/">Ars
+        Technica Addendum</a> and <a href="https://www.condenast.com/privacy-policy/#california">Your
+        California Privacy Rights</a>. Ars Technica may earn compensation on
+      sales from links on this site. <a href="/affiliate-link-policy/">Read our
+        affiliate link policy</a>. The material on this site may not be
+      reproduced, distributed, transmitted, cached or otherwise used, except
+      with the prior written permission of Condé Nast. <a href="https://www.aboutads.info/">Ad
+        Choices</a>
+    </div>
+  </div>
+</footer>
+  </div>
+</body>
+</html>

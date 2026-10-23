@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html xmlns="https://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+	<head>
+		<title>Linux 7.4 Workqueue Changes Bring A &quot;10 To 100 Times Faster&quot; Optimization - Phoronix</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<link rel="stylesheet" href="/phxcms-css/phoronix-10.css?2025">
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="keywords" content="Phoronix, Linux Hardware Reviews, Linux hardware benchmarks, Linux server benchmarks, Linux benchmarking, Desktop Linux, Linux performance, Open Source graphics, Linux How To, Ubuntu benchmarks, Ubuntu hardware, Phoronix Test Suite" />
+		<meta name="Description" content="Adding to all the exciting performance optimizations and other improvements for Linux 7.4 is an exciting workqueue improvement" />
+		<link rel="alternate" type="application/rss+xml" title="Phoronix" href="/rss.php" />
+		<link rel="shortcut icon" href="/favicon.ico" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon-57x57.png" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon-60x60.png" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon-72x72.png" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon-76x76.png" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon-114x114.png" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon-120x120.png" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon-144x144.png" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon-152x152.png" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
+		<link rel="icon" type="image/png" href="/favicon-32x32.png" />
+		<link rel="icon" type="image/png" href="/android-chrome-192x192.png" />
+		<link rel="icon" type="image/png" href="/favicon-96x96.png" />
+		<link rel="icon" type="image/png" href="/favicon-16x16.png" />
+		<meta name="msapplication-TileImage" content="/mstile-144x144.png" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:site" content="@phoronix" />
+		<meta name="twitter:creator" content="@michaellarabel" />
+		<meta name="twitter:title" content="Linux 7.4 Workqueue Changes Bring A &quot;10 To 100 Times Faster&quot; Optimization" />
+		<meta name="og:title" content="Linux 7.4 Workqueue Changes Bring A &quot;10 To 100 Times Faster&quot; Optimization" />
+		<meta name="twitter:image" content="https://www.phoronix.net/image.php?id=amd-epyc-9965-ampereone&image=ampereone_turin_1" />
+		<meta name="og:image" content="https://www.phoronix.net/image.php?id=amd-epyc-9965-ampereone&image=ampereone_turin_1" />
+		<meta name="twitter:description" content="Adding to all the exciting performance optimizations and other improvements for Linux 7.4 is an exciting workqueue improvement" />
+	</head>
+	<body style="overflow: initial !important;">
+		<div style="text-align: center; overflow: hidden; background: #222;"><div align="center" id="phoronix_desktop_leaderboard_header">
+</div>
+</div>		<div id="headerwrap">
+			<div class="wcontainer defpadding">
+				<a href="/"><img id="logo" alt="Phoronix" src="/phxcms7-css/phoronix.png" style="height: 40px; margin-top: 5px;margin-left: 5px;" /></a>
+				<div id="headerright">
+					<div id="social">
+					    <a href="https://www.phoronix.com/rss.php" alt="Phoronix on RSS" class="icon-rss"></a>
+					    <a href="https://x.com/Phoronix" rel="me" alt="Phoronx on Twitter / X" class="icon-twitter"></a>
+					    <a href="https://www.facebook.com/Phoronix" alt="Phoronix on Facebook" rel="me" class="icon-facebook"></a>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="litemenu">
+		    <ul>
+		        <li><a href="/reviews">Articles &amp; Reviews</a></li>
+		        <li><a href="/news">News Archive</a></li>
+		        <li><a href="/forums/">Forums</a></li>
+		        <li><a href="/phoronix-premium">Premium Ad-Free</a></li>		  	<li><a href="/contact">Contact</a></li>
+		        <li class="categ icon-angle-circled-down" style="display: none;"><span> Popular Categories</span></li>
+		        				<li id="closelid" onclick="javascript:document.getElementById('litemenu').style.zIndex=-9;">Close</li>
+		    </ul>		    
+		</div>
+		<div id="menuwrap">
+			<div class="wcontainer">
+				<ul id="linklist">
+					<li id="menubutton"><span class="icon-menu" onclick="javascript:document.getElementById('litemenu').style.zIndex=99;"></span>
+					</li>
+					<li class="menulink">
+						<a class="linknode" href="/reviews">Articles &amp; Reviews</a>
+					</li>
+					<li class="menulink">
+						<a class="linknode" href="/news">News Archive</a>
+					</li>
+					<li class="menulink">
+						<a class="linknode" href="/forums/">Forums</a>
+					</li>
+					<li class="menulink">
+						<a class="linknode" href="/phoronix-premium">Premium</a>
+					</li>					<li class="menulink">
+						<a class="linknode" href="/contact">Contact</a>
+					</li>
+					<li id="categories-link" class="menulink">
+						<span class="menunolink icon-angle-circled-down"> Categories</span>
+						<div id="categories-list">
+							<div id="categories-content">
+		         <a href="/reviews/Computers">Computers</a> <a href="/reviews/Display+Drivers">Display Drivers</a> <a href="/reviews/Graphics+Cards">Graphics Cards</a> <a href="/reviews/Linux+Gaming">Linux Gaming</a> <a href="/reviews/Memory">Memory</a> <a href="/reviews/Motherboards">Motherboards</a> <a href="/reviews/Processors">Processors</a> <a href="/reviews/Software">Software</a> <a href="/reviews/Storage">Storage</a> <a href="/reviews/Operating+Systems">Operating Systems</a> <a href="/reviews/Peripherals">Peripherals</a>							</div>
+						</div>
+					</li>
+					<li id="searchbox">
+						<div id="search">
+							<form action="https://www.google.com" id="cse-search-box" target="_blank">
+							  <div>
+							    <input type="hidden" name="cx" value="partner-pub-0253814508491313:1305299758" />
+							    <input type="hidden" name="ie" value="UTF-8" />
+							    <input type="text" name="q" />
+							    <input type="submit" name="sa" value="Search" />
+							  </div>
+							</form>
+						</div>
+					</li>
+				</ul>
+			</div>
+		</div>
+		<div id="content-bg">
+			<div id="content">
+				<div id="main-wrap">
+					<div id="main">
+						<div style="text-align: center; overflow: hidden; margin-bottom: 30px;">
+							<div align="center" id="phoronix_desktop_leaderboard_atf">
+</div>
+						</div>
+<article class="full">
+<h1>Linux 7.4 Workqueue Changes Bring A &quot;10 To 100 Times Faster&quot; Optimization</h1>
+<div class="author">Written by <a href="https://www.michaellarabel.com/">Michael Larabel</a> in <a href="/linux/Linux+Kernel">Linux Kernel</a> on 22 October 2026 at 08:38 PM EDT. <a href="/forums/node/1665473">Add A Comment</a></div>
+<div class="content">
+<div style="float: left; padding: 0 10px 10px;"><img alt="LINUX KERNEL" src="/assets/categories/linuxkernel.webp" width="100" height="100" /></div>
+Adding to all the exciting performance optimizations and other improvements for <a href="https://www.phoronix.com/search/Linux+7.4">Linux 7.4</a> is an exciting workqueue improvement. It's not too often getting to talk about "10 to 100 times faster" software improvements.<br /><br />Linux workqueues are used for deferring work in an asynchronous manner within the kernel. With Linux 7.4 is an important optimization that is especially beneficial for large systems like today's high core count Intel Xeon and AMD EPYC servers. With the code merged today to Linux Git, flushing a work queue will now only visit the queues used since the last prior flush rather than one per possible CPU. In turn this yields a 10 to 100 times faster improvement with large systems:<br /><blockquote>"Flushing a workqueue now visits only the queues used since the last flush instead of one per possible CPU. Idle flushes get 10 to 100 times faster on large machines, which XFS hits on every log force."</blockquote><br />Longtime Linux developer Tejun Heo authored the improvement so flushing workqueues will only check workqueues since the last flush. Some key takeaways from his commit message include some very promising numbers for the resulting impact:<br /><blockquote>"Yao Kai reported the XFS CIL workqueue, flushed on every log force, spending up to 64us per flush in the walk on a 128-CPU machine.<br />...<br />On a 192-CPU 2-node machine, flushing an idle per-cpu workqueue goes from 40k to 4.2M per second and an idle unbound one from 450k to 4.3M. 16 threads each queueing a work item and flushing, go from 30k to 110k flushes per second on a per-cpu workqueue and 60k to 180k on an unbound one. Dense flushes with every pwq active are unchanged on per-cpu workqueues and 15-20% slower on unbound ones. The queue path is unchanged."</blockquote><br />Jumping from 40k to 4.2M per second for any metric is quite a feat. Especially in 2026 and not being AI authored.<br /><p align="center"><img src="//www.phoronix.net/image.php?id=amd-epyc-9965-ampereone&image=ampereone_turin_1_med" alt="AMD EPYC large system" /></p><br />This optimization work stems from <a href="https://lore.kernel.org/all/0a030145-c108-4365-ba2d-ac1973a1e352@huawei.com/">this report</a> from early September from Huawei engineer Yao Kai over the overhead for unbounded workqueues.<br /><br />That's the most exciting change out of the <a href="https://lore.kernel.org/lkml/d4910dda3c8d655e1a8ccaeef64662e9@kernel.org/">workqueue pull request</a> merged today for Linux 7.4.</div>
+							<div style="text-align: center; overflow: hidden; margin-bottom: 30px;">
+								<div align="center" id="phoronix_leaderboard_btf">
+</div>
+							</div>
+							<div class="foot">
+								<div class="pagination">
+								</div>
+								<div class="comments-label">
+									<a href="/forums/node/1665473">Add A Comment</a>								</div>
+							</div>
+						</article>
+<div id="sharebar">
+<div style="margin: 0 10px 10px; overflow: hidden;">
+<div style="float: left; overflow: hidden;"><a href="https://twitter.com/share" class="twitter-share-button" data-text="Linux 7.4 Workqueue Changes Bring A &quot;10 To 100 Times Faster&quot; Optimization" data-url="https://www.phoronix.com/news/Linux-7.4-Workqueue" data-via="phoronix" data-related="michaellarabel">Tweet</a>
+</div>
+<div style="float: left; overflow: hidden;"><iframe src="//www.facebook.com/plugins/like.php?href=https://www.phoronix.com/news/Linux-7.4-Workqueue&amp;width=200&amp;height=46&amp;colorscheme=light&amp;layout=button_count&amp;action=like&amp;show_faces=false&amp;send=true" scrolling="no" frameborder="0" style="border:none; overflow:hidden; width:200px; height:46px;" allowTransparency="true"></iframe></div>
+</div></div>
+<div class="article-box">
+								<header>Related News</header>
+								<div class="node"><a href="/news/Linux-7.4">Linux 7.4 Improves Scheduling Latency For Short-Slice Tasks, NVIDIA Vera SMT Preference</a></div><div class="node"><a href="/news/Linux-Kernel-Shadow-Stacks">x86 Kernel Shadow Stacks Being Worked On For Linux As Powerful Control Flow Protection</a></div><div class="node"><a href="/news/Linux-7.4-Kbuild">Linux 7.4 Begins Landing Patches To Speed Up The Kernel Build Process</a></div><div class="node"><a href="/news/Linus-Kills-Get-Put-User-Linux">Linus Torvalds Eliminates Unsafe __get_user() &amp; __put_user() Functions In Linux 7.4</a></div><div class="node"><a href="/news/Linux-7.4-Crypto-Library">Linux 7.4 Kernel Crypto Library Enjoying Optimized AES Implementations On x86 &amp; RISC-V</a></div><div class="node"><a href="/news/Linux-7.4-Sync-Close-Files">Linux 7.4 To Close Files Synchronously For close_range, exec &amp; exit</a></div>
+							</div>						<div class="after-article">
+							<div style="text-align: center; overflow: hidden; margin: 5px;">
+								<div align="center" id="phoronix_leaderboard_incontent_3">
+</div>
+</div>
+							<div id="about-author">
+								<header>About The Author</header>
+																<div class="text"><p>Michael Larabel is the principal author of Phoronix.com and founded the site in 2004 with a focus on enriching the Linux hardware experience. Michael has written more than 20,000 articles covering the state of Linux hardware support, Linux performance, graphics drivers, and other topics. Michael is also the lead developer of the Phoronix Test Suite, Phoromatic, and OpenBenchmarking.org automated benchmarking software. He can be followed via <a href="https://twitter.com/MichaelLarabel">Twitter</a>, <a href="https://www.linkedin.com/in/michaellarabel/">LinkedIn</a>, or contacted via <a href="https://www.michaellarabel.com/">MichaelLarabel.com</a>.</p></div>
+							</div>
+<div class="article-box">
+								<header>Popular News This Week</header>
+								<div class="node"><a href="/news/LKML-New-Trend-Vulnerabilities">Several Linux Kernel Vulnerabilities Accidentally Posted To Public Kernel Mailing List</a></div><div class="node"><a href="/news/Microsoft-Defender-For-Linux-D">Microsoft Releases Microsoft Defender For The Linux Desktop</a></div><div class="node"><a href="/news/Reading-Page-Cache-WO-Folio-Ref">Linus Torvalds&#039; AI Code Improved: Huge Performance Wins With Reworked Code</a></div><div class="node"><a href="/news/AI-Reverse-Engineer-Linux-HW">Claude Code / AI Shows Potential For Reverse-Engineering Hardware For Linux Support</a></div><div class="node"><a href="/news/Steam-Linux-Beta-64-bit">Today&#039;s Steam Beta Makes The Linux Client A 64-bit App</a></div><div class="node"><a href="/news/Omarchy-Faster-Web-Browser">Omarchy Gets The Web Browser Launching Faster By Avoiding XDG Overhead</a></div><div class="node"><a href="/news/Linus-Kills-Get-Put-User-Linux">Linus Torvalds Eliminates Unsafe __get_user() &amp; __put_user() Functions In Linux 7.4</a></div><div class="node"><a href="/news/Wine-11.20-Released">Wine 11.20 Released With CD-ROM Support Change</a></div>
+							</div>		</div>
+					</div>
+				</div>
+				<div id="sidebar-wrap">
+					<div id="sidebar">
+					    <aside>
+						<div style="text-align: center;">
+                           				<div align="center" id="phoronix_right_rail_1">
+</div>
+                        </div>
+                        </aside>
+                        <aside class="widget">
+			<header>Latest Linux News</header><div class="popular-list">
+                                <a href="/news/Linux-7.4-Workqueue">Linux 7.4 Workqueue Changes Bring A &quot;10 To 100 Times Faster&quot; Optimization</a>
+                            </div>
+<div class="popular-list">
+                                <a href="/news/Fedora-45-Second-NO-GO">Fedora 45 Hits A Second NO-GO: Not Releasing Until November</a>
+                            </div>
+<div class="popular-list">
+                                <a href="/news/Linux-AMD-Zen-AI-Detection">AI Helping To Improve Linux&#039;s AMD Zen CPU Microarchitecture Detection</a>
+                            </div>
+<div class="popular-list">
+                                <a href="/news/Linux-7.4">Linux 7.4 Improves Scheduling Latency For Short-Slice Tasks, NVIDIA Vera SMT Preference</a>
+                            </div>
+<div class="popular-list">
+                                <a href="/news/Linux-Kernel-Shadow-Stacks">x86 Kernel Shadow Stacks Being Worked On For Linux As Powerful Control Flow Protection</a>
+                            </div>
+<div class="popular-list">
+                                <a href="/news/Mesa-Loosens-AGENTS-MD">Mesa Loosens Rules Around AI Agents For Code Comments / Commit Messages</a>
+                            </div>
+<div class="popular-list">
+                                <a href="/news/Mesa-RADV-GFX8-FP16-Gaming">Mesa RADV Change Satisfies More Steam Play Games On Aging AMD GFX8 GPUs</a>
+                            </div>
+<div class="popular-list">
+                                <a href="/news/LKML-New-Trend-Vulnerabilities">Several Linux Kernel Vulnerabilities Accidentally Posted To Public Kernel Mailing List</a>
+                            </div>
+<div class="popular-list">
+                                <a href="/news/Linux-7.4-Kbuild">Linux 7.4 Begins Landing Patches To Speed Up The Kernel Build Process</a>
+                            </div>
+<div class="popular-list">
+                                <a href="/news/Linus-Kills-Get-Put-User-Linux">Linus Torvalds Eliminates Unsafe __get_user() &amp; __put_user() Functions In Linux 7.4</a>
+                            </div>
+                        </aside>
+			<aside>
+			<div style="text-align: center;">
+                          <div align="center" id="phoronix_right_rail_2">
+</div>
+                        </div>
+                        </aside>
+			                        <aside class="widget">
+                       <header>Show Your Support, Go Premium</header>
+                       <p><a href="/phoronix-premium">Phoronix Premium</a> allows ad-free access to the site, multi-page articles on a single page, and other features while supporting this site's continued operations.</p>
+                        </aside>
+			                        <aside class="widget">
+			<header>Latest Featured Articles</header><div class="popular-list">
+                                <a href="/review/snapdragon-x2-linux">Snapdragon X2 Performance On Linux Exceeding Expectations In Initial Benchmarks</a>
+                            </div>
+<div class="popular-list">
+                                <a href="/review/ubuntu-2610-arrow-lake">Intel Core Ultra 9 Arrow Lake On Star Labs StarFighter Shows Nice Gains On Ubuntu 26.10</a>
+                            </div>
+<div class="popular-list">
+                                <a href="/review/intel-xeon-granite-rapids-ubuntu-2610">Intel Xeon 6980P Granite Rapids Performance On Linux Over The Past Year</a>
+                            </div>
+<div class="popular-list">
+                                <a href="/review/lpddr5-5467-6400-7467">LPDDR5 5467 vs. 6400 vs. 7467 MT/s Memory Performance Benchmarks For Laptops</a>
+                            </div>
+<div class="popular-list">
+                                <a href="/review/ubuntu-2610-amd64v3-epyc">Ubuntu 26.10 amd64v3 Packages Provide Some Additional Uplift On AMD EPYC</a>
+                            </div>
+                        </aside>
+			<aside>
+						<div style="text-align: center;">
+                           				                       				 </div>
+                        </aside>
+                                                <aside class="widget">
+                            <header>Support Phoronix</header>
+                            <p>The mission at Phoronix since 2004 has centered around enriching the Linux hardware experience. In addition to supporting our site through advertisements, you can help by <a href="/phoronix-premium">subscribing to Phoronix Premium</a>. You can also contribute to Phoronix through tips/donations via <a href="https://www.paypal.com/donate/?hosted_button_id=EA79CCDLNFJNW">PayPal</a> or <a href="https://buy.stripe.com/28o02d1yG1Lp8H67ss">Stripe</a>.</p>
+                        </aside>
+                        					</div>
+				</div>
+			</div>
+		</div>
+		<div id="footer">
+		    <div id="footer-content">
+			<p align="center"></p>
+		        <div id="footer-left">
+		        <div id="footer-left-content">
+		            <div class="extra-info">
+		                <header>Phoronix Media</header>
+		                <hr/>
+		                <ul>
+		                    <li><a href="/contact">Contact</a></li>
+		                    <li><a href="/michaellarabel">Michael Larabel</a></li>
+		                </ul>
+		            </div>
+		            <div class="extra-info">
+		                <header>Phoronix Premium</header>
+		                <hr/>
+		                <a href="/phoronix-premium"><ul>
+                            <li>Support Phoronix</li>
+		                    <li>While Having Ad-Free Browsing,</li>
+                            <li>Single-Page Article Viewing</li>
+                        </ul></a>
+		            </div>
+		            <div class="extra-info">
+		                <header>Share</header>
+		                <hr/>
+		                <ul>
+		                    <li><a href="https://facebook.com/Phoronix" rel="me">Facebook</a></li>
+		                    <li><a href="https://x.com/Phoronix" rel="me">Twitter / X</a></li>
+		                </ul>
+		            </div>
+		       </div>
+		       </div>
+		       <div id="footer-right">
+		            <div class="extra-info">
+		                <ul>
+		                <li><p><a href="/legal">Legal Disclaimer, Privacy Policy, Cookies</a> | <button id="pmLink">Privacy Manager</button> | <a href="https://www.phoronix-media.com/?k=contact">Contact</a></p></li>
+                        <li><p>Copyright &copy; 2004 - 2026 by <a href="https://www.phoronix-media.com/">Phoronix Media</a>.</p></li>
+                        <li><p>All trademarks used are properties of their respective owners. All rights reserved.</p></li>
+				</ul>
+		            </div>
+		        </div>
+		     </div>		   
+		</div>
+	</body>
+</html>

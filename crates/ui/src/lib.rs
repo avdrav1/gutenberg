@@ -13,8 +13,8 @@ use std::time::{Duration, Instant};
 use gutenberg_core::catalog;
 use gutenberg_core::config::{self, Config};
 use gutenberg_core::favicon::Icons;
-use gutenberg_core::images::{self, Images, Loaded};
 use gutenberg_core::sync::unix_now;
+use gutenberg_core::web::{self, Answer, Web};
 use gutenberg_store::{ArticleRow, Filter, Folder, Source, SourceKind, Store};
 use gutenberg_theme::{Rgb, Tokens};
 use iced::futures::Stream;
@@ -93,8 +93,9 @@ struct App {
     /// Height of the panes, from the window.
     height: f32,
     opened: Option<Opened>,
-    /// Fetches the open article's images; set once its worker starts.
-    images: Option<Images>,
+    /// Fetches the open article's images and reader page; set once its
+    /// worker starts.
+    web: Option<Web>,
     /// The open article's images, by URL.
     pictures: HashMap<String, article::Picture>,
     pending_g: bool,
@@ -152,7 +153,31 @@ impl Icon {
 struct Opened {
     title: String,
     meta: String,
+    /// The article's own page, for the reader view.
+    url: Option<String>,
+    /// The feed's summary.
     body: Vec<article::Block>,
+    reader: Reader,
+}
+
+/// The reader view of the open article: its page cut down to the article.
+enum Reader {
+    /// Showing the feed's summary.
+    Off,
+    Loading,
+    Ready(Vec<article::Block>),
+    /// Why there's no full article; the summary shows instead.
+    Failed(String),
+}
+
+impl Opened {
+    /// What the pane shows: the full article once it's in, else the summary.
+    fn shown(&self) -> &[article::Block] {
+        match &self.reader {
+            Reader::Ready(blocks) => blocks,
+            _ => &self.body,
+        }
+    }
 }
 
 /// `GUTENBERG_SCROLL_BENCH=<frames>`: scroll a row per frame, then report.
@@ -180,9 +205,9 @@ enum Message {
     Onboarding(onboarding::Action),
     /// A link in the article pane was clicked.
     OpenLink(String),
-    /// The image worker is up and takes requests.
-    ImagesReady(Images),
-    ImageLoaded(Arc<Loaded>),
+    /// The web worker is up and takes requests.
+    WebReady(Web),
+    WebAnswer(Arc<Answer>),
     /// A fetched raster image is decoded and ready to draw, or isn't.
     ImageAllocated(String, Result<image::Allocation, image::Error>),
 }
@@ -233,7 +258,7 @@ impl App {
             top: 0,
             height: 768.0,
             opened: None,
-            images: None,
+            web: None,
             pictures: HashMap::new(),
             pending_g: false,
             bench,
@@ -338,6 +363,7 @@ impl App {
         match message {
             Message::Key(Action::Quit) => return iced::exit(),
             Message::Key(Action::AddSources) => self.open_onboarding(),
+            Message::Key(Action::Reader) => self.toggle_reader(),
             Message::Onboarding(action) => return self.update_onboarding(action),
             Message::Key(Action::PendingG) => self.pending_g = true,
             Message::Key(Action::Down) => self.select(self.selected.saturating_add(1)),
@@ -394,11 +420,19 @@ impl App {
                 }
             }
             Message::OpenLink(url) => open_in_browser(&url),
-            Message::ImagesReady(images) => {
-                self.images = Some(images);
+            Message::WebReady(web) => {
+                if let Some(Opened {
+                    url: Some(url),
+                    reader: Reader::Loading,
+                    ..
+                }) = &self.opened
+                {
+                    web.page(url.clone());
+                }
+                self.web = Some(web);
                 self.request_pictures();
             }
-            Message::ImageLoaded(loaded) => return self.image_loaded(loaded),
+            Message::WebAnswer(answer) => return self.web_answer(answer),
             Message::ImageAllocated(url, allocated) => {
                 if let Some(slot) = self.pictures.get_mut(&url) {
                     *slot = match allocated {
@@ -486,22 +520,78 @@ impl App {
         self.opened = Some(Opened {
             title: row.title.clone(),
             meta: meta.join(" · "),
+            url: row.url.clone(),
             body,
+            reader: Reader::Off,
         });
+        self.request_pictures();
+    }
+
+    /// Swaps the open article between the feed's summary and its full page,
+    /// asking the worker for the page.
+    fn toggle_reader(&mut self) {
+        let Some(opened) = &mut self.opened else {
+            return;
+        };
+        opened.reader = match (&opened.reader, &opened.url) {
+            (Reader::Off, None) => Reader::Failed("this article has no link".into()),
+            (Reader::Off, Some(url)) => {
+                // Without the worker yet, WebReady sends the request.
+                if let Some(web) = &self.web {
+                    web.page(url.clone());
+                }
+                Reader::Loading
+            }
+            _ => Reader::Off,
+        };
+        self.request_pictures();
+    }
+
+    fn web_answer(&mut self, answer: Arc<Answer>) -> Task<Message> {
+        match Arc::unwrap_or_clone(answer) {
+            Answer::Image { url, bytes, format } => self.image_loaded(url, Some((bytes, format))),
+            Answer::ImageFailed { url } => self.image_loaded(url, None),
+            Answer::Page { url, html } => {
+                self.page_loaded(&url, Ok(html));
+                Task::none()
+            }
+            Answer::PageFailed { url, error } => {
+                self.page_loaded(&url, Err(error));
+                Task::none()
+            }
+        }
+    }
+
+    /// Takes the reader page for the open article, if it's still waiting
+    /// for that page; anything else arrived too late and is dropped.
+    fn page_loaded(&mut self, url: &str, page: Result<String, String>) {
+        let Some(opened) = &mut self.opened else {
+            return;
+        };
+        if opened.url.as_deref() != Some(url) || !matches!(opened.reader, Reader::Loading) {
+            return;
+        }
+        opened.reader = match page {
+            Ok(html) => Reader::Ready(article::parse(&html, Some(url))),
+            Err(error) => Reader::Failed(error),
+        };
         self.request_pictures();
     }
 
     /// Takes a fetched image for the open article. A raster image is
     /// decoded and uploaded first, so it appears at its size in one step.
-    fn image_loaded(&mut self, loaded: Arc<Loaded>) -> Task<Message> {
-        let (url, fetched) = fetched(loaded);
+    fn image_loaded(
+        &mut self,
+        url: String,
+        fetched: Option<(Vec<u8>, web::Format)>,
+    ) -> Task<Message> {
         // An answer for an article that's no longer open is dropped.
         let Some(slot) = self.pictures.get_mut(&url) else {
             return Task::none();
         };
         match fetched {
             None => *slot = article::Picture::Failed,
-            Some((bytes, images::Format::Svg)) => {
+            Some((bytes, web::Format::Svg)) => {
                 *slot = article::Picture::Vector(svg::Handle::from_memory(bytes));
             }
             Some((bytes, _)) => {
@@ -512,21 +602,21 @@ impl App {
         Task::none()
     }
 
-    /// Keeps the open article's images, drops the rest, and asks the
-    /// worker for the ones not yet fetched.
+    /// Keeps the images of what the pane shows, drops the rest, and asks
+    /// the worker for the ones not yet fetched.
     fn request_pictures(&mut self) {
         let urls = self
             .opened
             .as_ref()
-            .map(|o| article::image_urls(&o.body))
+            .map(|o| article::image_urls(o.shown()))
             .unwrap_or_default();
         self.pictures.retain(|url, _| urls.contains(&url.as_str()));
-        let Some(images) = &self.images else { return };
+        let Some(web) = &self.web else { return };
         for url in urls {
             if !self.pictures.contains_key(url) {
                 self.pictures
                     .insert(url.to_owned(), article::Picture::Loading);
-                images.request(url.to_owned());
+                web.image(url.to_owned());
             }
         }
     }
@@ -572,7 +662,7 @@ impl App {
             subscriptions.push(Subscription::run_with(path.clone(), watch_config));
         }
         if self.bench.is_none() {
-            subscriptions.push(Subscription::run(image_worker));
+            subscriptions.push(Subscription::run(web_worker));
         }
         if self.bench.is_some() {
             subscriptions.push(window::frames().map(Message::Frame));
@@ -791,6 +881,14 @@ impl App {
         let Some(opened) = &self.opened else {
             return Space::new().into();
         };
+        let note = match &opened.reader {
+            Reader::Off => None,
+            Reader::Loading => Some("Loading the full article…".to_owned()),
+            Reader::Ready(_) => Some("Full article · v for the feed's summary".to_owned()),
+            Reader::Failed(why) => Some(format!(
+                "No full article ({why}); showing the feed's summary"
+            )),
+        };
         scrollable(
             column![
                 text(&opened.title)
@@ -798,8 +896,14 @@ impl App {
                     .color(color(t.foreground))
                     .wrapping(text::Wrapping::WordOrGlyph),
                 text(&opened.meta).size(13).color(color(t.muted)),
-                article::view(&opened.body, t, &self.pictures),
             ]
+            .push(note.map(|n| {
+                text(n)
+                    .size(13)
+                    .color(color(t.accent))
+                    .wrapping(text::Wrapping::WordOrGlyph)
+            }))
+            .push(article::view(opened.shown(), t, &self.pictures))
             .spacing(12)
             .padding(24),
         )
@@ -894,27 +998,27 @@ fn watch_config(path: &PathBuf) -> impl Stream<Item = Message> + use<> {
     })
 }
 
-/// Starts the image worker, hands the app its handle, then relays each
-/// image it fetches.
-fn image_worker() -> impl Stream<Item = Message> {
+/// Starts the web worker, hands the app its handle, then relays each
+/// answer.
+fn web_worker() -> impl Stream<Item = Message> {
     use iced::futures::{SinkExt, StreamExt};
     iced::stream::channel(16, async |mut output| {
-        let (loaded_tx, mut loaded) = iced::futures::channel::mpsc::unbounded();
-        let images = match Images::spawn(move |l| {
-            let _ = loaded_tx.unbounded_send(l);
+        let (answer_tx, mut answers) = iced::futures::channel::mpsc::unbounded();
+        let web = match Web::spawn(move |answer| {
+            let _ = answer_tx.unbounded_send(answer);
         }) {
-            Ok(images) => images,
+            Ok(web) => web,
             Err(err) => {
-                eprintln!("gutenberg: images: {err}");
+                eprintln!("gutenberg: web: {err}");
                 return;
             }
         };
-        if output.send(Message::ImagesReady(images)).await.is_err() {
+        if output.send(Message::WebReady(web)).await.is_err() {
             return;
         }
-        while let Some(l) = loaded.next().await {
+        while let Some(answer) = answers.next().await {
             if output
-                .send(Message::ImageLoaded(Arc::new(l)))
+                .send(Message::WebAnswer(Arc::new(answer)))
                 .await
                 .is_err()
             {
@@ -922,19 +1026,6 @@ fn image_worker() -> impl Stream<Item = Message> {
             }
         }
     })
-}
-
-/// A fetched image's URL, and its bytes and format when it loaded.
-fn fetched(loaded: Arc<Loaded>) -> (String, Option<(Vec<u8>, images::Format)>) {
-    match Arc::try_unwrap(loaded) {
-        Ok(Loaded::Image { url, bytes, format }) => (url, Some((bytes, format))),
-        Ok(Loaded::Failed { url }) => (url, None),
-        // Never shared in practice: the worker sends each answer once.
-        Err(shared) => match &*shared {
-            Loaded::Image { url, bytes, format } => (url.clone(), Some((bytes.clone(), *format))),
-            Loaded::Failed { url } => (url.clone(), None),
-        },
-    }
 }
 
 /// Opens `url` in the default browser. `xdg-open` runs detached; a thread
@@ -1076,7 +1167,7 @@ mod tests {
             }])
             .unwrap();
         app.reload();
-        let _ = app.update(Message::ImagesReady(Images::spawn(|_| {}).unwrap()));
+        let _ = app.update(Message::WebReady(Web::spawn(|_| {}).unwrap()));
 
         // Newest first: the article with the picture is the top row.
         let _ = app.update(Message::Key(Action::First));
@@ -1085,8 +1176,8 @@ mod tests {
             app.pictures.get(&url),
             Some(article::Picture::Loading)
         ));
-        let failed = Loaded::Failed { url: url.clone() };
-        let _ = app.update(Message::ImageLoaded(Arc::new(failed)));
+        let failed = Answer::ImageFailed { url: url.clone() };
+        let _ = app.update(Message::WebAnswer(Arc::new(failed)));
         assert!(matches!(
             app.pictures.get(&url),
             Some(article::Picture::Failed)
@@ -1097,9 +1188,126 @@ mod tests {
         let _ = app.update(Message::Key(Action::Down));
         let _ = app.update(Message::Key(Action::Open));
         assert!(app.pictures.is_empty());
-        let late = Loaded::Failed { url: url.clone() };
-        let _ = app.update(Message::ImageLoaded(Arc::new(late)));
+        let late = Answer::ImageFailed { url: url.clone() };
+        let _ = app.update(Message::WebAnswer(Arc::new(late)));
         assert!(app.pictures.is_empty());
+    }
+
+    fn shown_text(app: &App) -> String {
+        app.opened
+            .as_ref()
+            .unwrap()
+            .shown()
+            .iter()
+            .filter_map(|b| match b {
+                article::Block::Paragraph(spans) => {
+                    Some(spans.iter().map(|s| s.text.as_str()).collect::<String>())
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("|")
+    }
+
+    #[test]
+    fn v_swaps_the_summary_for_the_full_article_and_back() {
+        let mut app = app_with(2);
+        // Loopback port 9: the worker's own requests fail without leaving
+        // the machine; its answers below are delivered by hand.
+        let page = "http://127.0.0.1:9/story".to_owned();
+        let source_id = app.rows[0].source_id;
+        app.store
+            .as_mut()
+            .unwrap()
+            .insert_articles(&[NewArticle {
+                source_id,
+                guid: "story".into(),
+                url: Some(page.clone()),
+                title: "A story".into(),
+                author: None,
+                summary_html: Some("<p>Short</p>".into()),
+                published_at: Some(5_000),
+                fetched_at: 1,
+            }])
+            .unwrap();
+        app.reload();
+        let _ = app.update(Message::WebReady(Web::spawn(|_| {}).unwrap()));
+        let _ = app.update(Message::Key(Action::First));
+        let _ = app.update(Message::Key(Action::Open));
+        assert_eq!(shown_text(&app), "Short");
+
+        // While the page loads, the summary stays.
+        let _ = app.update(Message::Key(Action::Reader));
+        assert!(matches!(
+            app.opened.as_ref().unwrap().reader,
+            Reader::Loading
+        ));
+        assert_eq!(shown_text(&app), "Short");
+        let picture = "http://127.0.0.1:9/b.png".to_owned();
+        let full = Answer::Page {
+            url: page.clone(),
+            html: format!("<p>The whole story</p><img src=\"{picture}\">"),
+        };
+        let _ = app.update(Message::WebAnswer(Arc::new(full.clone())));
+        assert_eq!(shown_text(&app), "The whole story");
+        assert!(
+            app.pictures.contains_key(&picture),
+            "its images are asked for"
+        );
+
+        // v again: back to the summary; a page arriving now changes nothing.
+        let _ = app.update(Message::Key(Action::Reader));
+        assert_eq!(shown_text(&app), "Short");
+        assert!(app.pictures.is_empty());
+        let _ = app.update(Message::WebAnswer(Arc::new(full)));
+        assert_eq!(shown_text(&app), "Short");
+    }
+
+    #[test]
+    fn without_a_page_the_summary_stays_and_says_why() {
+        let mut app = app_with(2);
+        let _ = app.update(Message::Key(Action::Open));
+        // app_with's articles have no link.
+        let _ = app.update(Message::Key(Action::Reader));
+        assert!(matches!(
+            &app.opened.as_ref().unwrap().reader,
+            Reader::Failed(why) if why == "this article has no link"
+        ));
+        assert_eq!(shown_text(&app), "Body 1", "newest first");
+    }
+
+    #[test]
+    fn a_failed_page_keeps_the_summary_and_a_late_one_is_dropped() {
+        let mut app = app_with(3);
+        let page = |i: usize| format!("http://127.0.0.1:9/{i}");
+        for i in 0..2 {
+            app.rows[i].url = Some(page(i));
+        }
+        let _ = app.update(Message::Key(Action::Open));
+        let _ = app.update(Message::Key(Action::Reader));
+        let failed = Answer::PageFailed {
+            url: page(0),
+            error: "HTTP 404 Not Found".into(),
+        };
+        let _ = app.update(Message::WebAnswer(Arc::new(failed)));
+        assert!(matches!(
+            &app.opened.as_ref().unwrap().reader,
+            Reader::Failed(why) if why == "HTTP 404 Not Found"
+        ));
+        assert_eq!(shown_text(&app), "Body 2", "newest first");
+
+        // Ask for one page, move on, and the first answer finds nobody.
+        let _ = app.update(Message::Key(Action::Down));
+        let _ = app.update(Message::Key(Action::Open));
+        let _ = app.update(Message::Key(Action::Reader));
+        let _ = app.update(Message::Key(Action::Down));
+        let _ = app.update(Message::Key(Action::Open));
+        let late = Answer::Page {
+            url: page(1),
+            html: "<p>Too late</p>".into(),
+        };
+        let _ = app.update(Message::WebAnswer(Arc::new(late)));
+        assert_eq!(shown_text(&app), "Body 0");
     }
 
     #[test]

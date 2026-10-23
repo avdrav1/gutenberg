@@ -5,3 +5,4 @@ pub mod favicon;
 pub mod feed;
 pub mod image;
 pub mod opml;
+pub mod reader;
