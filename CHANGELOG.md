@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.0 — 2026-10-23
+
 - The article pane shows a story the way the feed wrote it: headings, bold and italic text, lists, code, quotes and pictures, instead of one block of plain text. Click a link to open it in your browser. Long lines and big pictures fit the pane's width.
 - Press `v` to read the whole article instead of the feed's short summary. Gutenberg loads the page and keeps only the story, laid out in the app's own style. Press `v` again to go back. If a page can't be read, the summary stays and a line says why.
 
