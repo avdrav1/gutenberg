@@ -9,6 +9,9 @@ gutenberg-core.workspace = true
 gutenberg-store.workspace = true
 gutenberg-theme.workspace = true
 iced.workspace = true
+ego-tree.workspace = true
+scraper.workspace = true
+url.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

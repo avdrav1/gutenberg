@@ -1,0 +1,5 @@
+# SOURCE https://www.propublica.org/article/post-conviction-legal-delays-pennsylvania (summary_html as stored from https://www.propublica.org/feeds/propublica/main) fetched 2026-10-21
+url = "https://www.propublica.org/article/post-conviction-legal-delays-pennsylvania"
+feed = "https://www.propublica.org/feeds/propublica/main"
+fetched = 2026-10-21
+covers = "full article in content:encoded: figures with images and captions, a blockquote, h3 headings, <br>"

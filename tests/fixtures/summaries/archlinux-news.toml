@@ -1,0 +1,5 @@
+# SOURCE https://archlinux.org/news/breaking-changes-for-all-users-of-varnish-which-is-renamed-to-vinyl-cache/ (summary_html as stored from https://archlinux.org/feeds/news/) fetched 2026-10-21
+url = "https://archlinux.org/news/breaking-changes-for-all-users-of-varnish-which-is-renamed-to-vinyl-cache/"
+feed = "https://archlinux.org/feeds/news/"
+fetched = 2026-10-21
+covers = "RSS news item: a list of inline <code> package names, links"
