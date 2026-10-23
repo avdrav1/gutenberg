@@ -350,6 +350,30 @@ impl Store {
         Ok(())
     }
 
+    pub fn set_starred(&self, article_id: i64, starred: bool) -> Result<()> {
+        self.conn.execute(
+            "UPDATE article SET starred = ?2 WHERE id = ?1",
+            params![article_id, starred],
+        )?;
+        Ok(())
+    }
+
+    /// Marks every unread article the filter shows as read; returns how many.
+    pub fn mark_read_in(&self, filter: Filter) -> Result<usize> {
+        let (source, folder) = match filter {
+            Filter::All => (None, None),
+            Filter::Source(id) => (Some(id), None),
+            Filter::Folder(id) => (None, Some(id)),
+        };
+        Ok(self.conn.execute(
+            "UPDATE article SET read = 1
+             WHERE read = 0
+               AND (?1 IS NULL OR source_id = ?1)
+               AND (?2 IS NULL OR source_id IN (SELECT id FROM source WHERE folder_id = ?2))",
+            params![source, folder],
+        )?)
+    }
+
     /// Feeds whose backoff, if any, has passed by `now`.
     pub fn feeds_due(&self, now: i64) -> Result<Vec<DueFeed>> {
         let mut stmt = self.conn.prepare_cached(
