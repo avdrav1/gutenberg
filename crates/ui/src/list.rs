@@ -8,7 +8,8 @@ pub const ROW_HEIGHT: f32 = 52.0;
 /// Rows one notch of the mouse wheel moves.
 pub const WHEEL_ROWS: f32 = 3.0;
 
-/// What a key does to the list. Keys are listed in `docs/KEYS.md`.
+/// What a key does in the main window. Each one a person can take has a
+/// row in `commands::ALL` and a line in `docs/KEYS.md`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
     Quit,
@@ -23,6 +24,8 @@ pub enum Action {
     AddSources,
     /// Swaps the open article between the feed's summary and the full page.
     Reader,
+    Palette,
+    Help,
 }
 
 /// `pending_g` is whether the last key was a lone `g`.
@@ -41,6 +44,8 @@ pub fn action_for(key: &Key, modifiers: Modifiers, pending_g: bool) -> Option<Ac
         Key::Character("o") | Key::Named(Named::Enter) => Some(Action::Open),
         Key::Character("a") => Some(Action::AddSources),
         Key::Character("v") => Some(Action::Reader),
+        Key::Character(":") => Some(Action::Palette),
+        Key::Character("?") => Some(Action::Help),
         _ => None,
     }
 }
