@@ -32,8 +32,8 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | S3.1 | Article list with `j`/`k`, unread styling, mark read on open | 10k rows scroll at 60 fps on a 4K monitor; only visible rows render. tiny-skia managed ~10 fps at 4K, so this moves to wgpu (Vulkan) and the cold-start budget to 250 ms | done |
 | S3.2 | Article pane renders the feed's HTML summary as styled text | Headings, links, lists, images, code, blockquotes; nothing escapes the pane | done |
 | S3.3 | Reader view extracts the full page (draw it with S3.2's `article::parse` blocks) | Works on 9 of 10 outlets in `tests/reader_sites.txt`; falls back to the summary | done |
-| S3.5 | Command palette (`:`) and help (`?`) (before S3.4, so its actions land with palette entries) | Every action listed; fuzzy match; keys shown | doing |
-| S3.4 | Star, mark unread, mark folder read, open in browser, copy link | Each has a key and a palette entry | todo |
+| S3.5 | Command palette (`:`) and help (`?`) (before S3.4, so its actions land with palette entries) | Every action listed; fuzzy match; keys shown | review |
+| S3.4 | Star, mark unread, mark folder read, open in browser, copy link (each a `list::Action`, a key in `action_for`, a row in `commands::ALL`; the test there holds them together) | Each has a key and a palette entry | todo |
 | S3.6 | Full-text search with FTS5 | `/` finds "Harrisburg" across 100k articles in under 50 ms | todo |
 | S3.7 | Views: all, unread, starred, today | Each a key and a palette entry; counts in the source pane | todo |
 

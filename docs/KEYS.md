@@ -17,9 +17,23 @@
 | `a` | add sources (the catalog) | any |
 | `Tab` / `Shift-Tab` | next / previous pane | any |
 | `1` `2` `3` | toggle sources / list / article pane | any |
-| `:` | command palette | any |
-| `?` | help | any |
+| `:` | command palette: find any action by name | any |
+| `?` | help: every action and its keys | any |
 | `q` | quit | any |
+
+## Command palette
+
+Opened with `:`. Type part of an action's name; letters only need to appear in order, so `rv` finds "Reader view".
+
+| Key | Action |
+|---|---|
+| any letter | narrow the list |
+| `Backspace` | delete the last letter |
+| `↓` / `↑`, `Ctrl-n` / `Ctrl-p`, `Tab` / `Shift-Tab` | next / previous match |
+| `Enter` | run the highlighted action (a click runs one too) |
+| `Esc` | close without running anything |
+
+Help (`?`) closes with `?`, `Esc` or `q`.
 
 ## Add sources screen
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Press `:` for the command palette: type a few letters of what you want to do (`rv` for reader view) and press Enter. Press `?` for a list of every key.
+
 ## 0.5.0 — 2026-10-23
 
 - The article pane shows a story the way the feed wrote it: headings, bold and italic text, lists, code, quotes and pictures, instead of one block of plain text. Click a link to open it in your browser. Long lines and big pictures fit the pane's width.
