@@ -394,6 +394,19 @@ impl App {
                 self.overlay = Some(Overlay::Palette(palette::Palette::default()));
             }
             Message::Key(Action::Help) => self.overlay = Some(Overlay::Help),
+            Message::Key(Action::Star) => self.toggle_star(),
+            Message::Key(Action::ToggleRead) => self.toggle_read(),
+            Message::Key(Action::MarkFolderRead) => self.mark_chosen_read(),
+            Message::Key(Action::OpenInBrowser) => {
+                if let Some(url) = self.selected_link() {
+                    open_in_browser(&url);
+                }
+            }
+            Message::Key(Action::CopyLink) => {
+                if let Some(url) = self.selected_link() {
+                    return iced::clipboard::write(url);
+                }
+            }
             Message::Palette(input) => {
                 let Some(Overlay::Palette(state)) = &mut self.overlay else {
                     return Task::none();
@@ -523,6 +536,42 @@ impl App {
         }
         self.selected = i.min(self.rows.len() - 1);
         self.top = list::scroll_to_show(self.top, self.selected, self.height);
+    }
+
+    /// The selected article's own link.
+    fn selected_link(&self) -> Option<String> {
+        self.rows.get(self.selected)?.url.clone()
+    }
+
+    fn toggle_star(&mut self) {
+        let (Ok(store), Some(row)) = (&self.store, self.rows.get_mut(self.selected)) else {
+            return;
+        };
+        match store.set_starred(row.id, !row.starred) {
+            Ok(()) => row.starred = !row.starred,
+            Err(e) => eprintln!("gutenberg: starring: {e}"),
+        }
+    }
+
+    /// Read becomes unread and back; the feed's count follows.
+    fn toggle_read(&mut self) {
+        let (Ok(store), Some(row)) = (&self.store, self.rows.get(self.selected)) else {
+            return;
+        };
+        if let Err(e) = store.set_read(row.id, !row.read) {
+            eprintln!("gutenberg: marking read: {e}");
+        }
+        self.reload();
+    }
+
+    /// Everything in the folder or feed chosen in the sources pane, or in
+    /// "All articles", becomes read.
+    fn mark_chosen_read(&mut self) {
+        let Ok(store) = &self.store else { return };
+        if let Err(e) = store.mark_read_in(self.filter) {
+            eprintln!("gutenberg: marking read: {e}");
+        }
+        self.reload();
     }
 
     /// Shows the article and marks it read.
@@ -1015,6 +1064,13 @@ impl App {
             .size(12)
             .color(color(t.muted))
             .wrapping(text::Wrapping::None);
+        let meta = Row::new()
+            .push(
+                row.starred
+                    .then(|| text("★").size(12).color(color(t.accent))),
+            )
+            .push(meta)
+            .spacing(4);
         let background = selected.then(|| color(t.selection).into());
         mouse_area(
             container(column![title, meta].spacing(4))
@@ -1786,5 +1842,69 @@ mod tests {
         assert!(matches!(app.overlay, Some(Overlay::Help)));
         let _ = app.update(Message::CloseOverlay);
         assert!(app.overlay.is_none());
+    }
+
+    fn stored(app: &App, id: i64) -> ArticleRow {
+        let rows = app
+            .store
+            .as_ref()
+            .unwrap()
+            .list_articles(None, 100)
+            .unwrap();
+        rows.into_iter().find(|r| r.id == id).unwrap()
+    }
+
+    #[test]
+    fn s_stars_and_unstars_the_selected_article() {
+        let (mut app, ..) = app_with_folders();
+        let _ = app.update(Message::Key(Action::Down));
+        let id = app.rows[1].id;
+        let _ = app.update(Message::Key(Action::Star));
+        assert!(app.rows[1].starred && stored(&app, id).starred);
+        assert!(
+            !stored(&app, app.rows[0].id).starred,
+            "only the selected one"
+        );
+        let _ = app.update(Message::Key(Action::Star));
+        assert!(!app.rows[1].starred && !stored(&app, id).starred);
+    }
+
+    #[test]
+    fn m_makes_a_read_article_unread_and_the_count_follows() {
+        let (mut app, _, a, _) = app_with_folders();
+        let a_row = Entry::Source { id: a, filed: true };
+        let _ = app.update(Message::Key(Action::Open));
+        let id = app.rows[0].id;
+        assert_eq!(counts(&app, a_row), 1);
+        let _ = app.update(Message::Key(Action::ToggleRead));
+        assert!(!stored(&app, id).read);
+        assert_eq!(counts(&app, a_row), 2);
+        assert_eq!(app.rows[app.selected].id, id, "the selection stays put");
+        let _ = app.update(Message::Key(Action::ToggleRead));
+        assert!(stored(&app, id).read);
+        assert_eq!(counts(&app, a_row), 1);
+    }
+
+    #[test]
+    fn shift_m_marks_only_the_chosen_folder_read() {
+        let (mut app, tech, _, b) = app_with_folders();
+        app.choose(Entry::Folder(tech));
+        let _ = app.update(Message::Key(Action::MarkFolderRead));
+        assert_eq!(counts(&app, Entry::Folder(tech)), 0);
+        assert_eq!(
+            counts(
+                &app,
+                Entry::Source {
+                    id: b,
+                    filed: false
+                }
+            ),
+            1
+        );
+        assert!(app.rows.iter().all(|r| r.read));
+
+        app.choose(Entry::All);
+        let _ = app.update(Message::Key(Action::MarkFolderRead));
+        assert_eq!(counts(&app, Entry::All), 0);
     }
 }

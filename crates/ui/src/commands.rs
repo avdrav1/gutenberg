@@ -46,6 +46,31 @@ pub const ALL: &[Command] = &[
         keys: &["v"],
     },
     Command {
+        action: Action::Star,
+        name: "Star or unstar article",
+        keys: &["s"],
+    },
+    Command {
+        action: Action::ToggleRead,
+        name: "Mark article unread or read",
+        keys: &["m"],
+    },
+    Command {
+        action: Action::MarkFolderRead,
+        name: "Mark folder read: everything in the chosen folder or feed",
+        keys: &["M"],
+    },
+    Command {
+        action: Action::OpenInBrowser,
+        name: "Open article in browser",
+        keys: &["O"],
+    },
+    Command {
+        action: Action::CopyLink,
+        name: "Copy article link",
+        keys: &["y"],
+    },
+    Command {
         action: Action::AddSources,
         name: "Add sources",
         keys: &["a"],
@@ -187,7 +212,12 @@ mod tests {
             | A::AddSources
             | A::Reader
             | A::Palette
-            | A::Help => true,
+            | A::Help
+            | A::Star
+            | A::ToggleRead
+            | A::MarkFolderRead
+            | A::OpenInBrowser
+            | A::CopyLink => true,
         };
         let every = [
             A::Quit,
@@ -201,6 +231,11 @@ mod tests {
             A::Reader,
             A::Palette,
             A::Help,
+            A::Star,
+            A::ToggleRead,
+            A::MarkFolderRead,
+            A::OpenInBrowser,
+            A::CopyLink,
         ];
         for action in every.into_iter().filter(|a| needs_row(*a)) {
             assert!(
