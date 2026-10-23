@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The article pane shows a story the way the feed wrote it: headings, bold and italic text, lists, code, quotes and pictures, instead of one block of plain text. Click a link to open it in your browser. Long lines and big pictures fit the pane's width.
+
 ## 0.4.0 — 2026-10-22
 
 - Each feed in the left pane shows its site's icon. Gutenberg fetches it once, the first time it refreshes the feed, and keeps it in `~/.local/share/gutenberg/favicons/`; after that it never asks the site again.

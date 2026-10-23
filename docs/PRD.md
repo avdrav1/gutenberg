@@ -72,7 +72,7 @@ Non-goals for 1.0: AI summaries and ranking (Cronkite covers that; a later MCP b
 
 ### Privacy
 
-- No telemetry. No network calls except to the user's sources, favicons, and article pages for reader view. A `--offline` flag disables all of it.
+- No telemetry. No network calls except to the user's sources, favicons, images in the article being read, and article pages for reader view. A `--offline` flag disables all of it.
 
 ## Architecture
 
