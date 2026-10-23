@@ -37,6 +37,11 @@ use sidebar::{Entry, Move};
 const LIST_LIMIT: u32 = 100_000;
 /// How often to look for writes from the refresh thread or a terminal.
 const STORE_POLL: Duration = Duration::from_secs(1);
+/// Most search results kept: the newest this many matches. Enough to
+/// read through, and cheap enough to run on every key (S3.6 bench).
+const SEARCH_LIMIT: u32 = 500;
+/// Height of the search line above the list.
+const SEARCH_BAR: f32 = 36.0;
 /// Site icons in the sources pane, square.
 const ICON_SIZE: f32 = 16.0;
 
@@ -107,6 +112,15 @@ struct App {
     onboarding: Option<onboarding::Onboarding>,
     /// The command palette or help, drawn over the panes.
     overlay: Option<Overlay>,
+    /// A search in place of the chosen folder or feed's list.
+    search: Option<Search>,
+}
+
+/// What `/` started.
+struct Search {
+    query: String,
+    /// Keys type into the query; Enter hands them back to the list.
+    editing: bool,
 }
 
 enum Overlay {
@@ -121,6 +135,7 @@ enum KeyMode {
     Onboarding,
     Palette,
     Help,
+    Search,
 }
 
 /// A press on a sources-pane row and where the pointer is now.
@@ -228,6 +243,8 @@ enum Message {
     RunCommand(Action),
     /// Closes the palette or help.
     CloseOverlay,
+    /// A key while typing in the search line.
+    Search(palette::Input),
     /// A link in the article pane was clicked.
     OpenLink(String),
     /// The web worker is up and takes requests.
@@ -289,6 +306,7 @@ impl App {
             bench,
             onboarding: None,
             overlay: None,
+            search: None,
         };
         app.reload();
         // First run: nothing to read yet, so start by picking sources.
@@ -353,7 +371,10 @@ impl App {
         let selected_id = self.rows.get(self.selected).map(|r| r.id);
         let read = (|| {
             Ok::<_, gutenberg_store::Error>((
-                store.list_articles_in(self.filter, LIST_LIMIT)?,
+                match self.search.as_ref().map(|s| s.query.as_str()) {
+                    Some(query) => store.search(query, SEARCH_LIMIT)?,
+                    None => store.list_articles_in(self.filter, LIST_LIMIT)?,
+                },
                 store.sources()?,
                 store.folders()?,
                 store.unread_counts()?,
@@ -378,7 +399,9 @@ impl App {
             }
         }
         self.selected = self.selected.min(self.rows.len().saturating_sub(1));
-        self.top = self.top.min(list::max_top(self.rows.len(), self.height));
+        self.top = self
+            .top
+            .min(list::max_top(self.rows.len(), self.list_height()));
         self.data_version = store.data_version().unwrap_or(self.data_version);
     }
 
@@ -402,6 +425,18 @@ impl App {
                     open_in_browser(&url);
                 }
             }
+            Message::Key(Action::Search) => match &mut self.search {
+                Some(search) => search.editing = true,
+                None => {
+                    self.search = Some(Search {
+                        query: String::new(),
+                        editing: true,
+                    });
+                    self.show_from_top();
+                }
+            },
+            Message::Key(Action::ClearSearch) => self.clear_search(),
+            Message::Search(input) => self.search_input(input),
             Message::Key(Action::CopyLink) => {
                 if let Some(url) = self.selected_link() {
                     return iced::clipboard::write(url);
@@ -442,7 +477,7 @@ impl App {
                     ScrollDelta::Pixels { y, .. } => -y / list::ROW_HEIGHT,
                 };
                 let top = (self.top as f32 + rows).round().max(0.0) as usize;
-                self.top = top.min(list::max_top(self.rows.len(), self.height));
+                self.top = top.min(list::max_top(self.rows.len(), self.list_height()));
             }
             Message::PollStore => {
                 let changed = match &self.store {
@@ -455,8 +490,8 @@ impl App {
             }
             Message::Resized(size) => {
                 self.height = size.height;
-                self.top = list::scroll_to_show(self.top, self.selected, self.height)
-                    .min(list::max_top(self.rows.len(), self.height));
+                self.top = list::scroll_to_show(self.top, self.selected, self.list_height())
+                    .min(list::max_top(self.rows.len(), self.list_height()));
             }
             Message::Frame(at) => return self.bench_frame(at),
             Message::ConfigChanged(config) => self.config = config,
@@ -506,14 +541,59 @@ impl App {
         Task::none()
     }
 
-    /// Shows the articles a sources-pane row stands for.
+    /// Shows the articles a sources-pane row stands for, ending a search.
     fn choose(&mut self, entry: Entry) {
         let Some(filter) = entry.filter() else { return };
-        if filter != self.filter {
+        if filter != self.filter || self.search.is_some() {
             self.filter = filter;
-            self.selected = 0;
-            self.top = 0;
-            self.reload();
+            self.search = None;
+            self.show_from_top();
+        }
+    }
+
+    /// Re-reads the list and puts the selection at its top.
+    fn show_from_top(&mut self) {
+        self.selected = 0;
+        self.top = 0;
+        self.reload();
+    }
+
+    /// Ends the search; the chosen folder or feed's list comes back.
+    fn clear_search(&mut self) {
+        if self.search.take().is_some() {
+            self.show_from_top();
+        }
+    }
+
+    /// A key in the search line: typing narrows the list as you go, the
+    /// arrows move through it, Enter hands the keys back to the list, and
+    /// Esc ends the search.
+    fn search_input(&mut self, input: palette::Input) {
+        let Some(search) = &mut self.search else {
+            return;
+        };
+        match input {
+            palette::Input::Type(text) => {
+                search.query.push_str(&text);
+                self.show_from_top();
+            }
+            palette::Input::Backspace => {
+                search.query.pop();
+                self.show_from_top();
+            }
+            palette::Input::Down => self.select(self.selected.saturating_add(1)),
+            palette::Input::Up => self.select(self.selected.saturating_sub(1)),
+            palette::Input::Run => search.editing = false,
+            palette::Input::Close => self.clear_search(),
+        }
+    }
+
+    /// The list's own height: the pane's, less the search line when shown.
+    fn list_height(&self) -> f32 {
+        if self.search.is_some() {
+            (self.height - SEARCH_BAR).max(0.0)
+        } else {
+            self.height
         }
     }
 
@@ -535,7 +615,7 @@ impl App {
             return;
         }
         self.selected = i.min(self.rows.len() - 1);
-        self.top = list::scroll_to_show(self.top, self.selected, self.height);
+        self.top = list::scroll_to_show(self.top, self.selected, self.list_height());
     }
 
     /// The selected article's own link.
@@ -738,11 +818,12 @@ impl App {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        let mode = match (&self.onboarding, &self.overlay) {
-            (Some(_), _) => KeyMode::Onboarding,
-            (None, Some(Overlay::Palette(_))) => KeyMode::Palette,
-            (None, Some(Overlay::Help)) => KeyMode::Help,
-            (None, None) => KeyMode::List,
+        let mode = match (&self.onboarding, &self.overlay, &self.search) {
+            (Some(_), _, _) => KeyMode::Onboarding,
+            (None, Some(Overlay::Palette(_)), _) => KeyMode::Palette,
+            (None, Some(Overlay::Help), _) => KeyMode::Help,
+            (None, None, Some(Search { editing: true, .. })) => KeyMode::Search,
+            (None, None, _) => KeyMode::List,
         };
         let keys = keyboard::listen().with((self.pending_g, mode)).filter_map(
             |((pending_g, mode), event)| {
@@ -763,6 +844,9 @@ impl App {
                     }
                     KeyMode::Palette => {
                         palette::input_for(&key, modifiers, text.as_deref()).map(Message::Palette)
+                    }
+                    KeyMode::Search => {
+                        palette::input_for(&key, modifiers, text.as_deref()).map(Message::Search)
                     }
                     KeyMode::Help => {
                         use keyboard::key::Named;
@@ -1019,24 +1103,78 @@ impl App {
         if let Err(e) = &self.store {
             return note(format!("Can't open the article store: {e}"), t.muted);
         }
-        if self.rows.is_empty() {
-            let message = if self.sources.is_empty() {
-                "No feeds yet. Press a to pick some, or run gutenberg --add <url>"
-            } else {
-                "Fetching your feeds…"
+        let list: Element<'_, Message> = if self.rows.is_empty() {
+            let message = match &self.search {
+                Some(search) if search.query.trim().is_empty() => "Type to search every article",
+                Some(_) => "No articles match",
+                None if self.sources.is_empty() => {
+                    "No feeds yet. Press a to pick some, or run gutenberg --add <url>"
+                }
+                None => "Fetching your feeds…",
             };
-            return note(message.to_owned(), t.muted);
+            note(message.to_owned(), t.muted)
+        } else {
+            let now = unix_now();
+            let rows = list::visible(self.top, self.list_height(), self.rows.len())
+                .map(|i| self.row_view(i, &self.rows[i], now));
+            mouse_area(
+                Column::with_children(rows)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .clip(true),
+            )
+            .on_scroll(Message::Scroll)
+            .into()
+        };
+        match &self.search {
+            None => list,
+            Some(search) => column![self.search_bar(search), list].into(),
         }
-        let now = unix_now();
-        let rows = list::visible(self.top, self.height, self.rows.len())
-            .map(|i| self.row_view(i, &self.rows[i], now));
-        mouse_area(
-            Column::with_children(rows)
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .clip(true),
+    }
+
+    /// `/` and what's typed, with a cursor while typing, and how many
+    /// articles matched.
+    fn search_bar<'a>(&self, search: &'a Search) -> Element<'a, Message> {
+        let t = &self.tokens;
+        let query = if search.editing {
+            format!("{}▏", search.query)
+        } else {
+            search.query.clone()
+        };
+        let count = match self.rows.len() {
+            0 => String::new(),
+            n if n as u32 >= SEARCH_LIMIT => format!("newest {n}"),
+            1 => "1 match".to_owned(),
+            n => format!("{n} matches"),
+        };
+        let (background, border_color) = (t.lighter_background, t.border);
+        container(
+            row![
+                text("/").size(14).color(color(t.accent)),
+                text(query)
+                    .size(14)
+                    .color(color(t.foreground))
+                    .wrapping(text::Wrapping::None)
+                    .width(Length::Fill),
+                text(count).size(12).color(color(t.muted)),
+            ]
+            .spacing(8)
+            .align_y(Alignment::Center),
         )
-        .on_scroll(Message::Scroll)
+        .padding([0, 12])
+        .height(Length::Fixed(SEARCH_BAR))
+        .align_y(Alignment::Center)
+        .width(Length::Fill)
+        .clip(true)
+        .style(move |_| container::Style {
+            background: Some(color(background).into()),
+            border: Border {
+                color: color(border_color),
+                width: 1.0,
+                radius: border::radius(0),
+            },
+            ..Default::default()
+        })
         .into()
     }
 
@@ -1906,5 +2044,65 @@ mod tests {
         app.choose(Entry::All);
         let _ = app.update(Message::Key(Action::MarkFolderRead));
         assert_eq!(counts(&app, Entry::All), 0);
+    }
+
+    fn search_keys(app: &mut App, typed: &str) {
+        for c in typed.chars() {
+            let _ = app.update(Message::Search(palette::Input::Type(c.to_string())));
+        }
+    }
+
+    fn titles(app: &App) -> Vec<&str> {
+        app.rows.iter().map(|r| r.title.as_str()).collect()
+    }
+
+    #[test]
+    fn slash_searches_as_you_type_and_esc_brings_the_list_back() {
+        let mut app = app_with(12);
+        let _ = app.update(Message::Key(Action::Down));
+        let _ = app.update(Message::Key(Action::Search));
+        assert!(app.rows.is_empty(), "nothing typed, nothing found");
+        // "body 1" matches Body 1 and Body 10, 11 by prefix; newest first.
+        search_keys(&mut app, "body 1");
+        assert_eq!(titles(&app), ["Article 11", "Article 10", "Article 1"]);
+        search_keys(&mut app, "1");
+        assert_eq!(titles(&app), ["Article 11"]);
+        let _ = app.update(Message::Search(palette::Input::Backspace));
+        assert_eq!(app.rows.len(), 3);
+
+        let _ = app.update(Message::Search(palette::Input::Close));
+        assert!(app.search.is_none());
+        assert_eq!(app.rows.len(), 12);
+    }
+
+    #[test]
+    fn enter_hands_the_keys_back_to_the_results() {
+        let mut app = app_with(12);
+        let _ = app.update(Message::Key(Action::Search));
+        search_keys(&mut app, "body 1");
+        // While typing, j is a letter: no match for "body 1j".
+        search_keys(&mut app, "j");
+        assert!(app.rows.is_empty());
+        let _ = app.update(Message::Search(palette::Input::Backspace));
+        let _ = app.update(Message::Search(palette::Input::Run));
+        let _ = app.update(Message::Key(Action::Down));
+        assert_eq!(app.rows[app.selected].title, "Article 10");
+        // `/` again edits the same search; Esc from the list ends it.
+        let _ = app.update(Message::Key(Action::Search));
+        assert_eq!(app.search.as_ref().unwrap().query, "body 1");
+        let _ = app.update(Message::Search(palette::Input::Run));
+        let _ = app.update(Message::Key(Action::ClearSearch));
+        assert_eq!(app.rows.len(), 12);
+    }
+
+    #[test]
+    fn choosing_a_feed_ends_the_search() {
+        let (mut app, tech, ..) = app_with_folders();
+        let _ = app.update(Message::Key(Action::Search));
+        search_keys(&mut app, "b1");
+        assert_eq!(titles(&app), ["b1"]);
+        app.choose(Entry::Folder(tech));
+        assert!(app.search.is_none());
+        assert_eq!(titles(&app), ["a1", "a2"]);
     }
 }

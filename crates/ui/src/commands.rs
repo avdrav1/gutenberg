@@ -71,6 +71,16 @@ pub const ALL: &[Command] = &[
         keys: &["y"],
     },
     Command {
+        action: Action::Search,
+        name: "Search articles",
+        keys: &["/"],
+    },
+    Command {
+        action: Action::ClearSearch,
+        name: "Clear search",
+        keys: &["Esc"],
+    },
+    Command {
         action: Action::AddSources,
         name: "Add sources",
         keys: &["a"],
@@ -179,6 +189,7 @@ mod tests {
             "↓" => Some(Key::Named(Named::ArrowDown)),
             "↑" => Some(Key::Named(Named::ArrowUp)),
             "Enter" => Some(Key::Named(Named::Enter)),
+            "Esc" => Some(Key::Named(Named::Escape)),
             _ => None,
         };
         for command in ALL {
@@ -217,7 +228,9 @@ mod tests {
             | A::ToggleRead
             | A::MarkFolderRead
             | A::OpenInBrowser
-            | A::CopyLink => true,
+            | A::CopyLink
+            | A::Search
+            | A::ClearSearch => true,
         };
         let every = [
             A::Quit,
@@ -236,6 +249,8 @@ mod tests {
             A::MarkFolderRead,
             A::OpenInBrowser,
             A::CopyLink,
+            A::Search,
+            A::ClearSearch,
         ];
         for action in every.into_iter().filter(|a| needs_row(*a)) {
             assert!(

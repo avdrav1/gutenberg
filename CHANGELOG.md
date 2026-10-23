@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Press `/` to search every article you have. Type a few letters and the list shows matching titles, authors and summaries as you type, newest first; `Enter` lets you move through the results, `Esc` brings your list back. The first launch after updating builds the search index for articles you already have, which takes a moment on a large collection.
+
 ## 0.7.0 — 2026-10-23
 
 - New keys, also in the `:` palette and `?` help: `s` stars an article (a ★ shows in the list), `m` marks it unread or read again, `M` marks everything in the chosen folder or feed read, `O` opens the article in your browser, and `y` copies its link.

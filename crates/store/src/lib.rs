@@ -1,7 +1,10 @@
 //! See CLAUDE.md for what this crate owns.
 
+#[doc(hidden)]
+pub mod bench;
 mod migrate;
 mod model;
+mod text;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -226,6 +229,38 @@ impl Store {
              LIMIT ?3",
         )?;
         let rows = stmt.query_map(params![source, folder, limit], |row| {
+            Ok(ArticleRow {
+                id: row.get(0)?,
+                source_id: row.get(1)?,
+                title: row.get(2)?,
+                url: row.get(3)?,
+                author: row.get(4)?,
+                sort_at: row.get(5)?,
+                read: row.get(6)?,
+                starred: row.get(7)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Articles whose title, author or summary hold every word typed (each
+    /// as a prefix), newest first. Nothing searchable typed: no results.
+    /// Any input is safe; it never reaches FTS5 as syntax.
+    pub fn search(&self, typed: &str, limit: u32) -> Result<Vec<ArticleRow>> {
+        let Some(query) = text::match_query(typed) else {
+            return Ok(Vec::new());
+        };
+        // The matches go into a set first, then the time index is walked
+        // newest first until `limit` are found: a common word stops early
+        // instead of sorting every article that has it.
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT id, source_id, title, url, author, sort_at, read, starred
+             FROM article INDEXED BY article_by_time
+             WHERE id IN (SELECT rowid FROM article_fts WHERE article_fts MATCH ?1)
+             ORDER BY sort_at DESC, id DESC
+             LIMIT ?2",
+        )?;
+        let rows = stmt.query_map(params![query, limit], |row| {
             Ok(ArticleRow {
                 id: row.get(0)?,
                 source_id: row.get(1)?,
@@ -499,9 +534,10 @@ fn insert_articles(tx: &rusqlite::Transaction, articles: &[NewArticle]) -> Resul
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
          ON CONFLICT (source_id, guid) DO NOTHING",
     )?;
+    let mut index = tx.prepare_cached(text::INDEX_ARTICLE)?;
     let mut inserted = 0;
     for a in articles {
-        inserted += stmt.execute(params![
+        let added = stmt.execute(params![
             a.source_id,
             a.guid,
             a.url,
@@ -512,6 +548,15 @@ fn insert_articles(tx: &rusqlite::Transaction, articles: &[NewArticle]) -> Resul
             a.fetched_at,
             a.published_at.unwrap_or(a.fetched_at),
         ])?;
+        if added > 0 {
+            index.execute(params![
+                tx.last_insert_rowid(),
+                a.title,
+                a.author,
+                a.summary_html.as_deref().map(text::plain),
+            ])?;
+        }
+        inserted += added;
     }
     Ok(inserted)
 }

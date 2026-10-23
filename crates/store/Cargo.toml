@@ -8,6 +8,7 @@ license.workspace = true
 rusqlite.workspace = true
 directories.workspace = true
 thiserror.workspace = true
+html-escape.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
@@ -15,4 +16,8 @@ criterion.workspace = true
 
 [[bench]]
 name = "list"
+harness = false
+
+[[bench]]
+name = "search"
 harness = false
