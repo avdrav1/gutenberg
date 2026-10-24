@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.15.0 — 2026-10-24
+
 - A light Omarchy theme that leaves some colors out now gets light defaults for them, not dark ones. The theme's `mode` decides; a theme without one is judged by its background.
 - Keyword alerts now search Bing News as well as Google News, and a story both carry shows up once. Google News results move from Google's link to the publisher's own, 20 per alert at each refresh, so `v` opens the article itself. If one search fails, the alert still updates from the other.
 
