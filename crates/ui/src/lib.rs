@@ -53,6 +53,7 @@ pub fn run(
     config_path: Option<PathBuf>,
     store_path: Option<PathBuf>,
 ) -> iced::Result {
+    use_desktop_font();
     iced::application(
         move || App::new(config.clone(), config_path.clone(), store_path.as_deref()),
         App::update,
@@ -60,6 +61,7 @@ pub fn run(
     )
     .title("Gutenberg")
     .subscription(App::subscription)
+    .scale_factor(App::scale_factor)
     .window(window::Settings {
         // Hyprland draws the borders; no client-side decorations.
         decorations: false,
@@ -72,6 +74,37 @@ pub fn run(
         ..Default::default()
     })
     .run()
+}
+
+/// Draws all text in the desktop's font: fontconfig's `monospace` family,
+/// which `omarchy-font-set` sets, stands in for iced's sans-serif and
+/// monospace families, so plain, bold, italic and code text all use it.
+/// Without fontconfig, or for a family no font file provides, iced's own
+/// choices stay; then this returns `false`.
+fn use_desktop_font() -> bool {
+    let Some(family) = gutenberg_theme::font::monospace() else {
+        return false;
+    };
+    let mut fonts = iced::advanced::graphics::text::font_system()
+        .write()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let db = fonts.raw().db_mut();
+    let installed = db
+        .faces()
+        .any(|face| face.families.iter().any(|(name, _)| *name == family));
+    if !installed {
+        eprintln!("gutenberg: font {family:?}: no font file has it; using the default font");
+        return false;
+    }
+    db.set_sans_serif_family(family.clone());
+    db.set_monospace_family(family);
+    true
+}
+
+/// Text sizes in the code are for a 14 px font; `[font] size` scales the
+/// whole window from there, so rows and padding grow with the text.
+fn scale_factor(config: &Config) -> f32 {
+    f32::from(config.font.size) / f32::from(config::Font::DEFAULT_SIZE)
 }
 
 struct App {
@@ -499,13 +532,15 @@ impl App {
                     self.reload();
                 }
             }
-            Message::Resized(size) => {
-                self.height = size.height;
-                self.top = list::scroll_to_show(self.top, self.selected, self.list_height())
-                    .min(list::max_top(self.rows.len(), self.list_height()));
-            }
+            Message::Resized(size) => self.set_height(size.height),
             Message::Frame(at) => return self.bench_frame(at),
-            Message::ConfigChanged(config) => self.config = config,
+            Message::ConfigChanged(config) => {
+                // iced sends no resize when the scale factor changes, but the
+                // same window is now a different number of logical pixels.
+                let height = self.height * self.scale_factor() / scale_factor(&config);
+                self.config = config;
+                self.set_height(height);
+            }
             Message::Press(entry) => {
                 self.drag = Some(Drag {
                     origin: entry,
@@ -613,6 +648,18 @@ impl App {
         } else {
             self.height
         }
+    }
+
+    /// The window is `height` logical pixels tall: keeps the selected row
+    /// in view and the list from scrolling past its end.
+    fn set_height(&mut self, height: f32) {
+        self.height = height;
+        self.top = list::scroll_to_show(self.top, self.selected, self.list_height())
+            .min(list::max_top(self.rows.len(), self.list_height()));
+    }
+
+    fn scale_factor(&self) -> f32 {
+        scale_factor(&self.config)
     }
 
     /// Moves a source or folder in the store, then shows the new order.
@@ -1418,8 +1465,19 @@ pub mod shots {
         app.choose(Entry::Folder(news));
         app.open(0);
 
+        // iced_test draws `Font::DEFAULT` in Fira Sans; with the desktop
+        // font in place, the monospace family is the same font the app's
+        // default (sans-serif) family is.
+        let settings = iced_test::core::Settings {
+            default_font: if use_desktop_font() {
+                Font::MONOSPACE
+            } else {
+                Font::DEFAULT
+            },
+            ..Default::default()
+        };
         let mut simulator = iced_test::simulator::Simulator::with_size(
-            iced_test::core::Settings::default(),
+            settings,
             iced::Size::new(size.0, size.1),
             app.view(),
         );
@@ -1833,6 +1891,26 @@ mod tests {
         assert_eq!(app.top, 6);
         let _ = app.update(Message::Scroll(ScrollDelta::Lines { x: 0.0, y: -100.0 }));
         assert_eq!(app.top, 90);
+    }
+
+    #[test]
+    fn a_bigger_font_keeps_the_selected_row_on_screen() {
+        let mut app = app_with(100);
+        for _ in 0..9 {
+            let _ = app.update(Message::Key(Action::Down));
+        }
+        // Row 9 is the last of 10 whole rows at 14 px.
+        assert_eq!((app.selected, app.top), (9, 0));
+        let mut config = Config::default();
+        config.font.size = 28;
+        let _ = app.update(Message::ConfigChanged(config.clone()));
+        // Twice the size, half the rows: 5 fit, so row 9 is the fifth.
+        assert_eq!(app.top, 5);
+        config.font.size = 14;
+        let _ = app.update(Message::ConfigChanged(config));
+        // Back to 10 rows; `G` lands where it did before.
+        let _ = app.update(Message::Key(Action::Last));
+        assert_eq!((app.selected, app.top), (99, 90));
     }
 
     #[test]

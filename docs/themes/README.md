@@ -7,7 +7,7 @@ ICED_TEST_BACKEND=tiny-skia cargo run -p gutenberg-ui --features shots \
     --example theme_shots -- tests/fixtures/themes docs/themes
 ```
 
-To render what's installed instead, pass `/usr/share/omarchy/themes` as the first argument.
+To render what's installed instead, pass `/usr/share/omarchy/themes` as the first argument. Text is in the rendering machine's desktop font, as in the app (`fc-match monospace`; JetBrainsMono Nerd Font here).
 
 ## The checks
 

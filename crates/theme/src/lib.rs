@@ -1,5 +1,7 @@
 //! See CLAUDE.md for what this crate owns.
 
+pub mod font;
+
 use std::path::{Path, PathBuf};
 
 /// An sRGB color, 8 bits per channel.

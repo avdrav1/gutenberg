@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Gutenberg now takes its colors from your Omarchy theme, light themes included, instead of always looking like Tokyo Night. Where a theme's dim text or link color would be hard to read, it is brightened (or darkened) just enough to read. Themes from before Omarchy 4 work too. Changing the theme still needs a restart for now.
+- Text is in your desktop's monospace font, the one `omarchy font set` chooses, like the terminal and Waybar; after changing it, restart Gutenberg to see it. Set the text size with `size` under `[font]` in `~/.config/gutenberg/config.toml` (8 to 32, default 14); the whole window scales with it, and edits apply as you save.
 
 ## 0.9.0 — 2026-10-23
 
