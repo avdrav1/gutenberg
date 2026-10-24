@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.17.0 — 2026-10-24
+
 - Add an MCP server as a source: `gutenberg --mcp '<command>'` for one that runs on your machine, or `gutenberg --mcp <url>` for one on the web. Gutenberg connects, lists the server's tools, and shows them when you choose the server in the sources pane. If it can't reach a server, one line under the server's name says why, such as a missing API key or a refused connection, and Gutenberg tries again later. Reading articles from a tool comes next.
 
 ## 0.16.0 — 2026-10-24
