@@ -70,7 +70,7 @@
 gutenberg --add &lt;feed-url&gt;     # add an RSS, Atom or JSON feed</pre>
   <p>Bind it in <code>~/.config/hypr/bindings.conf</code>:</p>
   <pre class="block">bindd = SUPER, N, News, exec, gutenberg</pre>
-  <p>Layout and text size live in <code>~/.config/gutenberg/config.toml</code> and apply as you save. The font is your desktop's monospace font, the one <code>omarchy font set</code> picks.</p>
+  <p>Layout and text size live in <code>~/.config/gutenberg/config.toml</code> and apply as you save. Colors and font come from your Omarchy theme and the monospace font <code>omarchy font set</code> picks, and an open window follows them when they change.</p>
   <pre class="block">[layout]
 sources = 2
 list = 4
@@ -89,6 +89,7 @@ curl -fsSL https://gutenbergapp.com/install.sh | GUTENBERG_INSTALL_DIR=/opt/bin 
 
   <h2>Uninstall</h2>
   <pre class="block">rm ~/.local/bin/gutenberg
+rm -f ~/.config/omarchy/hooks/{theme,font}-set.d/gutenberg   # Omarchy hooks
 rm -r ~/.config/gutenberg ~/.local/share/gutenberg   # settings and saved articles</pre>
 
   <footer>

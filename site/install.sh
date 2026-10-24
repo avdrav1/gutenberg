@@ -5,7 +5,9 @@
 #
 # Downloads the release tarball for this machine from GitHub Releases,
 # checks it against the release's SHA256SUMS, and installs the binary to
-# ~/.local/bin. Nothing else on the system is touched.
+# ~/.local/bin. On Omarchy it also adds a theme-set and a font-set hook, so
+# an open window follows `omarchy theme set` and `omarchy font set`.
+# Nothing else on the system is touched.
 #
 # Environment:
 #   GUTENBERG_VERSION      a release such as 0.1.0 (default: latest)
@@ -74,10 +76,34 @@ main() {
 
     version=$("$dir/gutenberg" --version 2>/dev/null || true)
     say "Installed ${version:-gutenberg} to $dir/gutenberg"
+    install_hooks "$dir/gutenberg"
     case ":$PATH:" in
         *":$dir:"*) ;;
         *) say "Add $dir to your PATH to run it as 'gutenberg'." ;;
     esac
+}
+
+# Omarchy runs every file in ~/.config/omarchy/hooks/<name>.d/ after a theme
+# or font change. Ours asks an open window to read them again; with no
+# window open it does nothing.
+install_hooks() {
+    hooks="$HOME/.config/omarchy/hooks"
+    [ -d "$HOME/.config/omarchy" ] || return 0
+    for name in theme-set font-set; do
+        mkdir -p "$hooks/$name.d"
+        {
+            printf '#!/bin/bash\n'
+            printf '# Gutenberg: an open window takes the new %s. Installed by install.sh.\n' "${name%-set}"
+            printf '%s --reload-theme >/dev/null 2>&1 || true\n' "$(quote "$1")"
+        } > "$hooks/$name.d/gutenberg"
+        chmod 755 "$hooks/$name.d/gutenberg"
+    done
+    say "Added Omarchy theme-set and font-set hooks in $hooks"
+}
+
+# $1 in single quotes for a shell script.
+quote() {
+    printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
 }
 
 need() {

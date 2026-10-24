@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- An open window now follows `omarchy theme set` and `omarchy font set`. The colors change within a fraction of a second and the font right after, with no restart. Reinstall with the curl one-liner to add the two small Omarchy hooks that make this immediate. Without them, Gutenberg notices the change on its own.
+- `gutenberg --reload-theme` makes an open window read the theme and font again, for scripts.
+
 ## 0.10.0 — 2026-10-24
 
 - Gutenberg now takes its colors from your Omarchy theme, light themes included, instead of always looking like Tokyo Night. Where a theme's dim text or link color would be hard to read, it is brightened (or darkened) just enough to read. Themes from before Omarchy 4 work too. Changing the theme still needs a restart for now.

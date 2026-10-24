@@ -24,7 +24,7 @@ Cargo workspace. One crate per concern; the UI never touches the network.
 - Theme tokens come from `crates/theme`. No literal colors in `crates/ui`.
 - Keys are documented in `docs/KEYS.md`. A new action gets a key, a palette entry and a line there in the same PR.
 - A user-visible change gets a line in `CHANGELOG.md` under `Unreleased` in the same PR. Write it for a reader, not a developer.
-- Config and data paths follow XDG. Never write outside `$XDG_CONFIG_HOME/gutenberg` and `$XDG_DATA_HOME/gutenberg`.
+- Config and data paths follow XDG. The app never writes outside `$XDG_CONFIG_HOME/gutenberg`, `$XDG_DATA_HOME/gutenberg` and the window's socket, `$XDG_RUNTIME_DIR/gutenberg/socket`. Only `site/install.sh` writes elsewhere: the binary, and on Omarchy the two hooks.
 
 ## Performance budgets
 
@@ -33,6 +33,6 @@ Cold start to first paint under 250 ms (Vulkan setup is ~170 ms of it; see S3.1)
 ## Omarchy facts
 
 - Palette: `colors.toml` in `~/.local/state/omarchy/current/theme/` (Omarchy 3) or `~/.config/omarchy/current/theme/` (older). Check both.
-- Theme change: `omarchy-hook theme-set <name>` runs `~/.config/omarchy/hooks/theme-set` and `theme-set.d/*`. We install `theme-set.d/gutenberg`.
-- Font: `fc-match monospace`; `omarchy-font-set` updates fontconfig and runs the `font-set` hook.
+- Theme change: `omarchy-hook theme-set <name>` runs `~/.config/omarchy/hooks/theme-set` and `theme-set.d/*`. `install.sh` installs `theme-set.d/gutenberg` and `font-set.d/gutenberg`, which run `gutenberg --reload-theme`. A window without them still follows the theme through inotify on the theme directory (`crates/theme/src/watch.rs`).
+- Font: `fc-match monospace`; `omarchy-font-set` updates `~/.config/fontconfig/fonts.conf` and runs the `font-set` hook.
 - No client-side decorations under Hyprland.
