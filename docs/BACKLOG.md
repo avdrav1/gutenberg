@@ -44,7 +44,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | S4.1 | Read `colors.toml` from both Omarchy theme paths and map to UI tokens | Each stock Omarchy theme renders with readable contrast; screenshots in `docs/themes/` | done |
 | S4.2 | Font from `fc-match monospace`; size from config | Changing the font with `omarchy-font-set` changes the app | done |
 | S4.3 | Hook drop-in and inotify fallback reload the theme live (and the font, on the `font-set` hook: S4.2 points iced's sans-serif and monospace families at the fontconfig family once at launch, so a live change has to reset them and clear cosmic-text's font-match cache and iced's text caches) | `omarchy theme set` changes the app within 1 s with no restart | done |
-| S4.4 | Built-in fallback theme when no Omarchy is found | Runs on stock Ubuntu with a sane look | todo |
+| S4.4 | Built-in fallback theme when no Omarchy is found | Runs on stock Ubuntu with a sane look | doing |
 | S4.5 | Light mode from the theme's `mode` key | Light themes don't show dark panes | todo |
 
 ### E5 Keyword alerts
