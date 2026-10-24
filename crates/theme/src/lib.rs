@@ -101,6 +101,17 @@ pub enum Scheme {
     Light,
 }
 
+impl Scheme {
+    /// Light when dark text reads better on `background` than light text.
+    pub fn of(background: Rgb) -> Self {
+        if contrast(background, Rgb::BLACK) > contrast(background, Rgb::WHITE) {
+            Self::Light
+        } else {
+            Self::Dark
+        }
+    }
+}
+
 impl Tokens {
     /// The built-in theme for `scheme`: Omarchy's Tokyo Night or Catppuccin
     /// Latte, as `from_colors_toml` maps them. Used without Omarchy.
@@ -139,15 +150,22 @@ impl Tokens {
     /// keys of Omarchy 4 (`lighter_background`, `dark_foreground`, `muted`,
     /// `selection`) or the terminal keys of earlier themes (`color0` to
     /// `color15`, `selection_background`). A key the file lacks falls back to
-    /// one derived from the others, then to [`Tokens::fallback`]. Text that
-    /// would be hard to read on the backgrounds is made readable.
+    /// one derived from the others, then to [`Tokens::fallback`] for the
+    /// theme's `mode`, or, without one, for how light its background is.
+    /// Text that would be hard to read on the backgrounds is made readable.
     pub fn from_colors_toml(text: &str) -> Result<Self, ThemeError> {
         let table: toml::Table =
             toml::from_str(text).map_err(|e| ThemeError::Parse(one_line(&e.to_string())))?;
         let get = |key: &str| table.get(key).and_then(|v| v.as_str()).and_then(Rgb::parse);
-        let fallback = Self::DARK;
+        let background = get("background");
+        let scheme = match table.get("mode").and_then(|v| v.as_str()) {
+            Some("light") => Scheme::Light,
+            Some("dark") => Scheme::Dark,
+            _ => background.map_or(Scheme::Dark, Scheme::of),
+        };
+        let fallback = Self::fallback(scheme);
 
-        let background = get("background").unwrap_or(fallback.background);
+        let background = background.unwrap_or(fallback.background);
         let foreground = get("foreground").unwrap_or(fallback.foreground);
         let accent = get("accent")
             .or_else(|| get("color4"))
@@ -313,6 +331,41 @@ mod tests {
             (fallback.background, fallback.foreground, fallback.accent)
         );
         assert!(Tokens::from_colors_toml("background = ").is_err());
+    }
+
+    #[test]
+    fn mode_picks_the_colors_a_file_leaves_out() {
+        let base = |text: &str| {
+            let t = Tokens::from_colors_toml(text).unwrap();
+            (t.background, t.foreground, t.accent)
+        };
+        let light = Tokens::fallback(Scheme::Light);
+        let dark = Tokens::fallback(Scheme::Dark);
+        let light = (light.background, light.foreground, light.accent);
+        let dark = (dark.background, dark.foreground, dark.accent);
+        assert_eq!(base("mode = \"light\""), light);
+        assert_eq!(base("mode = \"dark\""), dark);
+        // Without a mode, the background says which.
+        assert_eq!(base("background = \"#fdf6e3\"").2, light.2);
+        assert_eq!(base("background = \"#002b36\"").2, dark.2);
+        // A mode it doesn't know is no mode.
+        assert_eq!(
+            base("mode = \"sepia\"\nbackground = \"#fdf6e3\"").2,
+            light.2
+        );
+    }
+
+    #[test]
+    fn a_light_terminal_theme_derives_light_panes() {
+        // Solarized Light in the terminal layout: no pane keys at all.
+        let t = Tokens::from_colors_toml(
+            "background = \"#fdf6e3\"\nforeground = \"#657b83\"\ncolor4 = \"#268bd2\"\ncolor8 = \"#002b36\"",
+        )
+        .unwrap();
+        for pane in [t.lighter_background, t.selection] {
+            assert_eq!(Scheme::of(pane), Scheme::Light, "{pane:?}");
+            assert!(pane.luminance() < t.background.luminance(), "{pane:?}");
+        }
     }
 
     #[test]

@@ -103,3 +103,40 @@ fn the_terminal_layout_maps_too() {
     // Not its selection_background (#798186), which is meant for dark text.
     assert_ne!(t.selection, Rgb::hex(0x798186));
 }
+
+#[test]
+fn light_themes_never_show_dark_panes() {
+    let light: Vec<_> = themes()
+        .into_iter()
+        .filter(|(_, text)| text.contains("mode = \"light\""))
+        .collect();
+    assert_eq!(
+        light.len(),
+        5,
+        "catppuccin-latte, flexoki-light, lupine, rose-pine, white"
+    );
+    for (name, text) in light {
+        // As shipped, and as a file that sets only its base colors, the way
+        // the older terminal layout does.
+        let bare: String = text
+            .lines()
+            .filter(|l| {
+                ![
+                    "lighter_background",
+                    "selection",
+                    "dark_foreground",
+                    "muted",
+                ]
+                .iter()
+                .any(|k| l.starts_with(&format!("{k} ")))
+            })
+            .map(|l| format!("{l}\n"))
+            .collect();
+        for (layout, text) in [("as shipped", &text), ("bare", &bare)] {
+            let t = Tokens::from_colors_toml(text).unwrap();
+            for pane in [t.background, t.lighter_background, t.selection] {
+                assert_eq!(Scheme::of(pane), Scheme::Light, "{name} {layout}: {pane:?}");
+            }
+        }
+    }
+}
