@@ -15,6 +15,7 @@ use std::time::{Duration, Instant};
 use gutenberg_core::catalog;
 use gutenberg_core::config::{self, Config};
 use gutenberg_core::favicon::Icons;
+use gutenberg_core::keyword;
 use gutenberg_core::sync::unix_now;
 use gutenberg_core::web::{self, Answer, Web};
 use gutenberg_store::{ArticleRow, Filter, Folder, Source, SourceKind, Store, View, ViewCounts};
@@ -170,6 +171,8 @@ enum Overlay {
 enum KeyMode {
     List,
     Onboarding,
+    /// Typing a keyword alert on the Add sources screen.
+    OnboardingQuery,
     Palette,
     Help,
     Search,
@@ -274,6 +277,8 @@ enum Message {
     /// Mouse up anywhere: a click if it never left the row, else a drop.
     Release,
     Onboarding(onboarding::Action),
+    /// A key while typing a keyword alert on the Add sources screen.
+    OnboardingQuery(palette::Input),
     /// A key while the command palette is open.
     Palette(palette::Input),
     /// A command picked with the mouse in the palette.
@@ -368,9 +373,17 @@ impl App {
             .filter(|s| s.kind == SourceKind::Feed)
             .filter_map(|s| s.url.clone())
             .collect();
+        let known_queries = self
+            .sources
+            .iter()
+            .filter(|s| s.kind == SourceKind::Keyword)
+            .filter_map(|s| keyword::Keyword::from_config(&s.config).ok())
+            .map(|k| k.query)
+            .collect();
         self.onboarding = Some(onboarding::Onboarding::new(
             catalog::builtin(),
             known,
+            known_queries,
             self.sources.is_empty(),
         ));
     }
@@ -397,7 +410,7 @@ impl App {
                         self.onboarding = None;
                         self.reload();
                     }
-                    Err(e) => eprintln!("gutenberg: adding feeds: {e}"),
+                    Err(e) => eprintln!("gutenberg: adding sources: {e}"),
                 }
             }
             other => state.apply(catalog::builtin(), other),
@@ -505,6 +518,11 @@ impl App {
             }
             Message::CloseOverlay => self.overlay = None,
             Message::Onboarding(action) => return self.update_onboarding(action),
+            Message::OnboardingQuery(input) => {
+                if let Some(state) = &mut self.onboarding {
+                    state.type_query(catalog::builtin(), input);
+                }
+            }
             Message::Key(Action::PendingG) => self.pending_g = true,
             Message::Key(Action::Down) => self.select(self.selected.saturating_add(1)),
             Message::Key(Action::Up) => self.select(self.selected.saturating_sub(1)),
@@ -893,6 +911,7 @@ impl App {
 
     fn subscription(&self) -> Subscription<Message> {
         let mode = match (&self.onboarding, &self.overlay, &self.search) {
+            (Some(o), _, _) if o.draft.is_some() => KeyMode::OnboardingQuery,
             (Some(_), _, _) => KeyMode::Onboarding,
             (None, Some(Overlay::Palette(_)), _) => KeyMode::Palette,
             (None, Some(Overlay::Help), _) => KeyMode::Help,
@@ -915,6 +934,10 @@ impl App {
                 match mode {
                     KeyMode::Onboarding => {
                         onboarding::action_for(&key, modifiers).map(Message::Onboarding)
+                    }
+                    KeyMode::OnboardingQuery => {
+                        palette::input_for(&key, modifiers, text.as_deref())
+                            .map(Message::OnboardingQuery)
                     }
                     KeyMode::Palette => {
                         palette::input_for(&key, modifiers, text.as_deref()).map(Message::Palette)
