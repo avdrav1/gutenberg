@@ -1487,10 +1487,14 @@ impl App {
             .color(color(t.muted))
             .wrapping(text::Wrapping::None);
         let sources = (row.story_size > 1).then(|| {
-            text(format!("{} sources", row.story_size))
-                .size(12)
-                .color(color(t.accent))
-                .wrapping(text::Wrapping::None)
+            row![
+                text("·").size(12).color(color(t.muted)),
+                text(format!("{} sources", row.story_size))
+                    .size(12)
+                    .color(color(t.accent))
+                    .wrapping(text::Wrapping::None),
+            ]
+            .spacing(4)
         });
         let meta = Row::new()
             .push(
