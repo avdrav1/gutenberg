@@ -80,6 +80,23 @@ jobs:
           sleep 1
           GUTENBERG_BASE_URL=http://127.0.0.1:8000 GUTENBERG_INSTALL_DIR="$RUNNER_TEMP/bin" sh site/install.sh
           "$RUNNER_TEMP/bin/gutenberg" --version
+          # No ~/.config/omarchy on the runner: no hooks.
+          test ! -e "$HOME/.config/omarchy/hooks"
+      - name: On Omarchy, install.sh adds hooks that reload the theme
+        run: |
+          home="$RUNNER_TEMP/omarchy-home"
+          mkdir -p "$home/.config/omarchy"
+          (cd dist && python3 -m http.server 8002 --bind 127.0.0.1 </dev/null >/dev/null 2>&1 &)
+          sleep 1
+          HOME="$home" GUTENBERG_BASE_URL=http://127.0.0.1:8002 GUTENBERG_INSTALL_DIR="$RUNNER_TEMP/it's bin" sh site/install.sh
+          for name in theme-set font-set; do
+            hook="$home/.config/omarchy/hooks/$name.d/gutenberg"
+            test -x "$hook"
+            cat "$hook"
+            # With no window open the hook succeeds quietly.
+            test -z "$(bash "$hook" 2>&1)"
+          done
+          grep -F "'$RUNNER_TEMP/it'\\''s bin/gutenberg' --reload-theme" "$home/.config/omarchy/hooks/theme-set.d/gutenberg"
       - name: A tampered tarball is refused
         run: |
           printf 'tampered' >> dist/gutenberg-x86_64-unknown-linux-gnu.tar.gz
