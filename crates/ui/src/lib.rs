@@ -25,8 +25,8 @@ use iced::futures::Stream;
 use iced::keyboard;
 use iced::mouse::ScrollDelta;
 use iced::widget::{
-    column, container, image, mouse_area, opaque, row, scrollable, stack, svg, text, Column, Row,
-    Space,
+    column, container, image, mouse_area, opaque, rich_text, row, scrollable, span, stack, svg,
+    text, Column, Row, Space,
 };
 use iced::{
     border, font, window, Alignment, Border, Color, Element, Font, Length, Size, Subscription, Task,
@@ -255,6 +255,8 @@ impl Icon {
 struct Opened {
     title: String,
     meta: String,
+    /// The story's other articles: who published each, and its link.
+    also: Vec<(String, Option<String>)>,
     /// The article's own page, for the reader view.
     url: Option<String>,
     /// The feed's summary.
@@ -792,6 +794,19 @@ impl App {
         self.top = list::scroll_to_show(self.top, self.selected, self.list_height());
     }
 
+    /// Who published an article: a keyword alert's publisher, else the
+    /// feed's name.
+    fn publisher(&self, row: &ArticleRow) -> String {
+        match &row.author {
+            Some(publisher) if self.keyword_sources.contains(&row.source_id) => publisher.clone(),
+            _ => self
+                .source_titles
+                .get(&row.source_id)
+                .cloned()
+                .unwrap_or_default(),
+        }
+    }
+
     /// The selected article's own link.
     fn selected_link(&self) -> Option<String> {
         self.rows.get(self.selected)?.url.clone()
@@ -808,12 +823,13 @@ impl App {
         self.reload();
     }
 
-    /// Read becomes unread and back; the feed's count follows.
+    /// Read becomes unread and back, for the whole story; the feed's count
+    /// follows.
     fn toggle_read(&mut self) {
         let (Ok(store), Some(row)) = (&self.store, self.rows.get(self.selected)) else {
             return;
         };
-        if let Err(e) = store.set_read(row.id, !row.read) {
+        if let Err(e) = store.set_story_read(row.story_id, !row.read) {
             eprintln!("gutenberg: marking read: {e}");
         }
         self.reload();
@@ -836,25 +852,46 @@ impl App {
         self.show_from_top();
     }
 
-    /// Shows the article and marks it read.
+    /// Shows the article and marks its story read.
     fn open(&mut self, i: usize) {
         let Some(row) = self.rows.get_mut(i) else {
             return;
         };
         if !row.read {
             if let Ok(store) = &self.store {
-                match store.set_read(row.id, true) {
+                match store.set_story_read(row.story_id, true) {
                     Ok(()) => {
                         row.read = true;
-                        if let Some(n) = self.unread.get_mut(&row.source_id) {
-                            *n = (*n - 1).max(0);
+                        if row.story_size > 1 {
+                            // The story may span feeds; count again.
+                            if let (Ok(unread), Ok(views)) =
+                                (store.unread_counts(), store.view_counts())
+                            {
+                                self.unread = unread;
+                                self.view_counts = views;
+                            }
+                        } else {
+                            if let Some(n) = self.unread.get_mut(&row.source_id) {
+                                *n = (*n - 1).max(0);
+                            }
+                            self.view_counts.unread = (self.view_counts.unread - 1).max(0);
                         }
-                        self.view_counts.unread = (self.view_counts.unread - 1).max(0);
                     }
                     Err(e) => eprintln!("gutenberg: marking read: {e}"),
                 }
             }
         }
+        let row = &self.rows[i];
+        let also = match (&self.store, row.story_size > 1) {
+            (Ok(store), true) => store
+                .story(row.story_id)
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|other| other.id != row.id)
+                .map(|other| (self.publisher(&other), other.url))
+                .collect(),
+            _ => Vec::new(),
+        };
         let summary = match &self.store {
             Ok(store) => store.summary(row.id).ok().flatten(),
             Err(_) => None,
@@ -880,6 +917,7 @@ impl App {
         self.opened = Some(Opened {
             title: row.title.clone(),
             meta: meta.join(" · "),
+            also,
             url: row.url.clone(),
             body,
             reader: Reader::Off,
@@ -1448,12 +1486,19 @@ impl App {
             .size(12)
             .color(color(t.muted))
             .wrapping(text::Wrapping::None);
+        let sources = (row.story_size > 1).then(|| {
+            text(format!("{} sources", row.story_size))
+                .size(12)
+                .color(color(t.accent))
+                .wrapping(text::Wrapping::None)
+        });
         let meta = Row::new()
             .push(
                 row.starred
                     .then(|| text("★").size(12).color(color(t.accent))),
             )
             .push(meta)
+            .push(sources)
             .spacing(4);
         let background = selected.then(|| color(t.selection).into());
         mouse_area(
@@ -1508,6 +1553,7 @@ impl App {
                     .wrapping(text::Wrapping::WordOrGlyph),
                 text(&opened.meta).size(13).color(color(t.muted)),
             ]
+            .push(also_view(&opened.also, t))
             .push(note.map(|n| {
                 text(n)
                     .size(13)
@@ -1521,6 +1567,34 @@ impl App {
         .height(Length::Fill)
         .into()
     }
+}
+
+/// "Also from" and the story's other publishers, each a link to its article.
+fn also_view<'a>(also: &'a [(String, Option<String>)], t: &Tokens) -> Option<Element<'a, Message>> {
+    if also.is_empty() {
+        return None;
+    }
+    let mut pieces = vec![span("Also from ").color(color(t.muted))];
+    for (i, (publisher, url)) in also.iter().enumerate() {
+        if i > 0 {
+            pieces.push(span(" · ").color(color(t.muted)));
+        }
+        let name = span(publisher.as_str());
+        pieces.push(match url {
+            Some(url) => name
+                .color(color(t.accent))
+                .underline(true)
+                .link(url.clone()),
+            None => name.color(color(t.foreground)),
+        });
+    }
+    Some(
+        rich_text(pieces)
+            .size(13)
+            .wrapping(text::Wrapping::WordOrGlyph)
+            .on_link_click(Message::OpenLink)
+            .into(),
+    )
 }
 
 /// For `cargo bench`: an app over N articles in an in-memory store.
@@ -2871,6 +2945,46 @@ mod tests {
         // And a reload from the store agrees.
         app.reload();
         assert_eq!(counts(&app, Entry::Folder(tech)), 1);
+    }
+
+    #[test]
+    fn a_story_from_two_feeds_is_one_row_read_at_once() {
+        let (mut app, _, a, b) = app_with_folders();
+        let id = |app: &App, title: &str| {
+            let store = app.store.as_ref().unwrap();
+            let rows = store.list_articles(None, 10).unwrap();
+            rows.iter().find(|r| r.title == title).unwrap().id
+        };
+        let (a2, b1) = (id(&app, "a2"), id(&app, "b1"));
+        if let Ok(store) = &mut app.store {
+            store.set_stories(&[(b1, b1), (a2, b1)]).unwrap();
+        }
+        app.reload();
+        let titles: Vec<_> = app
+            .rows
+            .iter()
+            .map(|r| (r.title.as_str(), r.story_size))
+            .collect();
+        assert_eq!(titles, [("a1", 1), ("a2", 2)]);
+        assert_eq!(counts(&app, ALL), 2);
+
+        app.selected = 1;
+        let _ = app.update(Message::Key(Action::Open));
+        let b_row = Entry::Source {
+            id: b,
+            filed: false,
+        };
+        let a_row = Entry::Source { id: a, filed: true };
+        assert_eq!(
+            (counts(&app, ALL), counts(&app, a_row), counts(&app, b_row)),
+            (1, 1, 0)
+        );
+        let opened = app.opened.as_ref().unwrap();
+        assert_eq!(opened.also, [("b".to_owned(), None)]);
+
+        // m makes the whole story unread again.
+        let _ = app.update(Message::Key(Action::ToggleRead));
+        assert_eq!(counts(&app, b_row), 1);
     }
 
     #[test]
