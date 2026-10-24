@@ -73,7 +73,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | S7.2 | GitHub release workflow and an install page on GitHub Pages with a `curl` one-liner | `curl -fsSL https://avdrav1.github.io/gutenberg/install.sh \| sh` installs a checksum-verified, attested binary; `gutenberg --version` prints the release | done |
 | S7.3 | Single-instance: a second launch focuses the first (the socket exists since S4.3: `core::ipc`, `$XDG_RUNTIME_DIR/gutenberg/socket`, one command per line, with `reload-theme`; a second window currently runs without it) | Unix socket; `gutenberg --reload-theme` and `--refresh` work from scripts | todo |
 | S7.4 | Image cache on disk with size cap (also prunes `favicons/` files of feeds no longer in the store, which S2.6 never deletes; article images, held in memory only since S3.2, and reader pages since S3.3, are fetched again each time an article opens; a cached reader page goes into `article_fts.body` so search finds it) | Under 150 MB RAM with 10k articles | todo |
-| S7.5 | Crash-free week: panic handler writes a report; fuzz the parsers | `cargo fuzz` runs on feed, OPML, HTML and reader-extraction inputs in CI | todo |
+| S7.5 | Crash-free week: panic handler writes a report; fuzz the parsers (also a CI job that launches the release tarball on `ubuntu:24.04` under Xvfb with a session bus and `xdg-desktop-portal-gtk`, as S4.4 did by hand, and fails on a crash or a blank window) | `cargo fuzz` runs on feed, OPML, HTML and reader-extraction inputs in CI | todo |
 
 ### E8 Later
 
