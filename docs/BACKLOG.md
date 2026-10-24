@@ -46,7 +46,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | S4.2 | Font from `fc-match monospace`; size from config | Changing the font with `omarchy-font-set` changes the app | done |
 | S4.3 | Hook drop-in and inotify fallback reload the theme live (and the font, on the `font-set` hook: S4.2 points iced's sans-serif and monospace families at the fontconfig family once at launch, so a live change has to reset them and clear cosmic-text's font-match cache and iced's text caches) | `omarchy theme set` changes the app within 1 s with no restart | done |
 | S4.4 | Built-in fallback theme when no Omarchy is found | Runs on stock Ubuntu with a sane look | done |
-| S4.5 | Light mode from the theme's `mode` key (the acceptance already holds: since S4.1 the panes are the theme's own backgrounds, and since S4.4 iced's scrollbars and checkboxes take the tokens too. What `mode` still adds: for a terminal-layout theme, with no `lighter_background`, the derived article pane and selection should go darker on a light theme rather than toward the foreground) | Light themes don't show dark panes | todo |
+| S4.5 | Light mode from the theme's `mode` key: a key the file leaves out comes from the built-in theme for its mode (Catppuccin Latte or Tokyo Night), and without a `mode`, as in the older terminal layout, from its background's lightness. (The panes were already the theme's own backgrounds since S4.1, and derived panes mix toward the foreground, so they go darker on a light theme.) | Light themes don't show dark panes | review |
 
 ### E5 Keyword alerts
 
