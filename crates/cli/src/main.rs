@@ -1,4 +1,5 @@
 mod add;
+mod keyword;
 mod opml;
 mod refresh;
 
@@ -16,6 +17,16 @@ fn main() -> std::process::ExitCode {
                 [url] => add::run(url, None),
                 [url, flag, folder] | [flag, folder, url] if flag == "--folder" => {
                     add::run(url, Some(folder))
+                }
+                _ => usage(),
+            };
+        }
+        Some("--keyword") => {
+            let rest: Vec<String> = std::env::args().skip(2).collect();
+            return match rest.as_slice() {
+                [query] => keyword::run(query, None),
+                [query, flag, folder] | [flag, folder, query] if flag == "--folder" => {
+                    keyword::run(query, Some(folder))
                 }
                 _ => usage(),
             };
@@ -57,7 +68,7 @@ fn main() -> std::process::ExitCode {
 
 fn usage() -> std::process::ExitCode {
     eprintln!(
-        "usage: gutenberg [--version | --add <url> [--folder <name>] | --import <file.opml> | --export | --refresh]"
+        "usage: gutenberg [--version | --add <url> [--folder <name>] | --keyword <query> [--folder <name>] | --import <file.opml> | --export | --refresh]"
     );
     std::process::ExitCode::from(2)
 }
