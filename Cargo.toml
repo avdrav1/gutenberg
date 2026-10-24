@@ -28,6 +28,8 @@ rmcp = { version = "3", features = ["client", "transport-child-process", "transp
 # 250 ms budget. tiny-skia stays as the fallback for machines without a GPU.
 iced = { version = "0.14", default-features = false, features = ["wgpu", "tiny-skia", "crisp", "wayland", "x11", "tokio", "image", "svg", "advanced"] }
 serde = { version = "1", features = ["derive"] }
+# A source's kind-specific settings (`source.config`), such as a keyword query.
+serde_json = "1"
 toml = "0.8"
 notify = "6"
 anyhow = "1"
