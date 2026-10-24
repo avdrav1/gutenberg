@@ -127,3 +127,26 @@ fn a_star_lasts_and_comes_off() {
         .iter()
         .all(|r| !r.starred));
 }
+
+#[test]
+fn a_sources_keys_come_newest_first_and_a_link_can_move() {
+    let mut store = Store::open_in_memory().unwrap();
+    let sources = add_feeds(&store, 2);
+    store.insert_articles(&articles(&sources, 6)).unwrap();
+    let keys = store.article_keys(sources[1]).unwrap();
+    // Articles 1, 3 and 5 are the second feed's.
+    let guids: Vec<_> = keys.iter().map(|k| k.guid.as_str()).collect();
+    assert_eq!(guids, ["urn:article:5", "urn:article:3", "urn:article:1"]);
+    assert_eq!(keys[0].url.as_deref(), Some("https://example.com/5"));
+
+    store
+        .set_article_url(keys[0].id, "https://publisher.example/5")
+        .unwrap();
+    let row = store
+        .list_articles(Some(sources[1]), 10)
+        .unwrap()
+        .into_iter()
+        .find(|r| r.id == keys[0].id)
+        .unwrap();
+    assert_eq!(row.url.as_deref(), Some("https://publisher.example/5"));
+}

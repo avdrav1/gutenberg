@@ -14,8 +14,8 @@ use rusqlite::{params, Connection, OptionalExtension};
 
 pub use migrate::LATEST as SCHEMA_VERSION;
 pub use model::{
-    ArticleRow, DueSource, FetchState, Filter, Folder, NewArticle, NewSource, Source, SourceKind,
-    SourceTarget, Validators, View, ViewCounts,
+    ArticleKey, ArticleRow, DueSource, FetchState, Filter, Folder, NewArticle, NewSource, Source,
+    SourceKind, SourceTarget, Validators, View, ViewCounts,
 };
 
 /// The articles a filter and view pick, as SQL over `article`: `?1` a
@@ -431,6 +431,35 @@ impl Store {
         self.conn.execute(
             "UPDATE article SET starred = ?2 WHERE id = ?1",
             params![article_id, starred],
+        )?;
+        Ok(())
+    }
+
+    /// Every article of `source_id`, newest first, as what tells them apart.
+    pub fn article_keys(&self, source_id: i64) -> Result<Vec<ArticleKey>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT id, guid, url, title FROM article WHERE source_id = ?1
+             ORDER BY sort_at DESC, id DESC",
+        )?;
+        let keys = stmt
+            .query_map([source_id], |row| {
+                Ok(ArticleKey {
+                    id: row.get(0)?,
+                    guid: row.get(1)?,
+                    url: row.get(2)?,
+                    title: row.get(3)?,
+                })
+            })?
+            .collect::<rusqlite::Result<_>>()?;
+        Ok(keys)
+    }
+
+    /// Points an article at another link, as when a keyword alert learns
+    /// where a Google News link leads.
+    pub fn set_article_url(&self, article_id: i64, url: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE article SET url = ?2 WHERE id = ?1",
+            params![article_id, url],
         )?;
         Ok(())
     }

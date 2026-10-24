@@ -84,6 +84,16 @@ pub struct ArticleRow {
     pub starred: bool,
 }
 
+/// What tells one of a source's articles from another, newest first from
+/// [`Store::article_keys`](crate::Store::article_keys).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArticleKey {
+    pub id: i64,
+    pub guid: String,
+    pub url: Option<String>,
+    pub title: String,
+}
+
 /// HTTP validators sent back on the next fetch.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Validators {
