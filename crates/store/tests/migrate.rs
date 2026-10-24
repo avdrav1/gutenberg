@@ -172,3 +172,35 @@ fn a_version_1_file_upgrades_and_keeps_its_rows() {
     );
     assert_eq!(store.sources_due(0).unwrap().len(), 1);
 }
+
+#[test]
+fn a_version_3_file_upgrades_with_its_articles_ungrouped() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("gutenberg.db");
+    {
+        let mut store = Store::open(&path).unwrap();
+        let source = store.add_source(&feed("https://a.example/feed")).unwrap();
+        store
+            .insert_articles(&[article(source.id, "a"), article(source.id, "b")])
+            .unwrap();
+    }
+    {
+        // Back to the file 0.15.0 left: schema 3, no story column.
+        let raw = Connection::open(&path).unwrap();
+        raw.execute_batch(
+            "DROP INDEX article_by_story;
+             DROP INDEX article_ungrouped;
+             ALTER TABLE article DROP COLUMN story_id;
+             PRAGMA user_version = 3;",
+        )
+        .unwrap();
+    }
+    let store = Store::open(&path).unwrap();
+    assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
+    let rows = store
+        .list_articles_in(gutenberg_store::Filter::All, gutenberg_store::View::All, 10)
+        .unwrap();
+    assert_eq!(rows.len(), 2);
+    assert!(rows.iter().all(|r| r.story_size == 1 && r.story_id == r.id));
+    assert_eq!(store.story_candidates(0).unwrap().len(), 2);
+}

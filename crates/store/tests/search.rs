@@ -2,7 +2,7 @@
 
 use std::time::{Duration, Instant};
 
-use gutenberg_store::{NewArticle, NewSource, SourceKind, Store};
+use gutenberg_store::{NewArticle, NewSource, SourceKind, Store, SCHEMA_VERSION};
 use rusqlite::Connection;
 
 fn feed(store: &Store, name: &str) -> i64 {
@@ -136,7 +136,7 @@ fn articles_stored_before_search_existed_are_found_after_upgrading() {
         .unwrap();
     }
     let store = Store::open(&path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 3);
+    assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
     assert_eq!(titles(&store, "harrisburg"), ["Capitol news"]);
     assert_eq!(store.list_articles(None, 10).unwrap().len(), 2);
 }
