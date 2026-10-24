@@ -41,8 +41,8 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 
 | ID | Story | Acceptance | Status |
 | --- | --- | --- | --- |
-| S4.1 | Read `colors.toml` from both Omarchy theme paths and map to UI tokens | Each stock Omarchy theme renders with readable contrast; screenshots in `docs/themes/` | review |
-| S4.2 | Font from `fc-match monospace`; size from config | Changing the font with `omarchy-font-set` changes the app | review |
+| S4.1 | Read `colors.toml` from both Omarchy theme paths and map to UI tokens | Each stock Omarchy theme renders with readable contrast; screenshots in `docs/themes/` | done |
+| S4.2 | Font from `fc-match monospace`; size from config | Changing the font with `omarchy-font-set` changes the app | done |
 | S4.3 | Hook drop-in and inotify fallback reload the theme live (and the font, on the `font-set` hook: S4.2 points iced's sans-serif and monospace families at the fontconfig family once at launch, so a live change has to reset them and clear cosmic-text's font-match cache and iced's text caches) | `omarchy theme set` changes the app within 1 s with no restart | todo |
 | S4.4 | Built-in fallback theme when no Omarchy is found | Runs on stock Ubuntu with a sane look | todo |
 | S4.5 | Light mode from the theme's `mode` key | Light themes don't show dark panes | todo |
@@ -51,7 +51,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 
 | ID | Story | Acceptance | Status |
 | --- | --- | --- | --- |
-| S5.1 | Add a keyword source; query Google News RSS search | "Cory Booker" returns stories as a source; the catalog's keyword presets become addable on the Add sources screen | review |
+| S5.1 | Add a keyword source; query Google News RSS search | "Cory Booker" returns stories as a source; the catalog's keyword presets become addable on the Add sources screen | done |
 | S5.2 | Add Bing News RSS and GDELT as providers; merge and dedupe (Google News links are `news.google.com/rss/articles/…` pages that reach the publisher by script, not a redirect, so the reader view `v` gets Google's page and canonical-URL dedupe has nothing to compare; resolve them to the publisher's URL first) | The same story from three providers appears once | todo |
 | S5.3 | Query syntax: quotes, `-exclude`, `site:`, language and region | Passed through to each provider that supports it | todo |
 | S5.4 | Group near-duplicate headlines into one story with a source count | Jaccard over title shingles; "5 sources" badge | todo |
