@@ -40,6 +40,7 @@ fn main() -> std::process::ExitCode {
         }
         Some("--export") if std::env::args().len() == 2 => return opml::export(),
         Some("--refresh") => return refresh::run(),
+        Some("--reload-theme") if std::env::args().len() == 2 => return reload_theme(),
         Some(_) => return usage(),
         None => {}
     }
@@ -68,7 +69,30 @@ fn main() -> std::process::ExitCode {
 
 fn usage() -> std::process::ExitCode {
     eprintln!(
-        "usage: gutenberg [--version | --add <url> [--folder <name>] | --keyword <query> [--folder <name>] | --import <file.opml> | --export | --refresh]"
+        "usage: gutenberg [--version | --add <url> [--folder <name>] | --keyword <query> [--folder <name>] | --import <file.opml> | --export | --refresh | --reload-theme]"
     );
     std::process::ExitCode::from(2)
+}
+
+/// `gutenberg --reload-theme`: the open window reads the Omarchy theme and
+/// the desktop font again. Omarchy's `theme-set` and `font-set` hooks run
+/// it. With no window open there's nothing to reload, which isn't a
+/// failure.
+fn reload_theme() -> std::process::ExitCode {
+    use gutenberg_core::ipc;
+    let Some(path) = ipc::socket_path() else {
+        eprintln!("gutenberg: no runtime directory ($XDG_RUNTIME_DIR) for the socket");
+        return std::process::ExitCode::FAILURE;
+    };
+    match ipc::send(&path, ipc::Command::ReloadTheme) {
+        Ok(()) => std::process::ExitCode::SUCCESS,
+        Err(err @ ipc::Error::NotRunning) => {
+            eprintln!("gutenberg: {err}");
+            std::process::ExitCode::SUCCESS
+        }
+        Err(err) => {
+            eprintln!("gutenberg: reload-theme: {err}");
+            std::process::ExitCode::FAILURE
+        }
+    }
 }
