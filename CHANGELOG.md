@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keyword alerts can search another country's news: add `lang:fr` for French news from France, `region:CA` for Canada in English, or both, as in `Carney lang:fr region:CA`. Words after a dash (`-opinion`, `-"op-ed"`, `-site:example.com`) now keep those stories out of Bing's results too, which ignored them, and a query with `OR` is asked of Google News alone, since Bing finds nothing for it.
+
 ## 0.15.0 — 2026-10-24
 
 - A light Omarchy theme that leaves some colors out now gets light defaults for them, not dark ones. The theme's `mode` decides; a theme without one is judged by its background.
