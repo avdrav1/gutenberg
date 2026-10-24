@@ -1,6 +1,7 @@
 //! See CLAUDE.md for what this crate owns.
 
 pub mod font;
+pub mod watch;
 
 use std::path::{Path, PathBuf};
 

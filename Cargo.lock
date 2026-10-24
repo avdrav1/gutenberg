@@ -1724,6 +1724,8 @@ name = "gutenberg-theme"
 version = "0.10.0"
 dependencies = [
  "directories",
+ "notify",
+ "tempfile",
  "thiserror 1.0.69",
  "toml",
 ]
