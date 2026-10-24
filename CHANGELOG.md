@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Gutenberg now takes its colors from your Omarchy theme, light themes included, instead of always looking like Tokyo Night. Where a theme's dim text or link color would be hard to read, it is brightened (or darkened) just enough to read. Themes from before Omarchy 4 work too. Changing the theme still needs a restart for now.
+
 ## 0.9.0 — 2026-10-23
 
 - The top of the left pane has four views with their counts: All articles, Unread, Starred and Today (published since midnight). Click one to see it across every feed, or press `u`, `S`, `t` or `A` to narrow the folder or feed you're reading. `M` marks read only what the view shows.
