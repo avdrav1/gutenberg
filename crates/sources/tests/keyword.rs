@@ -16,7 +16,8 @@ const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixture
 fn search(provider: Provider, file: &str) -> Feed {
     let url = Keyword::new("\"Cory Booker\"")
         .unwrap()
-        .search_url(provider, &Providers::default());
+        .search_url(provider, &Providers::default())
+        .unwrap();
     let xml = std::fs::read(format!("{FIXTURES}/feeds/{file}")).unwrap();
     let mut feed = feed::parse(&xml, &url).unwrap();
     tidy(provider, &mut feed, &xml);

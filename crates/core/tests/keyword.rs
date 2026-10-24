@@ -2,12 +2,12 @@
 //! same story from both appears once; Google News links move to the
 //! publisher's URL a few at a time. The providers are a local server on
 //! 127.0.0.1 answering with the captured searches; nothing leaves the
-//! machine.
+//! machine. S5.3: each provider is asked the query as it reads it.
 
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use gutenberg_core::keyword::{add, Keyword};
@@ -25,6 +25,8 @@ struct Server {
     bing_down: AtomicBool,
     google_down: AtomicBool,
     resolves: AtomicUsize,
+    /// The path of every search asked.
+    searches: Mutex<Vec<String>>,
 }
 
 /// Google News and Bing News at one local address. Google's article links
@@ -49,6 +51,9 @@ fn serve(server: Arc<Server>) -> String {
             std::thread::spawn(move || {
                 let mut stream = stream.unwrap();
                 let (path, body) = read_request(&mut stream);
+                if path.contains("/search?") {
+                    server.searches.lock().unwrap().push(path.clone());
+                }
                 let reply = if path.starts_with("/rss/search") {
                     (!server.google_down.load(Ordering::SeqCst)).then(|| google.as_bytes().to_vec())
                 } else if path.starts_with("/news/search") {
@@ -230,4 +235,55 @@ fn one_provider_down_is_not_the_alert_failing() {
     let state = store.fetch_state(alert).unwrap();
     assert_eq!(state.error.as_deref(), Some("HTTP 503 Service Unavailable"));
     assert_eq!(state.failures, 1);
+}
+
+#[test]
+fn each_provider_is_asked_what_it_reads() {
+    let server = Arc::new(Server::default());
+    let base = serve(server.clone());
+    let mut store = Store::open_in_memory().unwrap();
+    let query = "\"Cory Booker\" -Senate region:GB";
+    let alert = add(&store, &Keyword::new(query).unwrap(), query, None)
+        .unwrap()
+        .unwrap()
+        .id;
+    let summary = runtime()
+        .block_on(refresh(&mut store, 1_000, &limits(&base), None))
+        .unwrap();
+    let mut searches = server.searches.lock().unwrap().clone();
+    searches.sort();
+    assert_eq!(
+        searches,
+        [
+            "/news/search?q=%22Cory+Booker%22&format=rss&mkt=en-GB",
+            "/rss/search?q=%22Cory+Booker%22+-Senate&hl=en-GB&gl=GB&ceid=GB%3Aen",
+        ]
+    );
+    // Neither fixture was searched with the exclusion, so it falls to the
+    // results: 20 of the 105 mention the Senate in headline or summary.
+    assert_eq!(summary.new_articles, 85, "{summary}");
+    let rows = store.list_articles(Some(alert), 1000).unwrap();
+    assert!(rows
+        .iter()
+        .all(|r| !r.title.to_lowercase().contains("senate")));
+}
+
+#[test]
+fn bing_sits_out_a_query_it_cannot_ask() {
+    let server = Arc::new(Server::default());
+    let base = serve(server.clone());
+    let mut store = Store::open_in_memory().unwrap();
+    let query = "\"Cory Booker\" OR \"Andy Kim\"";
+    let alert = add(&store, &Keyword::new(query).unwrap(), query, None)
+        .unwrap()
+        .unwrap()
+        .id;
+    let summary = runtime()
+        .block_on(refresh(&mut store, 1_000, &limits(&base), None))
+        .unwrap();
+    let searches = server.searches.lock().unwrap().clone();
+    assert_eq!(searches.len(), 1, "{searches:?}");
+    assert!(searches[0].starts_with("/rss/search?q=%22Cory+Booker%22+OR+%22Andy+Kim%22&"));
+    assert_eq!(summary.new_articles, 99, "{summary}");
+    assert!(store.fetch_state(alert).unwrap().error.is_none());
 }
