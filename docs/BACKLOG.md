@@ -54,7 +54,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | --- | --- | --- | --- |
 | S5.1 | Add a keyword source; query Google News RSS search | "Cory Booker" returns stories as a source; the catalog's keyword presets become addable on the Add sources screen | done |
 | S5.2 | Add Bing News RSS as a provider; merge and dedupe by guid, canonical URL and headline. Google News links (`news.google.com/rss/articles/…`) reach the publisher by script, so they're resolved through the signed `batchexecute` request their page carries, 20 per alert per refresh (two requests each). GDELT moved to S5.5: its API answered every request with 429 on 2026-10-24 | The same story from two providers appears once | done |
-| S5.3 | Query syntax: quotes, `-exclude`, `site:`, language and region | Passed through to each provider that supports it | todo |
+| S5.3 | Query syntax: quotes, `-exclude`, `site:`, language and region | Passed through to each provider that supports it | doing |
 | S5.4 | Group near-duplicate headlines into one story with a source count | Jaccard over title shingles; "5 sources" badge | todo |
 | S5.5 | Add GDELT's doc API (`api.gdeltproject.org/api/v2/doc/doc?mode=artlist&format=json`) as a third provider. It asks for one request every 5 s per client and answered 429 to every request on 2026-10-24, even a minute apart, so: per-host spacing of 5 s for its host, capture a real response as a fixture before writing the parser, and treat a 429 as that provider sitting out the refresh | The same story from three providers appears once | todo |
 
