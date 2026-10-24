@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A light Omarchy theme that leaves some colors out now gets light defaults for them, not dark ones. The theme's `mode` decides; a theme without one is judged by its background.
+
 ## 0.14.0 — 2026-10-24
 
 - A bar along the bottom of the window shows the keys for what you're doing: moving and opening in the list, `v` and `s` with an article open, Enter and Esc while you search. Before you open anything, the article pane says how. To hide the bar, set `hints = false` under `[keys]` in `~/.config/gutenberg/config.toml`.
