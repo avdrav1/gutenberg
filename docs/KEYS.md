@@ -1,5 +1,7 @@
 # Keys
 
+The bar along the bottom of the window shows the keys for what's on screen; `hints = false` under `[keys]` in `config.toml` hides it. `?` lists them all.
+
 | Key | Action | Pane |
 |---|---|---|
 | `j` / `k` | next / previous item | list, sources |
