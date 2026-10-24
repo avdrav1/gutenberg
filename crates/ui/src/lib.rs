@@ -80,10 +80,10 @@ pub fn run(
 /// which `omarchy-font-set` sets, stands in for iced's sans-serif and
 /// monospace families, so plain, bold, italic and code text all use it.
 /// Without fontconfig, or for a family no font file provides, iced's own
-/// choices stay.
-fn use_desktop_font() {
+/// choices stay; then this returns `false`.
+fn use_desktop_font() -> bool {
     let Some(family) = gutenberg_theme::font::monospace() else {
-        return;
+        return false;
     };
     let mut fonts = iced::advanced::graphics::text::font_system()
         .write()
@@ -94,10 +94,11 @@ fn use_desktop_font() {
         .any(|face| face.families.iter().any(|(name, _)| *name == family));
     if !installed {
         eprintln!("gutenberg: font {family:?}: no font file has it; using the default font");
-        return;
+        return false;
     }
     db.set_sans_serif_family(family.clone());
     db.set_monospace_family(family);
+    true
 }
 
 /// Text sizes in the code are for a 14 px font; `[font] size` scales the
@@ -1464,8 +1465,19 @@ pub mod shots {
         app.choose(Entry::Folder(news));
         app.open(0);
 
+        // iced_test draws `Font::DEFAULT` in Fira Sans; with the desktop
+        // font in place, the monospace family is the same font the app's
+        // default (sans-serif) family is.
+        let settings = iced_test::core::Settings {
+            default_font: if use_desktop_font() {
+                Font::MONOSPACE
+            } else {
+                Font::DEFAULT
+            },
+            ..Default::default()
+        };
         let mut simulator = iced_test::simulator::Simulator::with_size(
-            iced_test::core::Settings::default(),
+            settings,
             iced::Size::new(size.0, size.1),
             app.view(),
         );
