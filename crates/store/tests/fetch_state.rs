@@ -44,7 +44,7 @@ fn a_fetch_stores_articles_and_validators_together() {
     let state = store.fetch_state(id).unwrap();
     assert_eq!(state.validators, validators);
     assert_eq!(state.checked_at, Some(100));
-    assert_eq!(store.feeds_due(100).unwrap()[0].validators, validators);
+    assert_eq!(store.sources_due(100).unwrap()[0].validators, validators);
 
     // The same items again: nothing new.
     assert_eq!(
@@ -66,8 +66,8 @@ fn a_failure_backs_off_and_a_success_clears_it() {
     assert_eq!(state.retry_at, Some(220));
     assert_eq!(state.error.as_deref(), Some("HTTP 503 Service Unavailable"));
 
-    assert!(store.feeds_due(219).unwrap().is_empty());
-    assert_eq!(store.feeds_due(220).unwrap()[0].failures, 1);
+    assert!(store.sources_due(219).unwrap().is_empty());
+    assert_eq!(store.sources_due(220).unwrap()[0].failures, 1);
 
     store.record_failure(id, "timed out", 900, 300).unwrap();
     assert_eq!(store.fetch_state(id).unwrap().failures, 2);
@@ -82,28 +82,43 @@ fn a_failure_backs_off_and_a_success_clears_it() {
 }
 
 #[test]
-fn only_feeds_with_urls_are_refreshed() {
-    let (store, _) = store_with_feed();
+fn feeds_and_keyword_sources_are_refreshed_but_not_mcp() {
+    let (store, feed) = store_with_feed();
+    let source = |kind, title: &str| NewSource {
+        folder_id: None,
+        kind,
+        title: title.to_owned(),
+        url: None,
+        config: r#"{"query":"Cory Booker"}"#.to_owned(),
+    };
+    let keyword = store
+        .add_source(&source(SourceKind::Keyword, "Cory Booker"))
+        .unwrap()
+        .id;
     store
-        .add_source(&NewSource {
-            folder_id: None,
-            kind: SourceKind::Keyword,
-            title: "Cory Booker".to_owned(),
-            url: None,
-            config: "{}".to_owned(),
-        })
+        .add_source(&source(SourceKind::Mcp, "Cronkite"))
         .unwrap();
-    assert_eq!(store.feeds_due(0).unwrap().len(), 1);
+    let due = store.sources_due(0).unwrap();
+    assert_eq!(
+        due.iter()
+            .map(|d| (d.source_id, d.kind, d.url.is_some()))
+            .collect::<Vec<_>>(),
+        [
+            (feed, SourceKind::Feed, true),
+            (keyword, SourceKind::Keyword, false)
+        ]
+    );
+    assert_eq!(due[1].config, r#"{"query":"Cory Booker"}"#);
 }
 
 #[test]
 fn a_new_feed_is_unchecked_until_its_first_refresh() {
     let (mut store, id) = store_with_feed();
-    assert!(store.has_unchecked_feeds().unwrap());
+    assert!(store.has_unchecked_sources().unwrap());
     store
         .record_fetched(id, &[article(id, "a")], &Validators::default(), 100)
         .unwrap();
-    assert!(!store.has_unchecked_feeds().unwrap());
+    assert!(!store.has_unchecked_sources().unwrap());
 
     let second = store
         .add_source(&NewSource {
@@ -115,19 +130,20 @@ fn a_new_feed_is_unchecked_until_its_first_refresh() {
         })
         .unwrap()
         .id;
-    assert!(store.has_unchecked_feeds().unwrap());
+    assert!(store.has_unchecked_sources().unwrap());
     // A failure counts as checked, so a broken feed doesn't refresh nonstop.
     store.record_failure(second, "timed out", 400, 100).unwrap();
-    assert!(!store.has_unchecked_feeds().unwrap());
+    assert!(!store.has_unchecked_sources().unwrap());
 
+    // A new keyword alert is fetched right away too.
     store
         .add_source(&NewSource {
             folder_id: None,
             kind: SourceKind::Keyword,
             title: "Cory Booker".to_owned(),
             url: None,
-            config: "{}".to_owned(),
+            config: r#"{"query":"Cory Booker"}"#.to_owned(),
         })
         .unwrap();
-    assert!(!store.has_unchecked_feeds().unwrap());
+    assert!(store.has_unchecked_sources().unwrap());
 }

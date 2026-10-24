@@ -14,7 +14,8 @@ use futures::stream::{FuturesUnordered, StreamExt};
 use gutenberg_sources::favicon;
 use gutenberg_sources::feed::{self, Feed, FeedError, Fetched};
 use gutenberg_sources::image::Format;
-use gutenberg_store::{DueFeed, NewArticle, Store, Validators};
+use gutenberg_sources::keyword::{tidy_google_news, Keyword};
+use gutenberg_store::{DueSource, NewArticle, SourceKind, Store, Validators};
 use tokio::sync::Semaphore;
 
 use crate::config::{self, Config};
@@ -44,13 +45,15 @@ impl Default for Limits {
 /// What a refresh did, for `gutenberg --refresh` and logs.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Summary {
-    pub feeds: usize,
-    /// Feeds that brought new articles.
+    /// Feeds and keyword alerts that were due.
+    pub sources: usize,
+    /// Sources that brought new articles.
     pub updated: usize,
     pub new_articles: usize,
     /// 304s, and 200s with nothing new.
     pub unchanged: usize,
-    /// Feed URL and one line of why.
+    /// What failed (a feed's URL, a keyword alert's query) and one line of
+    /// why.
     pub failed: Vec<(String, String)>,
 }
 
@@ -60,7 +63,7 @@ impl fmt::Display for Summary {
         write!(
             f,
             "{}: {} updated ({}), {} unchanged, {} failed",
-            plural(self.feeds, "feed"),
+            plural(self.sources, "source"),
             self.updated,
             plural(self.new_articles, "new article"),
             self.unchanged,
@@ -82,42 +85,90 @@ pub fn backoff(failures: i64, retry_after: Option<u64>) -> i64 {
         .min(BACKOFF_MAX)
 }
 
-/// Refreshes every feed due at `now`. Store errors stop the refresh;
-/// a feed's own failure is recorded on it and the refresh goes on.
+/// A due source, resolved to what to fetch.
+struct Job {
+    source_id: i64,
+    /// What `--refresh` calls it: a feed's URL, a keyword alert's query.
+    label: String,
+    url: String,
+    keyword: bool,
+    validators: Validators,
+    failures: i64,
+}
+
+/// `(url, label)` for a due source. A keyword source's URL is its Google
+/// News search; settings that can't be read are its failure.
+fn resolve(due: &DueSource) -> Result<(String, String), String> {
+    match (due.kind, &due.url) {
+        (SourceKind::Keyword, _) => {
+            let keyword = Keyword::from_config(&due.config).map_err(|e| e.to_string())?;
+            Ok((
+                keyword.google_news_url(),
+                format!("keyword alert {}", keyword.query),
+            ))
+        }
+        (_, Some(url)) => Ok((url.clone(), url.clone())),
+        (_, None) => Err("no URL".to_owned()),
+    }
+}
+
+/// Refreshes every feed and keyword alert due at `now`. Store errors stop
+/// the refresh; a source's own failure is recorded on it and the refresh
+/// goes on.
 ///
 /// With `icons`, a feed with nothing in the cache is fetched in full once,
 /// for its site link, and the site's icon is saved before the feed's
 /// articles are, so a reader of the store finds it. After that the site
-/// isn't asked again.
+/// isn't asked again. Keyword alerts have no site of their own.
 pub async fn refresh(
     store: &mut Store,
     now: i64,
     limits: &Limits,
     icons: Option<&Icons>,
 ) -> Result<Summary, gutenberg_store::Error> {
-    let due = store.feeds_due(now)?;
+    let due = store.sources_due(now)?;
     let settled = icons.map(Icons::settled).unwrap_or_default();
     let mut summary = Summary {
-        feeds: due.len(),
+        sources: due.len(),
         ..Summary::default()
     };
+    let mut jobs = Vec::with_capacity(due.len());
+    for due in due {
+        match resolve(&due) {
+            Ok((url, label)) => jobs.push(Job {
+                source_id: due.source_id,
+                label,
+                url,
+                keyword: due.kind == SourceKind::Keyword,
+                validators: due.validators,
+                failures: due.failures,
+            }),
+            Err(error) => {
+                let wait = backoff(due.failures + 1, None);
+                store.record_failure(due.source_id, &error, now + wait, now)?;
+                summary
+                    .failed
+                    .push((format!("source {}", due.source_id), error));
+            }
+        }
+    }
     let client = match feed::client() {
         Ok(client) => client,
         Err(err) => {
-            for d in &due {
-                summary.failed.push((d.url.clone(), err.to_string()));
+            for job in jobs {
+                summary.failed.push((job.label, err.to_string()));
             }
             return Ok(summary);
         }
     };
     let hosts = Hosts::new(limits);
-    // Every feed waits at once: one stuck behind its host's limit must not
+    // Every source waits at once: one stuck behind its host's limit must not
     // hold a slot that another host could use. `Hosts` caps what's sent.
-    let mut results: FuturesUnordered<_> = due
+    let mut results: FuturesUnordered<_> = jobs
         .into_iter()
         .map(|due| {
             let (client, hosts) = (&client, &hosts);
-            let icons = icons.filter(|_| !settled.contains(&Icons::key(&due.url)));
+            let icons = icons.filter(|_| !due.keyword && !settled.contains(&Icons::key(&due.url)));
             async move {
                 let outcome = fetch_one(client, hosts, &due, now, icons.is_some()).await;
                 if let (Some(icons), Outcome::Fetched { site_url, .. }) = (icons, &outcome) {
@@ -153,7 +204,7 @@ pub async fn refresh(
             Outcome::Failed { error, retry_after } => {
                 let wait = backoff(due.failures + 1, retry_after);
                 store.record_failure(due.source_id, &error, now + wait, now)?;
-                summary.failed.push((due.url, error));
+                summary.failed.push((due.label, error));
             }
         }
     }
@@ -195,7 +246,7 @@ enum Outcome {
 async fn fetch_one(
     client: &feed::Client,
     hosts: &Hosts,
-    due: &DueFeed,
+    due: &Job,
     now: i64,
     fresh: bool,
 ) -> Outcome {
@@ -215,8 +266,13 @@ async fn fetch_one(
             etag,
             last_modified,
         }) => match feed::parse(&bytes, &due.url) {
-            Ok(parsed) => Outcome::Fetched {
-                articles: articles(&parsed, due.source_id, now),
+            Ok(mut parsed) => Outcome::Fetched {
+                articles: {
+                    if due.keyword {
+                        tidy_google_news(&mut parsed);
+                    }
+                    articles(&parsed, due.source_id, now)
+                },
                 validators: Validators {
                     etag,
                     last_modified,
@@ -411,8 +467,8 @@ fn run(store_path: &std::path::Path, minutes: &AtomicU32) -> Result<(), String> 
             if every > 0 && since.elapsed().as_secs() >= every {
                 break;
             }
-            // Feeds added since the last refresh fetch now.
-            if every > 0 && store.has_unchecked_feeds().map_err(|e| e.to_string())? {
+            // Sources added since the last refresh fetch now.
+            if every > 0 && store.has_unchecked_sources().map_err(|e| e.to_string())? {
                 break;
             }
         }
@@ -447,7 +503,7 @@ mod tests {
     #[test]
     fn summary_reads_as_a_sentence() {
         let summary = Summary {
-            feeds: 12,
+            sources: 12,
             updated: 3,
             new_articles: 27,
             unchanged: 8,
@@ -455,16 +511,16 @@ mod tests {
         };
         assert_eq!(
             summary.to_string(),
-            "12 feeds: 3 updated (27 new articles), 8 unchanged, 1 failed"
+            "12 sources: 3 updated (27 new articles), 8 unchanged, 1 failed"
         );
         let one = Summary {
-            feeds: 1,
+            sources: 1,
             unchanged: 1,
             ..Summary::default()
         };
         assert_eq!(
             one.to_string(),
-            "1 feed: 0 updated (0 new articles), 1 unchanged, 0 failed"
+            "1 source: 0 updated (0 new articles), 1 unchanged, 0 failed"
         );
     }
 }

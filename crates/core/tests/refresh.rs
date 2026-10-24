@@ -176,7 +176,7 @@ fn a_hundred_feeds_finish_in_under_ten_seconds() {
         .unwrap();
     let took = start.elapsed();
 
-    assert_eq!(summary.feeds, 100);
+    assert_eq!(summary.sources, 100);
     assert!(summary.failed.is_empty(), "{:?}", summary.failed);
     assert_eq!(summary.updated, 100);
     assert!(took < Duration::from_secs(10), "took {took:?}");
@@ -209,7 +209,7 @@ fn retry_after_backs_a_feed_off_until_then() {
     let skipped = rt
         .block_on(refresh(&mut store, 1_100, &Limits::default(), None))
         .unwrap();
-    assert_eq!(skipped.feeds, 0);
+    assert_eq!(skipped.sources, 0);
 
     // A 500 with no Retry-After doubles from 5 minutes: second failure, 10.
     *reply.lock().unwrap() = Reply::Status("500 Internal Server Error", None);
@@ -253,4 +253,39 @@ fn a_feed_that_stops_parsing_records_one_line_and_backs_off() {
     assert!(error.starts_with("not a feed ("), "{error}");
     assert!(!error.contains('\n'));
     assert_eq!(state.retry_at, Some(1_300));
+}
+
+#[test]
+fn a_keyword_alert_without_a_query_fails_alone_and_backs_off() {
+    let log = Arc::new(Log::default());
+    let base = serve(
+        feed_reply("lwn-headlines.xml", "\"l\""),
+        Duration::ZERO,
+        log.clone(),
+    );
+    let mut store = Store::open_in_memory().unwrap();
+    let feed = add_feed(&store, &format!("{base}/feed"));
+    let alert = store
+        .add_source(&NewSource {
+            folder_id: None,
+            kind: SourceKind::Keyword,
+            title: "Broken".to_owned(),
+            url: None,
+            config: "{}".to_owned(),
+        })
+        .unwrap()
+        .id;
+
+    let summary = runtime()
+        .block_on(refresh(&mut store, 1_000, &Limits::default(), None))
+        .unwrap();
+    // Settings that can't be read never reach the network; the feed still
+    // refreshes.
+    assert_eq!((summary.sources, summary.updated), (2, 1), "{summary}");
+    assert_eq!(log.if_none_match.lock().unwrap().len(), 1);
+    let state = store.fetch_state(alert).unwrap();
+    let error = state.error.unwrap();
+    assert!(error.starts_with("keyword alert settings: "), "{error}");
+    assert_eq!((state.failures, state.retry_at), (1, Some(1_300)));
+    assert!(store.fetch_state(feed).unwrap().error.is_none());
 }
