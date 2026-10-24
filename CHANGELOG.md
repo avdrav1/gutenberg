@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add an MCP server as a source: `gutenberg --mcp '<command>'` for one that runs on your machine, or `gutenberg --mcp <url>` for one on the web. Gutenberg connects, lists the server's tools, and shows them when you choose the server in the sources pane. If it can't reach a server, one line under the server's name says why, such as a missing API key or a refused connection, and Gutenberg tries again later. Reading articles from a tool comes next.
+
 ## 0.16.0 — 2026-10-24
 
 - Keyword alerts can search another country's news: add `lang:fr` for French news from France, `region:CA` for Canada in English, or both, as in `Carney lang:fr region:CA`. Words after a dash (`-opinion`, `-"op-ed"`, `-site:example.com`) now keep those stories out of Bing's results too, which ignored them, and a query with `OR` is asked of Google News alone, since Bing finds nothing for it.

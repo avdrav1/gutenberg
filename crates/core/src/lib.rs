@@ -5,6 +5,7 @@ pub mod config;
 pub mod favicon;
 pub mod ipc;
 pub mod keyword;
+pub mod mcp;
 pub mod story;
 pub mod sync;
 pub mod web;

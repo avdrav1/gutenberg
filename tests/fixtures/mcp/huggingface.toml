@@ -1,0 +1,4 @@
+# SOURCE https://huggingface.co/mcp, recorded 2026-10-24
+url = "https://huggingface.co/mcp"
+fetched = 2026-10-24
+covers = "A streamable HTTP MCP server reached anonymously by rmcp 3.7 (S6.1), recorded through a local proxy: huggingface-initialize.json is the reply to initialize (protocol 2025-11-25, with an mcp-session-id header not kept here), huggingface-tools-list.json the reply to tools/list (4 tools with titles, multi-line descriptions, input schemas and annotations). In between, notifications/initialized got 202 and the client's GET for an event stream got 405; DELETE ended the session with 200. replay.sh plays the two replies over stdio."

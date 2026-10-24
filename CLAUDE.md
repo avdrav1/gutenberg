@@ -13,7 +13,7 @@ Cargo workspace. One crate per concern; the UI never touches the network.
 | `crates/sources` | `FeedSource`, `KeywordSource`, `McpSource` |
 | `crates/theme` | Omarchy `colors.toml` → tokens, fontconfig, hook and inotify reload |
 | `crates/ui` | iced window, panes, keys, command palette |
-| `crates/cli` | the `gutenberg` binary: launches the UI, `--add <url>` and `--import <file.opml>` write to the store directly, `--export` prints OPML, or `--unread`, `--refresh`, `--reload-theme` over the Unix socket |
+| `crates/cli` | the `gutenberg` binary: launches the UI, `--add <url>`, `--keyword <query>`, `--mcp <command or URL>` and `--import <file.opml>` write to the store directly, `--export` prints OPML, or `--unread`, `--refresh`, `--reload-theme` over the Unix socket |
 
 ## Rules
 

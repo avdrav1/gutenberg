@@ -82,7 +82,7 @@ fn a_failure_backs_off_and_a_success_clears_it() {
 }
 
 #[test]
-fn feeds_and_keyword_sources_are_refreshed_but_not_mcp() {
+fn feeds_keyword_alerts_and_mcp_servers_are_refreshed() {
     let (store, feed) = store_with_feed();
     let source = |kind, title: &str| NewSource {
         folder_id: None,
@@ -95,9 +95,10 @@ fn feeds_and_keyword_sources_are_refreshed_but_not_mcp() {
         .add_source(&source(SourceKind::Keyword, "Cory Booker"))
         .unwrap()
         .id;
-    store
+    let mcp = store
         .add_source(&source(SourceKind::Mcp, "Cronkite"))
-        .unwrap();
+        .unwrap()
+        .id;
     let due = store.sources_due(0).unwrap();
     assert_eq!(
         due.iter()
@@ -105,7 +106,8 @@ fn feeds_and_keyword_sources_are_refreshed_but_not_mcp() {
             .collect::<Vec<_>>(),
         [
             (feed, SourceKind::Feed, true),
-            (keyword, SourceKind::Keyword, false)
+            (keyword, SourceKind::Keyword, false),
+            (mcp, SourceKind::Mcp, false)
         ]
     );
     assert_eq!(due[1].config, r#"{"query":"Cory Booker"}"#);

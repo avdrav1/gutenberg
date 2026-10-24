@@ -253,6 +253,24 @@ impl Store {
         Ok(sources)
     }
 
+    /// Replaces a source's settings, as when an MCP server lists its tools.
+    pub fn set_source_config(&self, id: i64, config: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE source SET config = ?2 WHERE id = ?1",
+            params![id, config],
+        )?;
+        Ok(())
+    }
+
+    /// Why each source failed its last refresh, for those that did.
+    pub fn source_errors(&self) -> Result<HashMap<i64, String>> {
+        let mut stmt = self
+            .conn
+            .prepare_cached("SELECT id, error FROM source WHERE error IS NOT NULL")?;
+        let rows = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
     pub fn delete_source(&self, id: i64) -> Result<()> {
         self.conn
             .execute("DELETE FROM source WHERE id = ?1", [id])?;
@@ -583,12 +601,12 @@ impl Store {
         )?)
     }
 
-    /// Feeds and keyword sources whose backoff, if any, has passed by `now`.
+    /// Feeds, keyword alerts and MCP servers whose backoff, if any, has
+    /// passed by `now`.
     pub fn sources_due(&self, now: i64) -> Result<Vec<DueSource>> {
-        // MCP sources (E6) aren't refreshed yet.
         let mut stmt = self.conn.prepare_cached(
             "SELECT id, kind, url, config, etag, last_modified, failures FROM source
-             WHERE ((kind = 'feed' AND url IS NOT NULL) OR kind = 'keyword')
+             WHERE ((kind = 'feed' AND url IS NOT NULL) OR kind IN ('keyword', 'mcp'))
                AND (retry_at IS NULL OR retry_at <= ?1)
              ORDER BY position",
         )?;
@@ -596,11 +614,7 @@ impl Store {
             let kind: String = row.get(1)?;
             Ok(DueSource {
                 source_id: row.get(0)?,
-                kind: if kind == "keyword" {
-                    SourceKind::Keyword
-                } else {
-                    SourceKind::Feed
-                },
+                kind: SourceKind::parse(&kind).unwrap_or(SourceKind::Feed),
                 url: row.get(2)?,
                 config: row.get(3)?,
                 validators: Validators {
@@ -618,7 +632,7 @@ impl Store {
     pub fn has_unchecked_sources(&self) -> Result<bool> {
         Ok(self.conn.query_row(
             "SELECT EXISTS(SELECT 1 FROM source
-                           WHERE ((kind = 'feed' AND url IS NOT NULL) OR kind = 'keyword')
+                           WHERE ((kind = 'feed' AND url IS NOT NULL) OR kind IN ('keyword', 'mcp'))
                              AND checked_at IS NULL)",
             [],
             |row| row.get(0),

@@ -22,7 +22,7 @@ feed-rs = "3"
 quick-xml = "0.42"
 # The bundled SQLite is compiled with FTS5; there is no separate feature.
 rusqlite = { version = "0.32", features = ["bundled"] }
-rmcp = { version = "3", features = ["client", "transport-child-process", "transport-streamable-http-client"] }
+rmcp = { version = "3", features = ["client", "transport-child-process", "transport-streamable-http-client-reqwest", "reqwest-tls-no-provider"] }
 # wgpu (Vulkan) holds 60 fps scrolling 10k rows at 4K; tiny-skia managed
 # ~10 fps there (S3.1). Vulkan setup costs ~170 ms of cold start, hence the
 # 250 ms budget. tiny-skia stays as the fallback for machines without a GPU.
