@@ -70,7 +70,14 @@
 gutenberg --add &lt;feed-url&gt;     # add an RSS, Atom or JSON feed</pre>
   <p>Bind it in <code>~/.config/hypr/bindings.conf</code>:</p>
   <pre class="block">bindd = SUPER, N, News, exec, gutenberg</pre>
-  <p>Layout lives in <code>~/.config/gutenberg/config.toml</code> and applies as you save.</p>
+  <p>Layout and text size live in <code>~/.config/gutenberg/config.toml</code> and apply as you save. The font is your desktop's monospace font, the one <code>omarchy font set</code> picks.</p>
+  <pre class="block">[layout]
+sources = 2
+list = 4
+article = 6
+
+[font]
+size = 14   # 8 to 32</pre>
 
   <h2>Verify</h2>
   <p>Every release tarball has a build attestation from this repository's release workflow. With the GitHub CLI:</p>
