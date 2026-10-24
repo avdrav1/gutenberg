@@ -16,9 +16,9 @@ use std::time::{Duration, Instant};
 use gutenberg_core::catalog;
 use gutenberg_core::config::{self, Config};
 use gutenberg_core::favicon::Icons;
-use gutenberg_core::keyword;
 use gutenberg_core::sync::unix_now;
 use gutenberg_core::web::{self, Answer, Web};
+use gutenberg_core::{keyword, mcp};
 use gutenberg_store::{ArticleRow, Filter, Folder, Source, SourceKind, Store, View, ViewCounts};
 use gutenberg_theme::{Rgb, Scheme, Tokens};
 use iced::futures::Stream;
@@ -150,6 +150,8 @@ struct App {
     source_titles: HashMap<i64, String>,
     /// Keyword alerts, whose rows name the publisher (the article's author).
     keyword_sources: HashSet<i64>,
+    /// Why each source failed its last refresh, for those that did.
+    source_errors: HashMap<i64, String>,
     folders: Vec<Folder>,
     sources: Vec<Source>,
     /// The favicon cache the refresh thread fills.
@@ -390,6 +392,7 @@ impl App {
             rows: Vec::new(),
             source_titles: HashMap::new(),
             keyword_sources: HashSet::new(),
+            source_errors: HashMap::new(),
             folders: Vec::new(),
             sources: Vec::new(),
             icons,
@@ -488,10 +491,12 @@ impl App {
                 store.folders()?,
                 store.unread_counts()?,
                 store.view_counts()?,
+                store.source_errors()?,
             ))
         })();
         match read {
-            Ok((rows, sources, folders, unread, view_counts)) => {
+            Ok((rows, sources, folders, unread, view_counts, errors)) => {
+                self.source_errors = errors;
                 self.rows = rows;
                 self.source_titles = sources.iter().map(|s| (s.id, s.title.clone())).collect();
                 self.keyword_sources = sources
@@ -1357,6 +1362,27 @@ impl App {
             .push(count)
             .spacing(8)
             .align_y(Alignment::Center);
+        // An MCP server that can't be reached says why, under its name.
+        let error = match entry {
+            Entry::Source { id, .. } if self.is_mcp(id) => self.source_errors.get(&id),
+            _ => None,
+        };
+        let line: Element<'_, Message> = match error {
+            Some(error) => column![
+                line,
+                // Under the title, past the icon's space.
+                container(
+                    text(error)
+                        .size(12)
+                        .color(color(t.accent))
+                        .wrapping(text::Wrapping::None),
+                )
+                .padding(iced::Padding::ZERO.left(ICON_SIZE + 8.0)),
+            ]
+            .spacing(2)
+            .into(),
+            None => line.into(),
+        };
         let row = container(line)
             .padding(iced::Padding::from([6, 12]).left(indent as f32))
             .width(Length::Fill)
@@ -1380,7 +1406,9 @@ impl App {
         if let Err(e) = &self.store {
             return note(format!("Can't open the article store: {e}"), t.muted);
         }
-        let list: Element<'_, Message> = if self.rows.is_empty() {
+        let list: Element<'_, Message> = if let Some(id) = self.chosen_mcp() {
+            self.mcp_view(id)
+        } else if self.rows.is_empty() {
             let message = match &self.search {
                 Some(search) if search.query.trim().is_empty() => "Type to search every article",
                 Some(_) => "No articles match",
@@ -1407,6 +1435,65 @@ impl App {
             None => list,
             Some(search) => column![self.search_bar(search), list].into(),
         }
+    }
+
+    /// Whether a source is an MCP server.
+    fn is_mcp(&self, id: i64) -> bool {
+        self.sources
+            .iter()
+            .any(|s| s.id == id && s.kind == SourceKind::Mcp)
+    }
+
+    /// The MCP server chosen in the sources pane, while no search is on and
+    /// it has no articles to list.
+    fn chosen_mcp(&self) -> Option<i64> {
+        match self.filter {
+            Filter::Source(id) if self.search.is_none() && self.rows.is_empty() => {
+                self.is_mcp(id).then_some(id)
+            }
+            _ => None,
+        }
+    }
+
+    /// An MCP server's tools, or why it couldn't be reached.
+    fn mcp_view(&self, id: i64) -> Element<'_, Message> {
+        let t = &self.tokens;
+        let tools = self
+            .sources
+            .iter()
+            .find(|s| s.id == id)
+            .map(mcp::tools)
+            .unwrap_or_default();
+        let heading = match (self.source_errors.get(&id), tools.len()) {
+            (Some(error), _) => {
+                format!("Can't reach this server: {error}. Gutenberg tries again later.")
+            }
+            (None, 0) => "Reaching the server…".to_owned(),
+            (None, 1) => "This server offers 1 tool:".to_owned(),
+            (None, n) => format!("This server offers {n} tools:"),
+        };
+        let mut column = Column::new()
+            .push(
+                text(heading)
+                    .size(14)
+                    .color(color(t.muted))
+                    .wrapping(text::Wrapping::WordOrGlyph),
+            )
+            .spacing(10)
+            .padding(16);
+        for tool in tools {
+            column = column.push(
+                column![
+                    text(tool.name).size(14).color(color(t.foreground)),
+                    text(tool.description.unwrap_or_default())
+                        .size(12)
+                        .color(color(t.muted))
+                        .wrapping(text::Wrapping::WordOrGlyph),
+                ]
+                .spacing(2),
+            );
+        }
+        scrollable(column).height(Length::Fill).into()
     }
 
     /// `/` and what's typed, with a cursor while typing, and how many
@@ -2949,6 +3036,63 @@ mod tests {
         // And a reload from the store agrees.
         app.reload();
         assert_eq!(counts(&app, Entry::Folder(tech)), 1);
+    }
+
+    #[test]
+    fn an_mcp_server_shows_its_tools_or_why_it_cant_be_reached() {
+        let (mut app, ..) = app_with_folders();
+        let (reached, broken) = {
+            let store = app.store.as_ref().unwrap();
+            let add = |title: &str, config: &str| {
+                store
+                    .add_source(&NewSource {
+                        folder_id: None,
+                        kind: SourceKind::Mcp,
+                        title: title.into(),
+                        url: None,
+                        config: config.into(),
+                    })
+                    .unwrap()
+                    .id
+            };
+            let reached = add(
+                "Hugging Face",
+                r#"{"url":"https://huggingface.co/mcp","tools":[
+                    {"name":"hub_repo_search","description":"Search Hugging Face repositories"},
+                    {"name":"hf_fs"}]}"#,
+            );
+            let broken = add("Brave", r#"{"command":"npx","args":["brave-search"]}"#);
+            store
+                .record_failure(broken, "the server stopped: BRAVE_API_KEY is not set", 9, 1)
+                .unwrap();
+            (reached, broken)
+        };
+        app.reload();
+        assert_eq!(
+            app.source_errors.get(&broken).map(String::as_str),
+            Some("the server stopped: BRAVE_API_KEY is not set")
+        );
+        assert!(app.is_mcp(reached) && !app.is_mcp(app.sources[0].id));
+
+        for (id, filed) in [(reached, false), (broken, false)] {
+            let _ = app.update(Message::Press(Entry::Source { id, filed }));
+            let _ = app.update(Message::Release);
+            assert_eq!(app.chosen_mcp(), Some(id));
+            let _ = app.view();
+        }
+        let tools: Vec<_> = app
+            .sources
+            .iter()
+            .find(|s| s.id == reached)
+            .map(mcp::tools)
+            .unwrap()
+            .into_iter()
+            .map(|t| t.name)
+            .collect();
+        assert_eq!(tools, ["hub_repo_search", "hf_fs"]);
+        // A search over everything isn't the server's page.
+        let _ = app.update(Message::Key(Action::Search));
+        assert_eq!(app.chosen_mcp(), None);
     }
 
     #[test]
