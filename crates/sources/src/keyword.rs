@@ -1,10 +1,45 @@
-//! Keyword alerts: a search query as a source. Its results come from Google
-//! News's RSS search, which answers with an ordinary RSS feed.
+//! Keyword alerts: a search query as a source. Its results come from the
+//! RSS searches of Google News and Bing News, merged so a story both carry
+//! appears once.
 
+use std::collections::HashSet;
+
+use quick_xml::events::Event;
+use quick_xml::Reader;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::feed::Feed;
+use crate::feed::{Entry, Feed};
+
+/// A news search a keyword alert asks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Provider {
+    GoogleNews,
+    BingNews,
+}
+
+impl Provider {
+    /// Every provider, in the order their results are merged: Bing first,
+    /// because its links already name the publisher.
+    pub const ALL: [Provider; 2] = [Provider::BingNews, Provider::GoogleNews];
+}
+
+/// Where each provider lives, scheme and host with no trailing slash.
+/// Tests point these at a local server.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Providers {
+    pub google_news: String,
+    pub bing_news: String,
+}
+
+impl Default for Providers {
+    fn default() -> Self {
+        Self {
+            google_news: "https://news.google.com".to_owned(),
+            bing_news: "https://www.bing.com".to_owned(),
+        }
+    }
+}
 
 /// A keyword source's settings, kept as JSON in `source.config`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -40,13 +75,39 @@ impl Keyword {
     /// The RSS search for this query, in U.S. English: Google's `hl`, `gl`
     /// and `ceid` together pick the edition.
     pub fn google_news_url(&self) -> String {
-        let mut url = Url::parse("https://news.google.com/rss/search").expect("a valid URL");
+        self.search_url(Provider::GoogleNews, &Providers::default())
+    }
+
+    /// `provider`'s RSS search for this query, in U.S. English: Google's
+    /// `hl`, `gl` and `ceid` together pick the edition, Bing's `mkt`.
+    pub fn search_url(&self, provider: Provider, providers: &Providers) -> String {
+        let (base, path, edition): (_, _, &[(&str, &str)]) = match provider {
+            Provider::GoogleNews => (
+                &providers.google_news,
+                "/rss/search",
+                &[("hl", "en-US"), ("gl", "US"), ("ceid", "US:en")],
+            ),
+            Provider::BingNews => (
+                &providers.bing_news,
+                "/news/search",
+                &[("format", "rss"), ("mkt", "en-US")],
+            ),
+        };
+        let mut url = Url::parse(&format!("{base}{path}")).expect("a valid URL");
         url.query_pairs_mut()
             .append_pair("q", &self.query)
-            .append_pair("hl", "en-US")
-            .append_pair("gl", "US")
-            .append_pair("ceid", "US:en");
+            .extend_pairs(edition);
         url.into()
+    }
+}
+
+/// Fixes up a provider's results so they read like a feed's: the headline
+/// as the title, the publisher as the author, and for Bing the publisher's
+/// own link. `xml` is the document `feed` was parsed from.
+pub fn tidy(provider: Provider, feed: &mut Feed, xml: &[u8]) {
+    match provider {
+        Provider::GoogleNews => tidy_google_news(feed),
+        Provider::BingNews => tidy_bing_news(feed, xml),
     }
 }
 
@@ -75,6 +136,140 @@ pub fn tidy_google_news(feed: &mut Feed) {
     }
 }
 
+/// Bing News items have no guid, and their links go through
+/// `bing.com/news/apiclick.aspx`, with a `tid` that changes on every search
+/// and the publisher's URL in `url`. That URL becomes the link and the guid,
+/// and the item's `<News:Source>` the author.
+pub fn tidy_bing_news(feed: &mut Feed, xml: &[u8]) {
+    let publishers = bing_sources(xml);
+    for (i, entry) in feed.entries.iter_mut().enumerate() {
+        let publisher_url = entry.url.as_deref().and_then(|link| {
+            let link = Url::parse(link).ok()?;
+            link.query_pairs()
+                .find(|(k, _)| k == "url")
+                .map(|(_, v)| v.into_owned())
+                .filter(|v| v.starts_with("http"))
+        });
+        if let Some(url) = publisher_url {
+            entry.guid = url.clone();
+            entry.url = Some(url);
+        }
+        if let Some(Some(name)) = publishers.get(i) {
+            entry.author = Some(name.clone());
+        }
+    }
+}
+
+/// Each `<item>`'s `<News:Source>`, in order. Bing's namespace URI is the
+/// search URL itself, so this goes by the prefix.
+fn bing_sources(xml: &[u8]) -> Vec<Option<String>> {
+    let mut reader = Reader::from_reader(xml);
+    let mut sources = Vec::new();
+    // The raw text of the `<News:Source>` being read, entities and all.
+    let mut source: Option<String> = None;
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) if e.name().as_ref() == "item" => sources.push(None),
+            Ok(Event::Start(e)) if e.name().as_ref() == "News:Source" => {
+                source = Some(String::new());
+            }
+            Ok(Event::Text(text)) => source.iter_mut().for_each(|s| s.push_str(&text)),
+            Ok(Event::GeneralRef(r)) => {
+                source
+                    .iter_mut()
+                    .for_each(|s| s.push_str(&format!("&{};", &*r)));
+            }
+            Ok(Event::End(_)) => {
+                let name = source
+                    .take()
+                    .map(|raw| html_escape::decode_html_entities(raw.trim()).into_owned());
+                if let (Some(slot), Some(name)) = (sources.last_mut(), name) {
+                    *slot = Some(name).filter(|n| !n.is_empty());
+                }
+            }
+            Ok(Event::Eof) | Err(_) => break,
+            _ => {}
+        }
+    }
+    sources
+}
+
+/// A URL as it compares for sameness: no scheme, `www.`, fragment, trailing
+/// slash or tracking parameters.
+pub fn canonical_url(url: &str) -> Option<String> {
+    let url = Url::parse(url).ok()?;
+    let host = url.host_str()?.to_ascii_lowercase();
+    let host = host.strip_prefix("www.").unwrap_or(&host);
+    let tracking = |k: &str| {
+        k.starts_with("utm_")
+            || ["fbclid", "gclid", "ocid", "cmpid", "smid", "ref", "taid"].contains(&k)
+    };
+    let query: Vec<String> = url
+        .query_pairs()
+        .filter(|(k, _)| !tracking(k))
+        .map(|(k, v)| format!("{k}={v}"))
+        .collect();
+    let path = url.path().trim_end_matches('/');
+    Some(if query.is_empty() {
+        format!("{host}{path}")
+    } else {
+        format!("{host}{path}?{}", query.join("&"))
+    })
+}
+
+/// A headline as it compares for sameness: lowercase letters and digits,
+/// one space between words. `None` when nothing is left.
+pub fn title_key(title: &str) -> Option<String> {
+    let key = title
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .map(str::to_lowercase)
+        .collect::<Vec<_>>()
+        .join(" ");
+    (!key.is_empty()).then_some(key)
+}
+
+/// What a keyword alert already has, to tell a new result from one it has
+/// seen under another provider's link.
+#[derive(Debug, Default)]
+pub struct Seen {
+    guids: HashSet<String>,
+    urls: HashSet<String>,
+    titles: HashSet<String>,
+}
+
+impl Seen {
+    /// Remembers an article; `false` when it, or one with the same link or
+    /// headline, was already there.
+    pub fn insert(&mut self, guid: &str, url: Option<&str>, title: &str) -> bool {
+        let url = url.and_then(canonical_url);
+        let title = title_key(title);
+        let known = self.guids.contains(guid)
+            || url.as_ref().is_some_and(|u| self.urls.contains(u))
+            || title.as_ref().is_some_and(|t| self.titles.contains(t));
+        self.guids.insert(guid.to_owned());
+        self.urls.extend(url);
+        self.titles.extend(title);
+        !known
+    }
+
+    /// Whether this link is already among the articles.
+    pub fn has_url(&self, url: &str) -> bool {
+        canonical_url(url).is_some_and(|u| self.urls.contains(&u))
+    }
+}
+
+/// The results of every provider as one list: an entry whose guid, link or
+/// headline came earlier, or is in `seen`, is left out. `seen` ends up with
+/// everything kept.
+pub fn merge(results: Vec<Vec<Entry>>, seen: &mut Seen) -> Vec<Entry> {
+    results
+        .into_iter()
+        .flatten()
+        .filter(|e| seen.insert(&e.guid, e.url.as_deref(), &e.title))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -101,6 +296,78 @@ mod tests {
             "https://news.google.com/rss/search?q=%22Cory+Booker%22+site%3Anj.com+%26+more\
              &hl=en-US&gl=US&ceid=US%3Aen"
         );
+    }
+
+    #[test]
+    fn bing_searches_in_us_english_and_providers_can_move() {
+        let k = Keyword::new("\"Cory Booker\"").unwrap();
+        assert_eq!(
+            k.search_url(Provider::BingNews, &Providers::default()),
+            "https://www.bing.com/news/search?q=%22Cory+Booker%22&format=rss&mkt=en-US"
+        );
+        let local = Providers {
+            google_news: "http://127.0.0.1:9".into(),
+            bing_news: "http://127.0.0.1:9".into(),
+        };
+        assert!(k
+            .search_url(Provider::GoogleNews, &local)
+            .starts_with("http://127.0.0.1:9/rss/search?q="));
+    }
+
+    #[test]
+    fn urls_compare_without_tracking_or_dressing() {
+        let c = |u| canonical_url(u).unwrap();
+        assert_eq!(
+            c("https://www.CNN.com/2026/10/23/politics/x/?utm_source=rss&id=4#top"),
+            c("http://cnn.com/2026/10/23/politics/x?id=4")
+        );
+        assert_ne!(c("https://cnn.com/a?id=4"), c("https://cnn.com/a?id=5"));
+        assert_eq!(canonical_url("not a url"), None);
+    }
+
+    #[test]
+    fn headlines_compare_by_their_words() {
+        assert_eq!(
+            title_key("Cory Booker: “Trump’s cuts” — what's next?"),
+            title_key("cory booker trump s cuts what s next")
+        );
+        assert_eq!(title_key(" – "), None);
+    }
+
+    #[test]
+    fn merge_keeps_the_first_of_each_story() {
+        let entry = |guid: &str, url: &str, title: &str| Entry {
+            guid: guid.into(),
+            url: Some(url.into()),
+            title: title.into(),
+            author: None,
+            summary_html: None,
+            published_at: None,
+        };
+        let mut seen = Seen::default();
+        seen.insert("old", Some("https://site.example/old"), "Yesterday's news");
+        let merged = merge(
+            vec![
+                vec![
+                    entry("b1", "https://site.example/a", "Story A"),
+                    entry("b2", "https://site.example/b", "Story B"),
+                ],
+                vec![
+                    entry("g1", "https://news.google.com/rss/articles/1", "Story A"),
+                    entry("g2", "https://www.site.example/b/", "Story B, retitled"),
+                    entry(
+                        "g3",
+                        "https://news.google.com/rss/articles/3",
+                        "Yesterday’s news",
+                    ),
+                    entry("g4", "https://news.google.com/rss/articles/4", "Story C"),
+                ],
+            ],
+            &mut seen,
+        );
+        let guids: Vec<_> = merged.iter().map(|e| e.guid.as_str()).collect();
+        assert_eq!(guids, ["b1", "b2", "g4"]);
+        assert!(seen.has_url("https://site.example/a"));
     }
 
     #[test]
