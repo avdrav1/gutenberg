@@ -2,7 +2,7 @@
 //! text reads on every background it's drawn on. The themes are copies of
 //! `/usr/share/omarchy/themes/*/colors.toml` in `tests/fixtures/themes/`.
 
-use gutenberg_theme::{contrast, Rgb, Tokens, SECONDARY_CONTRAST, TEXT_CONTRAST};
+use gutenberg_theme::{contrast, Rgb, Scheme, Tokens, SECONDARY_CONTRAST, TEXT_CONTRAST};
 
 const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/themes");
 
@@ -80,9 +80,18 @@ fn a_theme_keeps_its_own_colors() {
 }
 
 #[test]
-fn tokyo_night_is_the_fallback() {
-    let text = std::fs::read_to_string(format!("{FIXTURES}/tokyo-night.toml")).unwrap();
-    assert_eq!(Tokens::from_colors_toml(&text).unwrap(), Tokens::fallback());
+fn the_built_in_themes_are_tokyo_night_and_catppuccin_latte() {
+    for (file, scheme) in [
+        ("tokyo-night", Scheme::Dark),
+        ("catppuccin-latte", Scheme::Light),
+    ] {
+        let text = std::fs::read_to_string(format!("{FIXTURES}/{file}.toml")).unwrap();
+        assert_eq!(
+            Tokens::from_colors_toml(&text).unwrap(),
+            Tokens::fallback(scheme),
+            "{file}"
+        );
+    }
 }
 
 #[test]

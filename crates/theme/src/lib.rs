@@ -91,22 +91,49 @@ pub struct Tokens {
     pub border: Rgb,
 }
 
+/// The desktop's light or dark preference, which picks the built-in theme
+/// when there's no Omarchy theme.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Scheme {
+    /// Also what a desktop with no preference gets.
+    #[default]
+    Dark,
+    Light,
+}
+
 impl Tokens {
-    /// Omarchy's Tokyo Night, as `from_colors_toml` maps it: used when no
-    /// Omarchy theme is found (S4.4).
-    pub const fn fallback() -> Self {
-        Self {
-            background: Rgb::hex(0x1a1b26),
-            lighter_background: Rgb::hex(0x24283b),
-            foreground: Rgb::hex(0xa9b1d6),
-            // Tokyo Night's dark_foreground (#565f89) reads at 2.2:1 on its
-            // backgrounds; this is it brightened to 3:1.
-            muted: Rgb::hex(0x71799c),
-            selection: Rgb::hex(0x292e42),
-            accent: Rgb::hex(0x7aa2f7),
-            border: Rgb::hex(0x414868),
+    /// The built-in theme for `scheme`: Omarchy's Tokyo Night or Catppuccin
+    /// Latte, as `from_colors_toml` maps them. Used without Omarchy.
+    pub const fn fallback(scheme: Scheme) -> Self {
+        match scheme {
+            Scheme::Dark => Self::DARK,
+            Scheme::Light => Self::LIGHT,
         }
     }
+
+    const DARK: Self = Self {
+        background: Rgb::hex(0x1a1b26),
+        lighter_background: Rgb::hex(0x24283b),
+        foreground: Rgb::hex(0xa9b1d6),
+        // Tokyo Night's dark_foreground (#565f89) reads at 2.2:1 on its
+        // backgrounds; this is it brightened to 3:1.
+        muted: Rgb::hex(0x71799c),
+        selection: Rgb::hex(0x292e42),
+        accent: Rgb::hex(0x7aa2f7),
+        border: Rgb::hex(0x414868),
+    };
+
+    const LIGHT: Self = Self {
+        background: Rgb::hex(0xeff1f5),
+        lighter_background: Rgb::hex(0xdce0e8),
+        foreground: Rgb::hex(0x4c4f69),
+        // Latte's dark_foreground (#9ca0b0) reads at 1.7:1; this is it
+        // darkened to 3:1.
+        muted: Rgb::hex(0x70737f),
+        selection: Rgb::hex(0xccd0da),
+        accent: Rgb::hex(0x1e66f5),
+        border: Rgb::hex(0xacb0be),
+    };
 
     /// The tokens for an Omarchy `colors.toml`, in either layout: the named
     /// keys of Omarchy 4 (`lighter_background`, `dark_foreground`, `muted`,
@@ -118,7 +145,7 @@ impl Tokens {
         let table: toml::Table =
             toml::from_str(text).map_err(|e| ThemeError::Parse(one_line(&e.to_string())))?;
         let get = |key: &str| table.get(key).and_then(|v| v.as_str()).and_then(Rgb::parse);
-        let fallback = Self::fallback();
+        let fallback = Self::DARK;
 
         let background = get("background").unwrap_or(fallback.background);
         let foreground = get("foreground").unwrap_or(fallback.foreground);
@@ -150,22 +177,20 @@ impl Tokens {
     }
 
     /// The current Omarchy theme's tokens: the first `colors.toml` of
-    /// [`theme_paths`] that exists. No theme, or one that can't be read,
-    /// gives the fallback, with a line on stderr for the latter.
-    pub fn load() -> Self {
-        let Some(path) = theme_paths().into_iter().find(|p| p.exists()) else {
-            return Self::fallback();
-        };
+    /// [`theme_paths`] that exists. `None` without one, and for one that
+    /// can't be read, with a line on stderr.
+    pub fn omarchy() -> Option<Self> {
+        let path = theme_paths().into_iter().find(|p| p.exists())?;
         let read = std::fs::read_to_string(&path)
             .map_err(|e| ThemeError::Read(e.to_string()))
             .and_then(|text| Self::from_colors_toml(&text));
-        read.unwrap_or_else(|err| {
+        read.map_err(|err| {
             eprintln!(
                 "gutenberg: theme {}: {err}; using the built-in colors",
                 path.display()
             );
-            Self::fallback()
         })
+        .ok()
     }
 }
 
@@ -282,7 +307,7 @@ mod tests {
         // An empty file takes the fallback's base colors and derives the
         // rest from them; a broken file is an error.
         let empty = Tokens::from_colors_toml("").unwrap();
-        let fallback = Tokens::fallback();
+        let fallback = Tokens::fallback(Scheme::Dark);
         assert_eq!(
             (empty.background, empty.foreground, empty.accent),
             (fallback.background, fallback.foreground, fallback.accent)

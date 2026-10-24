@@ -19,7 +19,7 @@ use gutenberg_core::keyword;
 use gutenberg_core::sync::unix_now;
 use gutenberg_core::web::{self, Answer, Web};
 use gutenberg_store::{ArticleRow, Filter, Folder, Source, SourceKind, Store, View, ViewCounts};
-use gutenberg_theme::{Rgb, Tokens};
+use gutenberg_theme::{Rgb, Scheme, Tokens};
 use iced::futures::Stream;
 use iced::keyboard;
 use iced::mouse::ScrollDelta;
@@ -56,12 +56,17 @@ pub fn run(
 ) -> iced::Result {
     use_desktop_font();
     iced::application(
-        move || App::new(config.clone(), config_path.clone(), store_path.as_deref()),
+        move || {
+            let app = App::new(config.clone(), config_path.clone(), store_path.as_deref());
+            // The desktop's light or dark preference, for the built-in theme.
+            (app, iced::system::theme().map(Message::SystemTheme))
+        },
         App::update,
         App::view,
     )
     .title("Gutenberg")
     .subscription(App::subscription)
+    .theme(App::theme)
     .scale_factor(App::scale_factor)
     .window(window::Settings {
         // Hyprland draws the borders; no client-side decorations.
@@ -120,6 +125,14 @@ fn scale_factor(config: &Config) -> f32 {
 
 struct App {
     tokens: Tokens,
+    /// Whether `tokens` are the Omarchy theme's; if not, they're the
+    /// built-in theme for `scheme`.
+    omarchy: bool,
+    /// The desktop's light or dark preference.
+    scheme: Scheme,
+    /// iced's own theme, for the parts it draws itself (scrollbars,
+    /// checkboxes), made from `tokens`.
+    iced_theme: iced::Theme,
     config: Config,
     config_path: Option<PathBuf>,
     store: Result<Store, String>,
@@ -282,8 +295,11 @@ enum Message {
     Resized(Size),
     Frame(Instant),
     ConfigChanged(Config),
-    /// The Omarchy theme, and the desktop font if it changed, read again.
-    ThemeReloaded(Tokens, Option<NewFont>),
+    /// The Omarchy theme, if there is one, and the desktop font if it
+    /// changed, read again.
+    ThemeReloaded(Option<Tokens>, Option<NewFont>),
+    /// The desktop's light or dark preference, at start and when it changes.
+    SystemTheme(iced::theme::Mode),
     /// Mouse down on a sources-pane row.
     Press(Entry),
     /// The pointer entered a sources-pane row during a press.
@@ -321,8 +337,24 @@ impl App {
             None => Err("no data directory".to_owned()),
         };
         let mut app = Self::with_store(config, config_path, store, store_path.map(Icons::beside));
-        app.tokens = Tokens::load();
+        app.use_theme(Tokens::omarchy());
         app
+    }
+
+    /// The Omarchy theme's tokens, or the built-in theme for the desktop's
+    /// preference when there's none.
+    fn use_theme(&mut self, omarchy: Option<Tokens>) {
+        self.omarchy = omarchy.is_some();
+        self.set_tokens(omarchy.unwrap_or_else(|| Tokens::fallback(self.scheme)));
+    }
+
+    fn set_tokens(&mut self, tokens: Tokens) {
+        self.iced_theme = iced_theme(&tokens);
+        self.tokens = tokens;
+    }
+
+    fn theme(&self) -> iced::Theme {
+        self.iced_theme.clone()
     }
 
     fn with_store(
@@ -340,7 +372,10 @@ impl App {
                 intervals: Vec::with_capacity(frames),
             });
         let mut app = Self {
-            tokens: Tokens::fallback(),
+            tokens: Tokens::fallback(Scheme::Dark),
+            omarchy: false,
+            scheme: Scheme::Dark,
+            iced_theme: iced_theme(&Tokens::fallback(Scheme::Dark)),
             config,
             config_path,
             store,
@@ -573,10 +608,19 @@ impl App {
             Message::Resized(size) => self.set_height(size.height),
             Message::Frame(at) => return self.bench_frame(at),
             Message::ThemeReloaded(tokens, font) => {
-                self.tokens = tokens;
+                self.use_theme(tokens);
                 if let Some(font) = font {
                     let file = font.file.map(Arc::unwrap_or_clone);
                     set_font(&font.family, file);
+                }
+            }
+            Message::SystemTheme(mode) => {
+                self.scheme = match mode {
+                    iced::theme::Mode::Light => Scheme::Light,
+                    iced::theme::Mode::Dark | iced::theme::Mode::None => Scheme::Dark,
+                };
+                if !self.omarchy {
+                    self.set_tokens(Tokens::fallback(self.scheme));
                 }
             }
             Message::ConfigChanged(config) => {
@@ -988,6 +1032,7 @@ impl App {
             keys,
             iced::time::every(STORE_POLL).map(|_| Message::PollStore),
             window::resize_events().map(|(_, size)| Message::Resized(size)),
+            iced::system::theme_changes().map(Message::SystemTheme),
         ];
         if let Some(path) = &self.config_path {
             subscriptions.push(Subscription::run_with(path.clone(), watch_config));
@@ -1511,7 +1556,7 @@ pub mod shots {
         store.insert_articles(&articles).expect("articles");
 
         let mut app = App::with_store(Config::default(), None, Ok(store), None);
-        app.tokens = tokens;
+        app.set_tokens(tokens);
         app.height = size.1;
         app.select(4);
         let _ = app.update(Message::Key(Action::Star));
@@ -1540,7 +1585,7 @@ pub mod shots {
             app.view(),
         );
         simulator
-            .snapshot(&iced::Theme::Dark)
+            .snapshot(&app.theme())
             .expect("snapshot")
             .matches_image(path)
             .expect("write the screenshot");
@@ -1622,7 +1667,7 @@ fn theme_reloads() -> impl Stream<Item = Message> {
         });
         let mut family = font::monospace().map(|face| face.family);
         while asked.next().await.is_some() {
-            let tokens = Tokens::load();
+            let tokens = Tokens::omarchy();
             let font = match font::monospace() {
                 Some(face) if family.as_deref() != Some(face.family.as_str()) => {
                     family = Some(face.family.clone());
@@ -1766,6 +1811,22 @@ fn pane<'a>(
 
 fn color(c: Rgb) -> Color {
     Color::from_rgb8(c.r, c.g, c.b)
+}
+
+/// iced's theme for `t`, so what iced styles itself (scrollbars, checkbox
+/// and text-input defaults) matches the panes.
+fn iced_theme(t: &Tokens) -> iced::Theme {
+    iced::Theme::custom(
+        "Gutenberg",
+        iced::theme::Palette {
+            background: color(t.background),
+            text: color(t.foreground),
+            primary: color(t.accent),
+            success: color(t.accent),
+            warning: color(t.accent),
+            danger: color(t.accent),
+        },
+    )
 }
 
 #[cfg(test)]
@@ -2008,6 +2069,32 @@ mod tests {
         assert_eq!(app.top, 6);
         let _ = app.update(Message::Scroll(ScrollDelta::Lines { x: 0.0, y: -100.0 }));
         assert_eq!(app.top, 90);
+    }
+
+    #[test]
+    fn the_desktop_preference_picks_the_built_in_theme_but_never_overrides_omarchy() {
+        use iced::theme::Mode;
+        let mut app = app_with(1);
+        // No Omarchy theme: light and dark follow the desktop, and no
+        // preference is dark.
+        let _ = app.update(Message::SystemTheme(Mode::Light));
+        assert_eq!(app.tokens, Tokens::fallback(Scheme::Light));
+        assert_eq!(
+            app.theme().palette().background,
+            color(app.tokens.background)
+        );
+        let _ = app.update(Message::SystemTheme(Mode::None));
+        assert_eq!(app.tokens, Tokens::fallback(Scheme::Dark));
+
+        // An Omarchy theme wins whatever the desktop says.
+        let omarchy = Tokens::from_colors_toml("background = \"#101315\"").unwrap();
+        let _ = app.update(Message::ThemeReloaded(Some(omarchy.clone()), None));
+        let _ = app.update(Message::SystemTheme(Mode::Light));
+        assert_eq!(app.tokens, omarchy);
+
+        // Omarchy removed: back to the built-in theme the desktop asks for.
+        let _ = app.update(Message::ThemeReloaded(None, None));
+        assert_eq!(app.tokens, Tokens::fallback(Scheme::Light));
     }
 
     #[test]
