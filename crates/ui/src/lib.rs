@@ -83,21 +83,31 @@ pub fn run(
 /// Without fontconfig, or for a family no font file provides, iced's own
 /// choices stay; then this returns `false`.
 fn use_desktop_font() -> bool {
-    let Some(family) = gutenberg_theme::font::monospace() else {
-        return false;
-    };
+    gutenberg_theme::font::monospace().is_some_and(|face| set_font(&face.family, None))
+}
+
+/// Points iced's sans-serif and monospace families at `family`, after
+/// loading `file` (the family's font file) if given. Loading a file bumps
+/// the font system's version, which makes iced reshape every paragraph, so
+/// text already on screen changes too; it also brings in a font installed
+/// after the window opened.
+fn set_font(family: &str, file: Option<Vec<u8>>) -> bool {
     let mut fonts = iced::advanced::graphics::text::font_system()
         .write()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if let Some(bytes) = file {
+        fonts.load_font(std::borrow::Cow::Owned(bytes));
+    }
+    // `db_mut` also clears cosmic-text's font-match cache.
     let db = fonts.raw().db_mut();
     let installed = db
         .faces()
-        .any(|face| face.families.iter().any(|(name, _)| *name == family));
+        .any(|face| face.families.iter().any(|(name, _)| name == family));
     if !installed {
         eprintln!("gutenberg: font {family:?}: no font file has it; using the default font");
         return false;
     }
-    db.set_sans_serif_family(family.clone());
+    db.set_sans_serif_family(family);
     db.set_monospace_family(family);
     true
 }
@@ -272,6 +282,8 @@ enum Message {
     Resized(Size),
     Frame(Instant),
     ConfigChanged(Config),
+    /// The Omarchy theme, and the desktop font if it changed, read again.
+    ThemeReloaded(Tokens, Option<NewFont>),
     /// Mouse down on a sources-pane row.
     Press(Entry),
     /// The pointer entered a sources-pane row during a press.
@@ -560,6 +572,13 @@ impl App {
             }
             Message::Resized(size) => self.set_height(size.height),
             Message::Frame(at) => return self.bench_frame(at),
+            Message::ThemeReloaded(tokens, font) => {
+                self.tokens = tokens;
+                if let Some(font) = font {
+                    let file = font.file.map(Arc::unwrap_or_clone);
+                    set_font(&font.family, file);
+                }
+            }
             Message::ConfigChanged(config) => {
                 // iced sends no resize when the scale factor changes, but the
                 // same window is now a different number of logical pixels.
@@ -974,6 +993,7 @@ impl App {
             subscriptions.push(Subscription::run_with(path.clone(), watch_config));
         }
         if self.bench.is_none() {
+            subscriptions.push(Subscription::run(theme_reloads));
             subscriptions.push(Subscription::run(web_worker));
         }
         if self.bench.is_some() {
@@ -1562,6 +1582,65 @@ fn watch_config(path: &PathBuf) -> impl Stream<Item = Message> + use<> {
                 drop(handle);
             }
             Err(err) => eprintln!("gutenberg: {err}"),
+        }
+    })
+}
+
+/// A desktop font that changed while the window was open.
+#[derive(Debug, Clone)]
+struct NewFont {
+    family: String,
+    /// Its font file, read off the UI thread.
+    file: Option<Arc<Vec<u8>>>,
+}
+
+/// Live theme reload. Two things ask for one: an Omarchy hook through the
+/// socket (`gutenberg --reload-theme`), and the inotify watch on Omarchy's
+/// theme and fontconfig, for installs without the hooks. Each reads the
+/// theme and the font again here, off the UI thread.
+fn theme_reloads() -> impl Stream<Item = Message> {
+    use gutenberg_core::ipc;
+    use gutenberg_theme::{font, watch};
+    use iced::futures::{channel::mpsc, SinkExt, StreamExt};
+    iced::stream::channel(4, async |mut output| {
+        let (asks, mut asked) = mpsc::unbounded::<()>();
+        let on_watch = {
+            let asks = asks.clone();
+            move || {
+                let _ = asks.unbounded_send(());
+            }
+        };
+        let _watching = watch::watch(watch::watched(), on_watch)
+            .map_err(|err| eprintln!("gutenberg: watching the theme: {err}"))
+            .ok();
+        let _listening = ipc::socket_path().and_then(|path| {
+            ipc::listen(&path, move |ipc::Command::ReloadTheme| {
+                let _ = asks.unbounded_send(());
+            })
+            .map_err(|err| eprintln!("gutenberg: {err}"))
+            .ok()
+        });
+        let mut family = font::monospace().map(|face| face.family);
+        while asked.next().await.is_some() {
+            let tokens = Tokens::load();
+            let font = match font::monospace() {
+                Some(face) if family.as_deref() != Some(face.family.as_str()) => {
+                    family = Some(face.family.clone());
+                    let file = face.file.and_then(|path| std::fs::read(path).ok());
+                    Some(NewFont {
+                        family: face.family,
+                        file: file.map(Arc::new),
+                    })
+                }
+                _ => None,
+            };
+            if output
+                .send(Message::ThemeReloaded(tokens, font))
+                .await
+                .is_err()
+            {
+                return;
+            }
         }
     })
 }
