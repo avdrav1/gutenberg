@@ -15,7 +15,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 pub use migrate::LATEST as SCHEMA_VERSION;
 pub use model::{
     ArticleKey, ArticleRow, DueSource, FetchState, Filter, Folder, NewArticle, NewSource, Source,
-    SourceKind, SourceTarget, Validators, View, ViewCounts,
+    SourceKind, SourceTarget, StoryCandidate, Validators, View, ViewCounts,
 };
 
 /// The articles a filter and view pick, as SQL over `article`: `?1` a
@@ -40,6 +40,46 @@ macro_rules! today_sql {
     () => {
         "unixepoch('now', 'localtime', 'start of day', 'utc')"
     };
+}
+
+/// The columns [`article_row`] reads, from `article AS a`.
+macro_rules! row_sql {
+    () => {
+        "a.id, a.source_id, a.title, a.url, a.author, a.sort_at, a.read, a.starred,
+         COALESCE(a.story_id, a.id),
+         (SELECT count(*) FROM article s WHERE s.story_id = a.story_id)"
+    };
+}
+
+/// Leaves out an article of `a`'s story when a newer one of it passes the
+/// same test, `$also`, so a story is one row: its newest article there.
+macro_rules! newest_of_story_sql {
+    ($also:expr) => {
+        concat!(
+            "NOT EXISTS (SELECT 1 FROM article b
+                         WHERE b.story_id = a.story_id
+                           AND (b.sort_at > a.sort_at OR (b.sort_at = a.sort_at AND b.id > a.id))
+                           AND ",
+            $also,
+            ")"
+        )
+    };
+}
+
+/// A row of [`row_sql!`].
+fn article_row(row: &rusqlite::Row) -> rusqlite::Result<ArticleRow> {
+    Ok(ArticleRow {
+        id: row.get(0)?,
+        source_id: row.get(1)?,
+        title: row.get(2)?,
+        url: row.get(3)?,
+        author: row.get(4)?,
+        sort_at: row.get(5)?,
+        read: row.get(6)?,
+        starred: row.get(7)?,
+        story_id: row.get(8)?,
+        story_size: row.get::<_, i64>(9)?.max(1),
+    })
 }
 
 /// `in_view_sql!`'s parameters for a filter and view.
@@ -229,32 +269,23 @@ impl Store {
         Ok(inserted)
     }
 
-    /// Newest first, across every source or within one.
+    /// Newest first, across every source or within one, every article on
+    /// its own.
     pub fn list_articles(&self, source_id: Option<i64>, limit: u32) -> Result<Vec<ArticleRow>> {
-        let mut stmt = self.conn.prepare_cached(
-            "SELECT id, source_id, title, url, author, sort_at, read, starred
-             FROM article
-             WHERE ?1 IS NULL OR source_id = ?1
-             ORDER BY sort_at DESC, id DESC
-             LIMIT ?2",
-        )?;
-        let rows = stmt.query_map(params![source_id, limit], |row| {
-            Ok(ArticleRow {
-                id: row.get(0)?,
-                source_id: row.get(1)?,
-                title: row.get(2)?,
-                url: row.get(3)?,
-                author: row.get(4)?,
-                sort_at: row.get(5)?,
-                read: row.get(6)?,
-                starred: row.get(7)?,
-            })
-        })?;
+        let mut stmt = self.conn.prepare_cached(concat!(
+            "SELECT ",
+            row_sql!(),
+            " FROM article a
+             WHERE ?1 IS NULL OR a.source_id = ?1
+             ORDER BY a.sort_at DESC, a.id DESC
+             LIMIT ?2"
+        ))?;
+        let rows = stmt.query_map(params![source_id, limit], article_row)?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
     /// Newest first, for everything, one source or one folder, narrowed to
-    /// a view.
+    /// a view. A story is one row: its newest article the view shows.
     pub fn list_articles_in(
         &self,
         filter: Filter,
@@ -262,32 +293,27 @@ impl Store {
         limit: u32,
     ) -> Result<Vec<ArticleRow>> {
         let (source, folder, view) = in_view(filter, view);
+        // Unqualified columns in `in_view_sql!` are the innermost table's:
+        // `a` outside, `b` in the story test.
         let mut stmt = self.conn.prepare_cached(concat!(
-            "SELECT id, source_id, title, url, author, sort_at, read, starred
-             FROM article
+            "SELECT ",
+            row_sql!(),
+            " FROM article a
              WHERE ",
             in_view_sql!(),
-            " ORDER BY sort_at DESC, id DESC
+            " AND ",
+            newest_of_story_sql!(in_view_sql!()),
+            " ORDER BY a.sort_at DESC, a.id DESC
              LIMIT ?4"
         ))?;
-        let rows = stmt.query_map(params![source, folder, view, limit], |row| {
-            Ok(ArticleRow {
-                id: row.get(0)?,
-                source_id: row.get(1)?,
-                title: row.get(2)?,
-                url: row.get(3)?,
-                author: row.get(4)?,
-                sort_at: row.get(5)?,
-                read: row.get(6)?,
-                starred: row.get(7)?,
-            })
-        })?;
+        let rows = stmt.query_map(params![source, folder, view, limit], article_row)?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
     /// Articles whose title, author or summary hold every word typed (each
-    /// as a prefix), newest first. Nothing searchable typed: no results.
-    /// Any input is safe; it never reaches FTS5 as syntax.
+    /// as a prefix), newest first, a story as one row. Nothing searchable
+    /// typed: no results. Any input is safe; it never reaches FTS5 as
+    /// syntax.
     pub fn search(&self, typed: &str, limit: u32) -> Result<Vec<ArticleRow>> {
         let Some(query) = text::match_query(typed) else {
             return Ok(Vec::new());
@@ -295,32 +321,76 @@ impl Store {
         // The matches go into a set first, then the time index is walked
         // newest first until `limit` are found: a common word stops early
         // instead of sorting every article that has it.
+        let mut stmt = self.conn.prepare_cached(concat!(
+            "SELECT ",
+            row_sql!(),
+            " FROM article a INDEXED BY article_by_time
+             WHERE a.id IN (SELECT rowid FROM article_fts WHERE article_fts MATCH ?1)
+               AND ",
+            newest_of_story_sql!(
+                "b.id IN (SELECT rowid FROM article_fts WHERE article_fts MATCH ?1)"
+            ),
+            " ORDER BY a.sort_at DESC, a.id DESC
+             LIMIT ?2"
+        ))?;
+        let rows = stmt.query_map(params![query, limit], article_row)?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// The articles of a story, newest first.
+    pub fn story(&self, story_id: i64) -> Result<Vec<ArticleRow>> {
+        let mut stmt = self.conn.prepare_cached(concat!(
+            "SELECT ",
+            row_sql!(),
+            " FROM article a
+             WHERE a.story_id = ?1 OR (a.story_id IS NULL AND a.id = ?1)
+             ORDER BY a.sort_at DESC, a.id DESC"
+        ))?;
+        let rows = stmt.query_map([story_id], article_row)?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Every article stored since the last grouping, and every article
+    /// within `window` seconds of one, oldest first. Empty when all are
+    /// grouped.
+    pub fn story_candidates(&self, window: i64) -> Result<Vec<StoryCandidate>> {
         let mut stmt = self.conn.prepare_cached(
-            "SELECT id, source_id, title, url, author, sort_at, read, starred
-             FROM article INDEXED BY article_by_time
-             WHERE id IN (SELECT rowid FROM article_fts WHERE article_fts MATCH ?1)
-             ORDER BY sort_at DESC, id DESC
-             LIMIT ?2",
+            "SELECT id, title, sort_at, story_id FROM article
+             WHERE sort_at BETWEEN
+                     (SELECT min(sort_at) FROM article WHERE story_id IS NULL) - ?1
+                 AND (SELECT max(sort_at) FROM article WHERE story_id IS NULL) + ?1
+             ORDER BY sort_at, id",
         )?;
-        let rows = stmt.query_map(params![query, limit], |row| {
-            Ok(ArticleRow {
+        let rows = stmt.query_map([window], |row| {
+            Ok(StoryCandidate {
                 id: row.get(0)?,
-                source_id: row.get(1)?,
-                title: row.get(2)?,
-                url: row.get(3)?,
-                author: row.get(4)?,
-                sort_at: row.get(5)?,
-                read: row.get(6)?,
-                starred: row.get(7)?,
+                title: row.get(1)?,
+                sort_at: row.get(2)?,
+                story_id: row.get(3)?,
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
-    /// Unread articles per source; sources with none are absent.
+    /// Files articles under stories, `(article, story)`, in one
+    /// transaction.
+    pub fn set_stories(&mut self, stories: &[(i64, i64)]) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        {
+            let mut stmt = tx.prepare_cached("UPDATE article SET story_id = ?2 WHERE id = ?1")?;
+            for (article, story) in stories {
+                stmt.execute([article, story])?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Unread stories per source; sources with none are absent.
     pub fn unread_counts(&self) -> Result<HashMap<i64, i64>> {
         let mut stmt = self.conn.prepare_cached(
-            "SELECT source_id, count(*) FROM article WHERE read = 0 GROUP BY source_id",
+            "SELECT source_id, count(DISTINCT COALESCE(story_id, id)) FROM article
+             WHERE read = 0 GROUP BY source_id",
         )?;
         let rows = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
@@ -427,6 +497,16 @@ impl Store {
         Ok(())
     }
 
+    /// Marks every article of a story read or unread.
+    pub fn set_story_read(&self, story_id: i64, read: bool) -> Result<()> {
+        self.conn.execute(
+            "UPDATE article SET read = ?2
+             WHERE story_id = ?1 OR (story_id IS NULL AND id = ?1)",
+            params![story_id, read],
+        )?;
+        Ok(())
+    }
+
     pub fn set_starred(&self, article_id: i64, starred: bool) -> Result<()> {
         self.conn.execute(
             "UPDATE article SET starred = ?2 WHERE id = ?1",
@@ -464,27 +544,30 @@ impl Store {
         Ok(())
     }
 
-    /// Marks every unread article the filter and view show as read; returns
-    /// how many.
+    /// Marks every unread article the filter and view show as read, and
+    /// the rest of their stories; returns how many.
     pub fn mark_read_in(&self, filter: Filter, view: View) -> Result<usize> {
         let (source, folder, view) = in_view(filter, view);
         Ok(self.conn.execute(
             concat!(
-                "UPDATE article SET read = 1 WHERE read = 0 AND ",
-                in_view_sql!()
+                "UPDATE article SET read = 1 WHERE read = 0 AND (",
+                in_view_sql!(),
+                " OR story_id IN (SELECT story_id FROM article WHERE story_id IS NOT NULL AND ",
+                in_view_sql!(),
+                "))"
             ),
             params![source, folder, view],
         )?)
     }
 
-    /// Unread, starred and today's articles across every feed.
+    /// Unread, starred and today's stories across every feed.
     pub fn view_counts(&self) -> Result<ViewCounts> {
         Ok(self.conn.query_row(
             concat!(
                 "SELECT
-                   count(*) FILTER (WHERE read = 0),
-                   count(*) FILTER (WHERE starred = 1),
-                   count(*) FILTER (WHERE sort_at >= ",
+                   count(DISTINCT COALESCE(story_id, id)) FILTER (WHERE read = 0),
+                   count(DISTINCT COALESCE(story_id, id)) FILTER (WHERE starred = 1),
+                   count(DISTINCT COALESCE(story_id, id)) FILTER (WHERE sort_at >= ",
                 today_sql!(),
                 ")
                  FROM article"

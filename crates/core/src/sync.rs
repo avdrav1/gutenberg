@@ -290,6 +290,7 @@ async fn refresh_some(
             }
         }
     }
+    crate::story::group_stored(store)?;
     Ok(summary)
 }
 

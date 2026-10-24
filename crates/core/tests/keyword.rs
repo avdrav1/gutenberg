@@ -13,7 +13,7 @@ use std::time::Duration;
 use gutenberg_core::keyword::{add, Keyword};
 use gutenberg_core::sync::{refresh, Limits, RESOLVE_PER_REFRESH};
 use gutenberg_sources::keyword::Providers;
-use gutenberg_store::Store;
+use gutenberg_store::{Filter, Store, View};
 
 const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures");
 
@@ -197,6 +197,29 @@ fn the_same_story_from_both_providers_appears_once() {
             .count(),
         1
     );
+
+    // S5.4: headlines that are the same story list once, with its size.
+    let stories = store
+        .list_articles_in(Filter::Source(alert), View::All, 1000)
+        .unwrap();
+    // Of the 105, three pairs are one story each: two outlets' takes on
+    // Booker and Ted Cruz at the Jack Smith hearing, for one.
+    assert_eq!(stories.len(), 102);
+    let cruz = stories
+        .iter()
+        .find(|r| r.title.to_lowercase().contains("berserk on ted cruz"))
+        .unwrap();
+    assert_eq!(cruz.story_size, 2);
+    let titles: Vec<_> = store
+        .story(cruz.story_id)
+        .unwrap()
+        .into_iter()
+        .map(|r| r.title)
+        .collect();
+    assert!(titles.contains(
+        &"Cory Booker goes absolutely berserk on Ted Cruz, Republicans: 'This hearing is a farce'"
+            .to_owned()
+    ));
 
     // The same results again add nothing, and resolve 20 more old links.
     let second = rt

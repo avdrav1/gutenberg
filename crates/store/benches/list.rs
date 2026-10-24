@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use gutenberg_store::{NewArticle, NewSource, SourceKind, Store};
+use gutenberg_store::{Filter, NewArticle, NewSource, SourceKind, Store, View};
 
 /// Budget: 10k articles list in under 20 ms (S1.3).
 fn list_10k(c: &mut Criterion) {
@@ -36,6 +36,31 @@ fn list_10k(c: &mut Criterion) {
 
     c.bench_function("list_10k", |b| {
         b.iter(|| store.list_articles(None, 10_000).unwrap())
+    });
+
+    // S5.4: the list the window shows, with every article grouped and
+    // every fifth story five articles long.
+    let ids: Vec<i64> = store
+        .list_articles(None, 10_000)
+        .unwrap()
+        .iter()
+        .map(|r| r.id)
+        .collect();
+    let stories: Vec<(i64, i64)> = ids
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| {
+            let story = if (i / 5) % 5 == 0 { ids[i - i % 5] } else { id };
+            (id, story)
+        })
+        .collect();
+    store.set_stories(&stories).unwrap();
+    c.bench_function("list_in_10k_stories", |b| {
+        b.iter(|| {
+            store
+                .list_articles_in(Filter::All, View::All, 10_000)
+                .unwrap()
+        })
     });
 }
 

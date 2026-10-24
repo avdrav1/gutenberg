@@ -82,6 +82,22 @@ pub struct ArticleRow {
     pub sort_at: i64,
     pub read: bool,
     pub starred: bool,
+    /// The story it belongs to: the id of the story's first grouped
+    /// article, or its own id while it's alone or not yet grouped.
+    pub story_id: i64,
+    /// How many articles the story has, this one included.
+    pub story_size: i64,
+}
+
+/// An article as story grouping sees it, from
+/// [`Store::story_candidates`](crate::Store::story_candidates).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoryCandidate {
+    pub id: i64,
+    pub title: String,
+    pub sort_at: i64,
+    /// `None` until it's been grouped.
+    pub story_id: Option<i64>,
 }
 
 /// What tells one of a source's articles from another, newest first from

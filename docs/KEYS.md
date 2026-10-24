@@ -6,10 +6,10 @@ The bar along the bottom of the window shows the keys for what's on screen; `hin
 |---|---|---|
 | `j` / `k` | next / previous item | list, sources |
 | `gg` / `G` | first / last | list |
-| `o` / `Enter` | open article | list |
+| `o` / `Enter` | open article (a story's row opens its newest article and marks the whole story read) | list |
 | `v` | reader view: the full article from its page, or back to the feed's summary | list, article |
 | `O` | open the selected article in the browser | list, article |
-| `m` | mark the selected article unread, or read again | list |
+| `m` | mark the selected article unread, or read again (a story: every article in it) | list |
 | `M` | mark read: everything the list shows for the folder or feed chosen in the sources pane and the current view | any |
 | `s` | star or unstar the selected article (★ in the list) | list, article |
 | `y` | copy the selected article's link | list, article |
