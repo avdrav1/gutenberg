@@ -14,7 +14,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 
 pub use migrate::LATEST as SCHEMA_VERSION;
 pub use model::{
-    ArticleRow, DueFeed, FetchState, Filter, Folder, NewArticle, NewSource, Source, SourceKind,
+    ArticleRow, DueSource, FetchState, Filter, Folder, NewArticle, NewSource, Source, SourceKind,
     SourceTarget, Validators, View, ViewCounts,
 };
 
@@ -471,33 +471,43 @@ impl Store {
         )?)
     }
 
-    /// Feeds whose backoff, if any, has passed by `now`.
-    pub fn feeds_due(&self, now: i64) -> Result<Vec<DueFeed>> {
+    /// Feeds and keyword sources whose backoff, if any, has passed by `now`.
+    pub fn sources_due(&self, now: i64) -> Result<Vec<DueSource>> {
+        // MCP sources (E6) aren't refreshed yet.
         let mut stmt = self.conn.prepare_cached(
-            "SELECT id, url, etag, last_modified, failures FROM source
-             WHERE kind = 'feed' AND url IS NOT NULL AND (retry_at IS NULL OR retry_at <= ?1)
+            "SELECT id, kind, url, config, etag, last_modified, failures FROM source
+             WHERE ((kind = 'feed' AND url IS NOT NULL) OR kind = 'keyword')
+               AND (retry_at IS NULL OR retry_at <= ?1)
              ORDER BY position",
         )?;
         let rows = stmt.query_map([now], |row| {
-            Ok(DueFeed {
+            let kind: String = row.get(1)?;
+            Ok(DueSource {
                 source_id: row.get(0)?,
-                url: row.get(1)?,
-                validators: Validators {
-                    etag: row.get(2)?,
-                    last_modified: row.get(3)?,
+                kind: if kind == "keyword" {
+                    SourceKind::Keyword
+                } else {
+                    SourceKind::Feed
                 },
-                failures: row.get(4)?,
+                url: row.get(2)?,
+                config: row.get(3)?,
+                validators: Validators {
+                    etag: row.get(4)?,
+                    last_modified: row.get(5)?,
+                },
+                failures: row.get(6)?,
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
-    /// Whether a feed has never been fetched: added since the last refresh
-    /// (the Add sources screen, `--add`).
-    pub fn has_unchecked_feeds(&self) -> Result<bool> {
+    /// Whether a source has never been fetched: added since the last refresh
+    /// (the Add sources screen, `--add`, `--keyword`).
+    pub fn has_unchecked_sources(&self) -> Result<bool> {
         Ok(self.conn.query_row(
             "SELECT EXISTS(SELECT 1 FROM source
-                           WHERE kind = 'feed' AND url IS NOT NULL AND checked_at IS NULL)",
+                           WHERE ((kind = 'feed' AND url IS NOT NULL) OR kind = 'keyword')
+                             AND checked_at IS NULL)",
             [],
             |row| row.get(0),
         )?)

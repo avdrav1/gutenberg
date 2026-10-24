@@ -50,15 +50,25 @@ Opened with `/`. The list shows the newest 500 articles holding every word typed
 
 ## Add sources screen
 
-Shown on first run, when the store has no sources, and opened with `a`.
+Shown on first run, when the store has no sources, and opened with `a`. The left column lists the catalog's categories, then **Keyword alerts** and **MCP servers**.
 
 | Key | Action |
 |---|---|
 | `j` / `k` / `↓` / `↑` | next / previous row |
-| `l` / `h` / `→` / `←` | next / previous category |
-| `Tab` / `Shift-Tab` | next / previous category |
-| `Space` | check or uncheck the feed under the cursor |
-| `a` | check every feed in the category, or uncheck them all |
-| `Enter` | add the checked feeds |
+| `l` / `h` / `→` / `←` | next / previous page |
+| `Tab` / `Shift-Tab` | next / previous page |
+| `Space` | check or uncheck the feed or keyword alert under the cursor; on the query field, start typing |
+| `a` | check everything on the page, or uncheck it all |
+| `n` | go to Keyword alerts and type a query |
+| `Enter` | add what's checked |
 | `Esc` | close without adding |
 | `q` | quit |
+
+While typing a keyword alert:
+
+| Key | Action |
+|---|---|
+| any letter | type it, `j`, `a`, `n` and `q` included |
+| `Backspace` | delete the last letter |
+| `Enter` | check the query and stop typing; a preset's query checks the preset |
+| `Esc` | stop typing and drop the query |

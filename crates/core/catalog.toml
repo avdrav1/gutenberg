@@ -9,8 +9,9 @@
 #
 # Rules the tests enforce: 8 to 12 feeds per category; unique https URLs;
 # titles up to 40 characters, blurbs up to 70; exactly 12 starter feeds,
-# all free. Keyword presets and MCP servers show greyed out until keyword
-# alerts (S5.1) and MCP sources (S6.2) can add them.
+# all free; keyword queries unique. Keyword presets are added as Google News
+# searches (S5.1); MCP servers show greyed out until MCP sources (S6.2) can
+# add them.
 
 [[category]]
 id = "world"
@@ -1985,7 +1986,7 @@ site = "https://www.thekitchn.com"
 blurb = "Everyday recipes, kitchen tips and product reviews"
 paywall = "none"
 
-# ── Keyword alert presets (addable from S5.1) ──
+# ── Keyword alert presets: Google News searches, filed in their category ──
 [[keyword]]
 category = "world"
 title = "United Nations"

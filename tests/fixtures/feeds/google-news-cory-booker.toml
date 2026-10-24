@@ -1,0 +1,4 @@
+# SOURCE https://news.google.com/rss/search?q=%22Cory+Booker%22&hl=en-US&gl=US&ceid=US%3Aen fetched 2026-10-24
+url = "https://news.google.com/rss/search?q=%22Cory+Booker%22&hl=en-US&gl=US&ceid=US%3Aen"
+fetched = 2026-10-24
+covers = "Google News RSS search (keyword alerts, S5.1): titles end in ' - Publisher', descriptions are a link plus the publisher in <font>, links are news.google.com redirects; no ETag or Last-Modified"

@@ -4,8 +4,11 @@
 use std::collections::HashSet;
 use std::sync::LazyLock;
 
+use gutenberg_sources::keyword::Keyword;
 use gutenberg_store::{NewSource, SourceKind, Store};
 use serde::Deserialize;
+
+use crate::keyword;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -122,20 +125,42 @@ impl Catalog {
     }
 }
 
+/// What the Add sources screen picked.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Picks {
+    /// Indices into `catalog.feeds`.
+    pub feeds: Vec<usize>,
+    /// Indices into `catalog.keywords`.
+    pub keywords: Vec<usize>,
+    /// Keyword alerts typed in, as `Keyword::new` keeps them.
+    pub queries: Vec<String>,
+}
+
+impl Picks {
+    pub fn len(&self) -> usize {
+        self.feeds.len() + self.keywords.len() + self.queries.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Subscribed {
     /// New sources.
     pub added: usize,
-    /// Picks whose URL the store already had.
+    /// Picks the store already had: a feed's URL, an alert's query.
     pub known: usize,
 }
 
-/// Adds the picked feeds (indices into `catalog.feeds`), each in a folder
-/// named after its category. Feeds the store already has are skipped.
+/// Adds the picks. Catalog feeds and keyword presets go in a folder named
+/// after their category; typed-in queries go at the top level, titled by
+/// the query. What the store already has is skipped.
 pub fn subscribe(
     store: &Store,
     catalog: &Catalog,
-    picks: &[usize],
+    picks: &Picks,
 ) -> gutenberg_store::Result<Subscribed> {
     let mut known: HashSet<String> = store
         .sources()?
@@ -143,21 +168,20 @@ pub fn subscribe(
         .filter(|s| s.kind == SourceKind::Feed)
         .filter_map(|s| s.url)
         .collect();
-    let mut picks = picks.to_vec();
-    picks.sort_unstable();
-    picks.dedup();
     let mut result = Subscribed { added: 0, known: 0 };
-    for feed in picks.iter().filter_map(|&i| catalog.feeds.get(i)) {
+    let folder = |category: &str| -> gutenberg_store::Result<Option<i64>> {
+        match catalog.categories.iter().find(|c| c.id == category) {
+            Some(category) => Ok(Some(store.folder_named(&category.name)?.id)),
+            None => Ok(None),
+        }
+    };
+    for feed in sorted(&picks.feeds).filter_map(|i| catalog.feeds.get(i)) {
         if !known.insert(feed.url.clone()) {
             result.known += 1;
             continue;
         }
-        let folder_id = match catalog.categories.iter().find(|c| c.id == feed.category) {
-            Some(category) => Some(store.folder_named(&category.name)?.id),
-            None => None,
-        };
         store.add_source(&NewSource {
-            folder_id,
+            folder_id: folder(&feed.category)?,
             kind: SourceKind::Feed,
             title: feed.title.clone(),
             url: Some(feed.url.clone()),
@@ -165,7 +189,41 @@ pub fn subscribe(
         })?;
         result.added += 1;
     }
+    let presets = sorted(&picks.keywords).filter_map(|i| catalog.keywords.get(i));
+    let alerts = presets
+        .map(|k| {
+            (
+                k.query.as_str(),
+                k.title.as_str(),
+                Some(k.category.as_str()),
+            )
+        })
+        .chain(picks.queries.iter().map(|q| (q.as_str(), q.as_str(), None)));
+    let mut queries = keyword::queries(store)?;
+    for (query, title, category) in alerts {
+        let Some(keyword) = Keyword::new(query) else {
+            continue;
+        };
+        if !queries.insert(keyword.query.clone()) {
+            result.known += 1;
+            continue;
+        }
+        let folder_id = match category {
+            Some(category) => folder(category)?,
+            None => None,
+        };
+        keyword::insert(store, &keyword, title, folder_id)?;
+        result.added += 1;
+    }
     Ok(result)
+}
+
+/// Each index once, in order.
+fn sorted(indices: &[usize]) -> impl Iterator<Item = usize> {
+    let mut indices = indices.to_vec();
+    indices.sort_unstable();
+    indices.dedup();
+    indices.into_iter()
 }
 
 #[cfg(test)]
@@ -180,8 +238,11 @@ mod tests {
         for feed in &catalog.feeds {
             assert!(ids.contains(feed.category.as_str()), "{}", feed.title);
         }
+        let mut queries = HashSet::new();
         for keyword in &catalog.keywords {
             assert!(ids.contains(keyword.category.as_str()), "{}", keyword.title);
+            let query = Keyword::new(&keyword.query).expect("a query").query;
+            assert!(queries.insert(query), "duplicate {}", keyword.query);
         }
         for category in &catalog.categories {
             let n = catalog.feeds_in(&category.id).count();
@@ -210,11 +271,12 @@ mod tests {
     }
 
     #[test]
-    fn subscribe_files_feeds_by_category_and_skips_known() {
+    fn subscribe_files_by_category_and_skips_known() {
         let catalog = builtin();
         let store = Store::open_in_memory().unwrap();
         let world: Vec<usize> = catalog.feeds_in("world").map(|(i, _)| i).take(3).collect();
         let science = catalog.feeds_in("science").next().unwrap().0;
+        let un = catalog.keywords_in("world").next().unwrap().0;
         store
             .add_source(&NewSource {
                 folder_id: None,
@@ -225,9 +287,17 @@ mod tests {
             })
             .unwrap();
 
-        let picks = [science, world[2], world[0], world[1], world[1]];
+        let picks = Picks {
+            feeds: vec![science, world[2], world[0], world[1], world[1]],
+            keywords: vec![un, un],
+            // The second is the preset's query, spaced differently.
+            queries: vec![
+                "\"Cory Booker\"".into(),
+                format!(" {} ", catalog.keywords[un].query),
+            ],
+        };
         let got = subscribe(&store, catalog, &picks).unwrap();
-        assert_eq!(got, Subscribed { added: 3, known: 1 });
+        assert_eq!(got, Subscribed { added: 5, known: 2 });
         let names: Vec<String> = store
             .folders()
             .unwrap()
@@ -235,10 +305,22 @@ mod tests {
             .map(|f| f.name)
             .collect();
         assert_eq!(names, ["World", "Science"]);
-        assert_eq!(store.sources().unwrap().len(), 4);
+        let sources = store.sources().unwrap();
+        let alerts: Vec<(&str, bool)> = sources
+            .iter()
+            .filter(|s| s.kind == SourceKind::Keyword)
+            .map(|s| (s.title.as_str(), s.folder_id.is_some()))
+            .collect();
+        assert_eq!(
+            alerts,
+            [
+                (catalog.keywords[un].title.as_str(), true),
+                ("\"Cory Booker\"", false)
+            ]
+        );
 
         let again = subscribe(&store, catalog, &picks).unwrap();
-        assert_eq!(again, Subscribed { added: 0, known: 4 });
+        assert_eq!(again, Subscribed { added: 0, known: 7 });
         assert_eq!(store.folders().unwrap().len(), 2);
     }
 }

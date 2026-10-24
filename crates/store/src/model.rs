@@ -91,11 +91,15 @@ pub struct Validators {
     pub last_modified: Option<String>,
 }
 
-/// A feed due for refresh, with what the last fetch left behind.
+/// A source due for refresh, with what the last fetch left behind.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DueFeed {
+pub struct DueSource {
     pub source_id: i64,
-    pub url: String,
+    pub kind: SourceKind,
+    /// A feed's URL; `None` for a keyword source, whose URL comes from
+    /// `config`.
+    pub url: Option<String>,
+    pub config: String,
     pub validators: Validators,
     /// Failed refreshes in a row; drives backoff.
     pub failures: i64,

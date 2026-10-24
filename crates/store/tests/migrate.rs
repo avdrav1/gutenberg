@@ -170,5 +170,5 @@ fn a_version_1_file_upgrades_and_keeps_its_rows() {
         (state.failures, state.checked_at, state.error),
         (0, None, None)
     );
-    assert_eq!(store.feeds_due(0).unwrap().len(), 1);
+    assert_eq!(store.sources_due(0).unwrap().len(), 1);
 }
