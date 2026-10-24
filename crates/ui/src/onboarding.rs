@@ -368,13 +368,15 @@ fn page_name(catalog: &Catalog, page: usize) -> &str {
     }
 }
 
+/// The pages: catalog categories, which scroll, then keyword alerts and MCP
+/// servers pinned below them, so they show however many categories there
+/// are.
 fn categories_view<'a>(
     state: &'a Onboarding,
     catalog: &'a Catalog,
     t: &Tokens,
 ) -> Element<'a, Message> {
-    let pages = Onboarding::keywords_page(catalog) + 2;
-    let rows = (0..pages).map(|i| {
+    let page = |i: usize| -> Element<'a, Message> {
         let n = state.checked_in(catalog, i);
         let count = text(if n > 0 { n.to_string() } else { String::new() })
             .size(12)
@@ -396,8 +398,18 @@ fn categories_view<'a>(
         mouse_area(row)
             .on_press(Message::Onboarding(Action::ShowCategory(i)))
             .into()
-    });
-    container(scrollable(Column::with_children(rows).padding([8, 0])))
+    };
+    let keywords = Onboarding::keywords_page(catalog);
+    let categories = Column::with_children((0..keywords).map(page)).padding([8, 0]);
+    let pinned = Column::new()
+        .push(page(keywords))
+        .push(page(keywords + 1))
+        .padding([8, 0]);
+    let column = Column::new()
+        .push(scrollable(categories).height(Length::Fill))
+        .push(line(t.border))
+        .push(pinned);
+    container(column)
         .width(Length::Fixed(220.0))
         .height(Length::Fill)
         .style(filled(t.background))

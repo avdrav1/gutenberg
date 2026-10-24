@@ -7,7 +7,7 @@ mod onboarding;
 mod palette;
 mod sidebar;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -122,6 +122,8 @@ struct App {
     /// What the store held at the last reload, newest first.
     rows: Vec<ArticleRow>,
     source_titles: HashMap<i64, String>,
+    /// Keyword alerts, whose rows name the publisher (the article's author).
+    keyword_sources: HashSet<i64>,
     folders: Vec<Folder>,
     sources: Vec<Source>,
     /// The favicon cache the refresh thread fills.
@@ -335,6 +337,7 @@ impl App {
             view_counts: ViewCounts::default(),
             rows: Vec::new(),
             source_titles: HashMap::new(),
+            keyword_sources: HashSet::new(),
             folders: Vec::new(),
             sources: Vec::new(),
             icons,
@@ -439,6 +442,11 @@ impl App {
             Ok((rows, sources, folders, unread, view_counts)) => {
                 self.rows = rows;
                 self.source_titles = sources.iter().map(|s| (s.id, s.title.clone())).collect();
+                self.keyword_sources = sources
+                    .iter()
+                    .filter(|s| s.kind == SourceKind::Keyword)
+                    .map(|s| s.id)
+                    .collect();
                 if let Some(icons) = &self.icons {
                     self.source_icons = Icon::for_sources(icons, &sources);
                 }
@@ -1299,7 +1307,14 @@ impl App {
                 ..Font::DEFAULT
             })
             .wrapping(text::Wrapping::None);
-        let meta = text(format!("{source} · {}", list::age(row.sort_at, now)))
+        let age = list::age(row.sort_at, now);
+        let meta = match &row.author {
+            Some(publisher) if self.keyword_sources.contains(&row.source_id) => {
+                format!("{source} · {publisher} · {age}")
+            }
+            _ => format!("{source} · {age}"),
+        };
+        let meta = text(meta)
             .size(12)
             .color(color(t.muted))
             .wrapping(text::Wrapping::None);
