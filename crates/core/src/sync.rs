@@ -11,10 +11,10 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use futures::stream::{FuturesUnordered, StreamExt};
-use gutenberg_sources::favicon;
-use gutenberg_sources::feed::{self, Feed, FeedError, Fetched};
+use gutenberg_sources::feed::{self, Entry, Feed, FeedError, Fetched};
 use gutenberg_sources::image::Format;
-use gutenberg_sources::keyword::{tidy_google_news, Keyword};
+use gutenberg_sources::keyword::{self, Keyword, Provider, Providers, Seen};
+use gutenberg_sources::{favicon, google_news};
 use gutenberg_store::{DueSource, NewArticle, SourceKind, Store, Validators};
 use tokio::sync::Semaphore;
 
@@ -30,6 +30,8 @@ pub struct Limits {
     pub per_host: usize,
     /// Least time between two request starts to one host.
     pub spacing: Duration,
+    /// Where keyword alerts search.
+    pub providers: Providers,
 }
 
 impl Default for Limits {
@@ -38,9 +40,15 @@ impl Default for Limits {
             total: 16,
             per_host: 2,
             spacing: Duration::from_millis(250),
+            providers: Providers::default(),
         }
     }
 }
+
+/// Google News links a keyword alert resolves to the publisher's URL per
+/// refresh, new results first, then older ones still pointing at Google.
+/// Each takes two requests.
+pub const RESOLVE_PER_REFRESH: usize = 20;
 
 /// What a refresh did, for `gutenberg --refresh` and logs.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -91,23 +99,59 @@ struct Job {
     /// What `--refresh` calls it: a feed's URL, a keyword alert's query.
     label: String,
     url: String,
-    keyword: bool,
+    keyword: Option<KeywordJob>,
     validators: Validators,
     failures: i64,
 }
 
-/// `(url, label)` for a due source. A keyword source's URL is its Google
-/// News search; settings that can't be read are its failure.
-fn resolve(due: &DueSource) -> Result<(String, String), String> {
+/// What a keyword alert's refresh needs from the store.
+struct KeywordJob {
+    keyword: Keyword,
+    /// Every article it has.
+    seen: Seen,
+    /// Its articles still on a Google News link, newest first, at most
+    /// [`RESOLVE_PER_REFRESH`].
+    unresolved: Vec<(i64, String)>,
+}
+
+/// `(url, label, keyword)` for a due source. A keyword source's URL is its
+/// Google News search; settings that can't be read are its failure.
+fn resolve(
+    store: &Store,
+    due: &DueSource,
+    providers: &Providers,
+) -> Result<(String, String, Option<KeywordJob>), String> {
     match (due.kind, &due.url) {
         (SourceKind::Keyword, _) => {
             let keyword = Keyword::from_config(&due.config).map_err(|e| e.to_string())?;
+            let mut seen = Seen::default();
+            let mut unresolved = Vec::new();
+            for key in store
+                .article_keys(due.source_id)
+                .map_err(|e| e.to_string())?
+            {
+                seen.insert(&key.guid, key.url.as_deref(), &key.title);
+                match key.url {
+                    Some(url)
+                        if unresolved.len() < RESOLVE_PER_REFRESH
+                            && google_news::is_article_link(&url, &providers.google_news) =>
+                    {
+                        unresolved.push((key.id, url));
+                    }
+                    _ => {}
+                }
+            }
             Ok((
-                keyword.google_news_url(),
+                keyword.search_url(Provider::GoogleNews, providers),
                 format!("keyword alert {}", keyword.query),
+                Some(KeywordJob {
+                    keyword,
+                    seen,
+                    unresolved,
+                }),
             ))
         }
-        (_, Some(url)) => Ok((url.clone(), url.clone())),
+        (_, Some(url)) => Ok((url.clone(), url.clone(), None)),
         (_, None) => Err("no URL".to_owned()),
     }
 }
@@ -126,7 +170,28 @@ pub async fn refresh(
     limits: &Limits,
     icons: Option<&Icons>,
 ) -> Result<Summary, gutenberg_store::Error> {
-    let due = store.sources_due(now)?;
+    refresh_some(store, now, limits, icons, |_| true).await
+}
+
+/// Refreshes one source now, if it's due, as when it's just been added.
+pub async fn refresh_source(
+    store: &mut Store,
+    source_id: i64,
+    now: i64,
+    limits: &Limits,
+) -> Result<Summary, gutenberg_store::Error> {
+    refresh_some(store, now, limits, None, |due| due.source_id == source_id).await
+}
+
+async fn refresh_some(
+    store: &mut Store,
+    now: i64,
+    limits: &Limits,
+    icons: Option<&Icons>,
+    pick: impl Fn(&DueSource) -> bool,
+) -> Result<Summary, gutenberg_store::Error> {
+    let mut due = store.sources_due(now)?;
+    due.retain(|d| pick(d));
     let settled = icons.map(Icons::settled).unwrap_or_default();
     let mut summary = Summary {
         sources: due.len(),
@@ -134,12 +199,12 @@ pub async fn refresh(
     };
     let mut jobs = Vec::with_capacity(due.len());
     for due in due {
-        match resolve(&due) {
-            Ok((url, label)) => jobs.push(Job {
+        match resolve(store, &due, &limits.providers) {
+            Ok((url, label, keyword)) => jobs.push(Job {
                 source_id: due.source_id,
                 label,
                 url,
-                keyword: due.kind == SourceKind::Keyword,
+                keyword,
                 validators: due.validators,
                 failures: due.failures,
             }),
@@ -166,11 +231,22 @@ pub async fn refresh(
     // hold a slot that another host could use. `Hosts` caps what's sent.
     let mut results: FuturesUnordered<_> = jobs
         .into_iter()
-        .map(|due| {
+        .map(|mut due| {
             let (client, hosts) = (&client, &hosts);
-            let icons = icons.filter(|_| !due.keyword && !settled.contains(&Icons::key(&due.url)));
+            let icons =
+                icons.filter(|_| due.keyword.is_none() && !settled.contains(&Icons::key(&due.url)));
             async move {
-                let outcome = fetch_one(client, hosts, &due, now, icons.is_some()).await;
+                let outcome = match due.keyword.take() {
+                    Some(job) => {
+                        let fetch = Fetch {
+                            client,
+                            hosts,
+                            providers: &limits.providers,
+                        };
+                        fetch_keyword(&fetch, job, due.source_id, now).await
+                    }
+                    None => fetch_one(client, hosts, &due, now, icons.is_some()).await,
+                };
                 if let (Some(icons), Outcome::Fetched { site_url, .. }) = (icons, &outcome) {
                     let page = site_url.clone().or_else(|| site_root(&due.url));
                     if let Some(page) = page {
@@ -191,9 +267,13 @@ pub async fn refresh(
             Outcome::Fetched {
                 articles,
                 validators,
+                moved,
                 ..
             } => {
                 let new = store.record_fetched(due.source_id, &articles, &validators, now)?;
+                for (article_id, url) in moved {
+                    store.set_article_url(article_id, &url)?;
+                }
                 if new > 0 {
                     summary.updated += 1;
                     summary.new_articles += new;
@@ -213,7 +293,11 @@ pub async fn refresh(
 
 /// A feed's entries as rows for the store.
 pub fn articles(feed: &Feed, source_id: i64, fetched_at: i64) -> Vec<NewArticle> {
-    feed.entries
+    rows(&feed.entries, source_id, fetched_at)
+}
+
+fn rows(entries: &[Entry], source_id: i64, fetched_at: i64) -> Vec<NewArticle> {
+    entries
         .iter()
         .map(|e| NewArticle {
             source_id,
@@ -235,6 +319,8 @@ enum Outcome {
         validators: Validators,
         /// The page the feed says it belongs to.
         site_url: Option<String>,
+        /// Articles already stored whose link now goes to the publisher.
+        moved: Vec<(i64, String)>,
     },
     Failed {
         error: String,
@@ -266,18 +352,14 @@ async fn fetch_one(
             etag,
             last_modified,
         }) => match feed::parse(&bytes, &due.url) {
-            Ok(mut parsed) => Outcome::Fetched {
-                articles: {
-                    if due.keyword {
-                        tidy_google_news(&mut parsed);
-                    }
-                    articles(&parsed, due.source_id, now)
-                },
+            Ok(parsed) => Outcome::Fetched {
+                articles: articles(&parsed, due.source_id, now),
                 validators: Validators {
                     etag,
                     last_modified,
                 },
                 site_url: parsed.site_url,
+                moved: Vec::new(),
             },
             Err(err) => Outcome::Failed {
                 error: err.to_string(),
@@ -285,18 +367,125 @@ async fn fetch_one(
             },
         },
         Err(err) => Outcome::Failed {
-            retry_after: match &err {
-                FeedError::Status { retry_after, .. } => *retry_after,
-                _ => None,
-            },
+            retry_after: retry_after(&err),
             error: err.to_string(),
         },
     }
 }
 
-/// One GET within the overall and per-host limits. The permits are held
-/// only while it's in flight, so a feed's icon requests never wait on a
-/// permit its own feed request still holds.
+/// What a keyword alert's refresh sends requests with.
+struct Fetch<'a> {
+    client: &'a feed::Client,
+    hosts: &'a Hosts,
+    providers: &'a Providers,
+}
+
+/// Asks every provider, merges what they found with what the alert has,
+/// and resolves Google News links. One provider failing isn't the alert
+/// failing; all of them is.
+async fn fetch_keyword(fetch: &Fetch<'_>, job: KeywordJob, source_id: i64, now: i64) -> Outcome {
+    let KeywordJob {
+        keyword,
+        mut seen,
+        unresolved,
+    } = job;
+    let keyword = &keyword;
+    let searches = Provider::ALL.map(|provider| async move {
+        let url = keyword.search_url(provider, fetch.providers);
+        match get(fetch.client, fetch.hosts, &url, None, None).await {
+            Ok(Fetched::Body { bytes, .. }) => {
+                let mut parsed = feed::parse(&bytes, &url).map_err(|e| (e.to_string(), None))?;
+                keyword::tidy(provider, &mut parsed, &bytes);
+                Ok(parsed.entries)
+            }
+            Ok(Fetched::NotModified) => Ok(Vec::new()),
+            Err(err) => Err((err.to_string(), retry_after(&err))),
+        }
+    });
+    let mut found = Vec::new();
+    let mut failure = None;
+    for result in futures::future::join_all(searches).await {
+        match result {
+            Ok(entries) => found.push(entries),
+            Err(err) => failure = failure.or(Some(err)),
+        }
+    }
+    if found.is_empty() {
+        let (error, retry_after) = failure.unwrap_or_else(|| ("no provider".to_owned(), None));
+        return Outcome::Failed { error, retry_after };
+    }
+
+    let mut entries = keyword::merge(found, &mut seen);
+    let google = |url: &str| google_news::is_article_link(url, &fetch.providers.google_news);
+    let new: Vec<usize> = (0..entries.len())
+        .filter(|&i| entries[i].url.as_deref().is_some_and(google))
+        .take(RESOLVE_PER_REFRESH)
+        .collect();
+    let old = unresolved.into_iter().take(RESOLVE_PER_REFRESH - new.len());
+    let links: Vec<String> = new
+        .iter()
+        .filter_map(|&i| entries[i].url.clone())
+        .chain(old.clone().map(|(_, url)| url))
+        .collect();
+    let resolved =
+        futures::future::join_all(links.iter().map(|link| resolve_google(fetch, link))).await;
+    let (resolved_new, resolved_old) = resolved.split_at(new.len());
+
+    // A new result that turns out to be a story the alert has is dropped.
+    let mut drop = Vec::new();
+    for (&i, url) in new.iter().zip(resolved_new) {
+        let Some(url) = url else { continue };
+        if seen.has_url(url) {
+            drop.push(i);
+        } else {
+            seen.insert(&entries[i].guid, Some(url), "");
+            entries[i].url = Some(url.clone());
+        }
+    }
+    for i in drop.into_iter().rev() {
+        entries.remove(i);
+    }
+    let moved = old
+        .zip(resolved_old)
+        .filter_map(|((id, _), url)| Some((id, url.clone()?)))
+        .collect();
+    Outcome::Fetched {
+        articles: rows(&entries, source_id, now),
+        validators: Validators::default(),
+        site_url: None,
+        moved,
+    }
+}
+
+/// The publisher's URL for a Google News link, within the host limits;
+/// `None` when Google doesn't say.
+async fn resolve_google(fetch: &Fetch<'_>, link: &str) -> Option<String> {
+    let page = limited(
+        fetch.hosts,
+        link,
+        google_news::fetch_page(fetch.client, link),
+    )
+    .await
+    .ok()?;
+    let sig = google_news::signature(&page)?;
+    let base = &fetch.providers.google_news;
+    limited(
+        fetch.hosts,
+        base,
+        google_news::resolve_signed(fetch.client, base, &sig),
+    )
+    .await
+    .ok()
+}
+
+fn retry_after(err: &FeedError) -> Option<u64> {
+    match err {
+        FeedError::Status { retry_after, .. } => *retry_after,
+        _ => None,
+    }
+}
+
+/// One GET within the overall and per-host limits.
 async fn get(
     client: &feed::Client,
     hosts: &Hosts,
@@ -304,11 +493,23 @@ async fn get(
     etag: Option<&str>,
     last_modified: Option<&str>,
 ) -> Result<Fetched, FeedError> {
+    limited(
+        hosts,
+        url,
+        feed::fetch_conditional(client, url, etag, last_modified),
+    )
+    .await
+}
+
+/// Runs `request` to `url`'s host within the overall and per-host limits.
+/// The permits are held only while it's in flight, so a feed's icon
+/// requests never wait on a permit its own feed request still holds.
+async fn limited<T>(hosts: &Hosts, url: &str, request: impl std::future::Future<Output = T>) -> T {
     let host = hosts.get(url);
     let _host = host.in_flight.acquire().await;
     host.wait_turn(hosts.spacing).await;
     let _sending = hosts.sending.acquire().await;
-    feed::fetch_conditional(client, url, etag, last_modified).await
+    request.await
 }
 
 /// Icon URLs tried per site, best first, before giving up on it.

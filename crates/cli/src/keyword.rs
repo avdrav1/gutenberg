@@ -1,11 +1,10 @@
-//! `gutenberg --keyword <query>`: add a keyword alert and save what Google
-//! News has for it now.
+//! `gutenberg --keyword <query>`: add a keyword alert and save what the
+//! news searches have for it now.
 
 use std::process::ExitCode;
 
 use gutenberg_core::{keyword, sync};
-use gutenberg_sources::feed;
-use gutenberg_sources::keyword::{tidy_google_news, Keyword};
+use gutenberg_sources::keyword::Keyword;
 use gutenberg_store::Store;
 
 pub fn run(query: &str, folder: Option<&str>) -> ExitCode {
@@ -35,22 +34,28 @@ fn add(query: &str, folder: Option<&str>) -> Result<String, String> {
         .enable_all()
         .build()
         .map_err(|e| e.to_string())?;
-    let url = keyword.google_news_url();
-    let bytes = runtime
-        .block_on(feed::fetch(&url))
-        .map_err(|e| e.to_string())?;
-    let mut found = feed::parse(&bytes, &url).map_err(|e| e.to_string())?;
-    tidy_google_news(&mut found);
-
-    let save = |store: &mut Store| -> gutenberg_store::Result<usize> {
-        let folder_id = match folder {
-            Some(name) => Some(store.folder_named(name)?.id),
-            None => None,
-        };
-        let source = keyword::insert(store, &keyword, &keyword.query, folder_id)?;
-        store.insert_articles(&sync::articles(&found, source.id, sync::unix_now()))
+    let folder_id = match folder {
+        Some(name) => Some(store.folder_named(name).map_err(|e| e.to_string())?.id),
+        None => None,
     };
-    let added = save(&mut store).map_err(|e| e.to_string())?;
+    let source =
+        keyword::insert(&store, &keyword, &keyword.query, folder_id).map_err(|e| e.to_string())?;
+    let summary = runtime
+        .block_on(sync::refresh_source(
+            &mut store,
+            source.id,
+            sync::unix_now(),
+            &sync::Limits::default(),
+        ))
+        .map_err(|e| e.to_string())?;
+    // A failed search leaves the alert to try again on the next refresh.
+    if let Some((_, error)) = summary.failed.first() {
+        return Ok(format!(
+            "Added keyword alert {}; no results yet ({error})",
+            keyword.query
+        ));
+    }
+    let added = summary.new_articles;
     let noun = if added == 1 { "article" } else { "articles" };
     let place = folder.map_or(String::new(), |name| format!(" to {name}"));
     Ok(format!(

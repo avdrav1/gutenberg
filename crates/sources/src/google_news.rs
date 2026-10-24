@@ -101,14 +101,6 @@ pub fn publisher_url(reply: &str) -> Option<String> {
     })
 }
 
-/// Fetches the article page at `link` and asks `base`'s `batchexecute` for
-/// the publisher's URL.
-pub async fn resolve(client: &feed::Client, base: &str, link: &str) -> Result<String, FeedError> {
-    let page = fetch_page(client, link).await?;
-    let sig = signature(&page).ok_or_else(|| FeedError::NotAFeed("no signed request".into()))?;
-    resolve_signed(client, base, &sig).await
-}
-
 /// The article page at `link`.
 pub async fn fetch_page(client: &feed::Client, link: &str) -> Result<String, FeedError> {
     let bytes = feed::download(client, link, MAX_PAGE).await?;
