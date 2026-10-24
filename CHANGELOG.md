@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Without Omarchy, on Ubuntu or any other desktop, Gutenberg follows your light or dark setting. It uses Catppuccin Latte when you prefer light, Tokyo Night otherwise, and switches when you change the setting.
+- Scrollbars and checkboxes now take the theme's colors too, instead of a fixed light gray.
+
 ## 0.11.0 — 2026-10-24
 
 - An open window now follows `omarchy theme set` and `omarchy font set`. The colors change within a fraction of a second and the font right after, with no restart. Reinstall with the curl one-liner to add the two small Omarchy hooks that make this immediate. Without them, Gutenberg notices the change on its own.

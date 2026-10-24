@@ -60,7 +60,7 @@ Non-goals for 1.0: AI summaries and ranking (Cronkite covers that; a later MCP b
 - Match the terminal: no title bar decoration under Hyprland, borders and radii from the theme, the same spacing scale as `omarchy-shell`.
 - Respect light and dark modes from the theme's `mode` key.
 - Desktop file, icon, and a Walker entry. Unread count exposed for Waybar via a small CLI (`gutenberg --unread`).
-- Outside Omarchy: fall back to a built-in theme and the system monospace font.
+- Outside Omarchy: fall back to a built-in theme, light or dark as the desktop prefers (the XDG portal's color scheme), and the system monospace font.
 
 ### Performance and reliability
 
