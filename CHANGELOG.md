@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.12.0 — 2026-10-24
+
 - Without Omarchy, on Ubuntu or any other desktop, Gutenberg follows your light or dark setting. It uses Catppuccin Latte when you prefer light, Tokyo Night otherwise, and switches when you change the setting.
 - Scrollbars and checkboxes now take the theme's colors too, instead of a fixed light gray.
 
