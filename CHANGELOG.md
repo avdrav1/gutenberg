@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.0 — 2026-10-24
+
 - An open window now follows `omarchy theme set` and `omarchy font set`. The colors change within a fraction of a second and the font right after, with no restart. Reinstall with the curl one-liner to add the two small Omarchy hooks that make this immediate. Without them, Gutenberg notices the change on its own.
 - `gutenberg --reload-theme` makes an open window read the theme and font again, for scripts.
 
