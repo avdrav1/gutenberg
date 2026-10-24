@@ -14,6 +14,21 @@ pub struct Config {
     pub layout: Layout,
     pub refresh: Refresh,
     pub font: Font,
+    pub keys: Keys,
+}
+
+/// Help with the keys.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Keys {
+    /// The bar along the bottom with the keys for what's on screen.
+    pub hints: bool,
+}
+
+impl Default for Keys {
+    fn default() -> Self {
+        Self { hints: true }
+    }
 }
 
 /// Text. The face is the desktop's (fontconfig's `monospace`); only the
@@ -236,6 +251,12 @@ mod tests {
     fn refresh_interval_defaults_to_30_minutes() {
         assert_eq!(parse("").unwrap().refresh.minutes, 30);
         assert_eq!(parse("[refresh]\nminutes = 0").unwrap().refresh.minutes, 0);
+    }
+
+    #[test]
+    fn key_hints_show_unless_turned_off() {
+        assert!(parse("").unwrap().keys.hints);
+        assert!(!parse("[keys]\nhints = false").unwrap().keys.hints);
     }
 
     #[test]

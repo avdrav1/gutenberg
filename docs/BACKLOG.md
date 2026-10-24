@@ -36,6 +36,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | S3.4 | Star, mark unread, mark folder read, open in browser, copy link (each a `list::Action`, a key in `action_for`, a row in `commands::ALL`; the test there holds them together) | Each has a key and a palette entry | done |
 | S3.6 | Full-text search with FTS5 | `/` finds "Harrisburg" across 100k articles in under 50 ms | done |
 | S3.7 | Views: all, unread, starred, today (a starred view lists what `s` stars since S3.4; `Filter` grows a view alongside its folder/feed part, and `mark_read_in` follows it) | Each a key and a palette entry; counts in the source pane | done |
+| S3.8 | Key hints: a bar along the bottom with the keys for what's on screen, drawn from `commands::ALL`, and a hint in the empty article pane; `hints = false` under `[keys]` in `config.toml` hides the bar | A new user sees how to move, open, search and get help without pressing a key; the bar changes in search and reader view (the palette, help and Add sources keep their own hint lines) | review |
 
 ### E4 Theme sync
 

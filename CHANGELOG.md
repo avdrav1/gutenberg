@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A bar along the bottom of the window shows the keys for what you're doing: moving and opening in the list, `v` and `s` with an article open, Enter and Esc while you search. Before you open anything, the article pane says how. To hide the bar, set `hints = false` under `[keys]` in `~/.config/gutenberg/config.toml`.
+
 ## 0.13.0 — 2026-10-24
 
 - https://gutenbergapp.com now shows what Gutenberg looks like: a short clip at the top, a screenshot of each feature, the app in eight Omarchy themes, and a fifty-second tour set to music.
