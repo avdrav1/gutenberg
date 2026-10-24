@@ -2,6 +2,7 @@
 
 mod article;
 mod commands;
+mod hints;
 mod list;
 mod onboarding;
 mod palette;
@@ -43,6 +44,8 @@ const STORE_POLL: Duration = Duration::from_secs(1);
 const SEARCH_LIMIT: u32 = 500;
 /// Height of the search line above the list.
 const SEARCH_BAR: f32 = 36.0;
+/// The key bar along the bottom of the window.
+const HINT_BAR: f32 = 28.0;
 /// Site icons in the sources pane, square.
 const ICON_SIZE: f32 = 16.0;
 
@@ -730,12 +733,29 @@ impl App {
         }
     }
 
-    /// The list's own height: the pane's, less the search line when shown.
+    /// The list's own height: the window's, less the key bar and the search
+    /// line when they're shown.
     fn list_height(&self) -> f32 {
+        let mut height = self.height;
+        if self.config.keys.hints {
+            height -= HINT_BAR;
+        }
         if self.search.is_some() {
-            (self.height - SEARCH_BAR).max(0.0)
-        } else {
-            self.height
+            height -= SEARCH_BAR;
+        }
+        height.max(0.0)
+    }
+
+    /// What's on screen, for the key bar.
+    fn screen(&self) -> hints::Screen {
+        use hints::Screen;
+        match (&self.search, &self.opened) {
+            (Some(search), _) if search.editing => Screen::Searching,
+            (Some(_), _) => Screen::Results,
+            _ if self.sources.is_empty() => Screen::Empty,
+            (None, None) => Screen::List,
+            (None, Some(opened)) if matches!(opened.reader, Reader::Ready(_)) => Screen::Reader,
+            (None, Some(_)) => Screen::Summary,
         }
     }
 
@@ -1073,10 +1093,55 @@ impl App {
                 .map(|(width, content, background)| pane(content, background, t.border, width)),
         )
         .height(Length::Fill);
+        let window: Element<'_, Message> = if self.config.keys.hints {
+            column![panes, self.hint_bar()].into()
+        } else {
+            panes.into()
+        };
         match &self.overlay {
-            None => panes.into(),
-            Some(overlay) => stack![panes, self.overlay_view(overlay)].into(),
+            None => window,
+            Some(overlay) => stack![window, self.overlay_view(overlay)].into(),
         }
+    }
+
+    /// The keys for what's on screen, each key then what it does.
+    fn hint_bar(&self) -> Element<'_, Message> {
+        let t = &self.tokens;
+        let hints = hints::for_screen(self.screen()).into_iter().map(|hint| {
+            row![
+                text(hint.keys)
+                    .size(12)
+                    .color(color(t.foreground))
+                    .font(Font {
+                        weight: font::Weight::Bold,
+                        ..Font::MONOSPACE
+                    }),
+                text(hint.label).size(12).color(color(t.muted)),
+            ]
+            .spacing(6)
+            .into()
+        });
+        let (background, border_color) = (t.background, t.border);
+        container(
+            Row::with_children(hints)
+                .spacing(20)
+                .align_y(Alignment::Center),
+        )
+        .padding([0, 12])
+        .height(Length::Fixed(HINT_BAR))
+        .width(Length::Fill)
+        .align_y(Alignment::Center)
+        .clip(true)
+        .style(move |_| container::Style {
+            background: Some(color(background).into()),
+            border: Border {
+                color: color(border_color),
+                width: 1.0,
+                radius: border::radius(0),
+            },
+            ..Default::default()
+        })
+        .into()
     }
 
     /// The palette or help, centered over a dimmed window; a click outside
@@ -1409,7 +1474,23 @@ impl App {
     fn article_view(&self) -> Element<'_, Message> {
         let t = &self.tokens;
         let Some(opened) = &self.opened else {
-            return Space::new().into();
+            // Nothing open yet: say how to open something.
+            if self.rows.is_empty() {
+                return Space::new().into();
+            }
+            return iced::widget::center(
+                column![
+                    text("o or Enter opens the selected article")
+                        .size(14)
+                        .color(color(t.muted)),
+                    text("j and k move · ? lists every key")
+                        .size(13)
+                        .color(color(t.muted)),
+                ]
+                .spacing(6)
+                .align_x(Alignment::Center),
+            )
+            .into();
         };
         let note = match &opened.reader {
             Reader::Off => None,
@@ -2387,7 +2468,7 @@ mod tests {
             .collect();
         store.insert_articles(&rows).unwrap();
         let mut app = App::with_store(Config::default(), None, Ok(store), None);
-        app.height = 520.0; // 10 whole rows
+        app.height = 520.0 + HINT_BAR; // 10 whole rows above the key bar
         app
     }
 
@@ -2576,6 +2657,42 @@ mod tests {
     }
 
     #[test]
+    fn the_key_bar_follows_what_is_on_screen() {
+        use hints::Screen;
+        let mut app = app_with(12);
+        assert_eq!(app.screen(), Screen::List);
+        let _ = app.update(Message::Key(Action::Open));
+        assert_eq!(app.screen(), Screen::Summary);
+        let _ = app.update(Message::Key(Action::Search));
+        assert_eq!(app.screen(), Screen::Searching);
+        let _ = app.update(Message::Search(palette::Input::Run));
+        assert_eq!(app.screen(), Screen::Results);
+        let _ = app.update(Message::Key(Action::ClearSearch));
+        assert_eq!(app.screen(), Screen::Summary);
+
+        let empty = App::with_store(
+            Config::default(),
+            None,
+            Ok(Store::open_in_memory().unwrap()),
+            None,
+        );
+        assert_eq!(empty.screen(), Screen::Empty);
+    }
+
+    #[test]
+    fn hiding_the_key_bar_gives_its_row_to_the_list() {
+        let mut app = app_with(100);
+        assert_eq!(app.list_height(), 520.0);
+        let mut config = Config::default();
+        config.keys.hints = false;
+        let _ = app.update(Message::ConfigChanged(config));
+        assert_eq!(app.list_height(), 520.0 + HINT_BAR);
+        let _ = app.update(Message::Key(Action::Last));
+        // 10 whole rows, and the partly shown 11th: the last row is 99.
+        assert_eq!(app.top, 90);
+    }
+
+    #[test]
     fn j_past_the_screen_scrolls_and_gg_g_jump() {
         let mut app = app_with(100);
         for _ in 0..12 {
@@ -2635,8 +2752,9 @@ mod tests {
         let mut config = Config::default();
         config.font.size = 28;
         let _ = app.update(Message::ConfigChanged(config.clone()));
-        // Twice the size, half the rows: 5 fit, so row 9 is the fifth.
-        assert_eq!(app.top, 5);
+        // Twice the size: 274 logical px less the 28 px key bar leaves 4
+        // whole rows, so row 9 is the fourth.
+        assert_eq!(app.top, 6);
         config.font.size = 14;
         let _ = app.update(Message::ConfigChanged(config));
         // Back to 10 rows; `G` lands where it did before.
@@ -2716,7 +2834,7 @@ mod tests {
             ])
             .unwrap();
         let mut app = App::with_store(Config::default(), None, Ok(store), None);
-        app.height = 520.0;
+        app.height = 520.0 + HINT_BAR;
         (app, tech, a, b)
     }
 
