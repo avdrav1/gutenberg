@@ -1,0 +1,4 @@
+# SOURCE https://www.bing.com/news/search?q=%22Cory+Booker%22&format=rss&mkt=en-US fetched 2026-10-24
+url = "https://www.bing.com/news/search?q=%22Cory+Booker%22&format=rss&mkt=en-US"
+fetched = 2026-10-24
+covers = "Bing News RSS search (keyword alerts, S5.2): no guid, links are bing.com/news/apiclick.aspx with the publisher's URL in `url` and a per-request `tid`, the publisher in <News:Source> (namespace URI is the search URL), MSN syndication for some publishers; 4 of its 10 headlines are also in google-news-cory-booker.xml, fetched the same day"

@@ -206,7 +206,7 @@ pub async fn fetch_conditional(
     })
 }
 
-fn http_error(err: reqwest::Error) -> FeedError {
+pub(crate) fn http_error(err: reqwest::Error) -> FeedError {
     if err.is_timeout() {
         return FeedError::Timeout;
     }
