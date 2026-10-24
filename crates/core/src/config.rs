@@ -13,6 +13,31 @@ use serde::Deserialize;
 pub struct Config {
     pub layout: Layout,
     pub refresh: Refresh,
+    pub font: Font,
+}
+
+/// Text. The face is the desktop's (fontconfig's `monospace`); only the
+/// size is set here.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Font {
+    /// Pixels for list and sidebar text; the rest of the window scales with
+    /// it. Between [`Font::MIN_SIZE`] and [`Font::MAX_SIZE`].
+    pub size: u16,
+}
+
+impl Font {
+    pub const DEFAULT_SIZE: u16 = 14;
+    pub const MIN_SIZE: u16 = 8;
+    pub const MAX_SIZE: u16 = 32;
+}
+
+impl Default for Font {
+    fn default() -> Self {
+        Self {
+            size: Self::DEFAULT_SIZE,
+        }
+    }
 }
 
 /// Relative pane widths. 0 hides a pane.
@@ -62,6 +87,13 @@ pub enum Error {
     },
     #[error("{}: [layout] needs at least one pane wider than 0", path.display())]
     NoPanes { path: PathBuf },
+    #[error(
+        "{}: [font] size must be from {} to {}",
+        path.display(),
+        Font::MIN_SIZE,
+        Font::MAX_SIZE
+    )]
+    FontSize { path: PathBuf },
     #[error("watch {}: {source}", path.display())]
     Watch {
         path: PathBuf,
@@ -106,6 +138,11 @@ impl Config {
         let l = config.layout;
         if l.sources == 0 && l.list == 0 && l.article == 0 {
             return Err(Error::NoPanes {
+                path: path.to_owned(),
+            });
+        }
+        if !(Font::MIN_SIZE..=Font::MAX_SIZE).contains(&config.font.size) {
+            return Err(Error::FontSize {
                 path: path.to_owned(),
             });
         }
@@ -214,6 +251,18 @@ mod tests {
     fn hiding_every_pane_is_rejected() {
         let err = parse("[layout]\nsources = 0\nlist = 0\narticle = 0").unwrap_err();
         assert!(matches!(err, Error::NoPanes { .. }));
+    }
+
+    #[test]
+    fn font_size_is_14_and_bounded() {
+        assert_eq!(parse("").unwrap().font.size, 14);
+        assert_eq!(parse("[font]\nsize = 18").unwrap().font.size, 18);
+        assert_eq!(parse("[font]\nsize = 8").unwrap().font.size, 8);
+        assert_eq!(parse("[font]\nsize = 32").unwrap().font.size, 32);
+        for size in [0, 7, 33] {
+            let err = parse(&format!("[font]\nsize = {size}")).unwrap_err();
+            assert!(matches!(err, Error::FontSize { .. }), "{size}");
+        }
     }
 
     #[test]
