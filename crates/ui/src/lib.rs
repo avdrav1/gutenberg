@@ -1489,8 +1489,9 @@ pub mod bench {
     }
 }
 
-/// For `examples/theme_shots.rs`: the real window, drawn headlessly in a
-/// theme's colors, over a small store of sample articles.
+/// For `examples/theme_shots.rs` and `examples/site_media.rs`: the real
+/// window, drawn headlessly in a theme's colors, over sample articles. The
+/// site's sources, headlines and stories are made up.
 #[cfg(feature = "shots")]
 #[doc(hidden)]
 pub mod shots {
@@ -1510,22 +1511,10 @@ pub mod shots {
     pub fn render(tokens: Tokens, size: (f32, f32), path: &std::path::Path) {
         let mut store = Store::open_in_memory().expect("in-memory store");
         let news = store.folder_named("News").expect("folder").id;
-        let feed = |store: &Store, title: &str, folder| {
-            store
-                .add_source(&NewSource {
-                    folder_id: folder,
-                    kind: SourceKind::Feed,
-                    title: title.into(),
-                    url: Some(format!("https://{}.example/feed", title.to_lowercase())),
-                    config: "{}".into(),
-                })
-                .expect("feed")
-                .id
-        };
         let feeds = [
-            feed(&store, "PennLive", Some(news)),
-            feed(&store, "ProPublica", Some(news)),
-            feed(&store, "LWN", None),
+            add_feed(&store, "PennLive", Some(news)),
+            add_feed(&store, "ProPublica", Some(news)),
+            add_feed(&store, "LWN", None),
         ];
         const TITLES: [&str; 9] = [
             "State budget passes three months late",
@@ -1567,7 +1556,28 @@ pub mod shots {
         app.open(0);
         app.choose(Entry::Folder(news));
         app.open(0);
+        snapshot(&app, size, path);
+    }
 
+    fn add_feed(store: &Store, title: &str, folder: Option<i64>) -> i64 {
+        let slug: String = title
+            .to_lowercase()
+            .chars()
+            .filter(char::is_ascii_alphanumeric)
+            .collect();
+        store
+            .add_source(&NewSource {
+                folder_id: folder,
+                kind: SourceKind::Feed,
+                title: title.into(),
+                url: Some(format!("https://{slug}.example/feed")),
+                config: "{}".into(),
+            })
+            .expect("feed")
+            .id
+    }
+
+    fn snapshot(app: &App, size: (f32, f32), path: &std::path::Path) {
         // iced_test draws `Font::DEFAULT` in Fira Sans; with the desktop
         // font in place, the monospace family is the same font the app's
         // default (sans-serif) family is.
@@ -1589,6 +1599,523 @@ pub mod shots {
             .expect("snapshot")
             .matches_image(path)
             .expect("write the screenshot");
+    }
+
+    /// `(source, folder, headline, hours ago, publisher)`. A publisher
+    /// marks a keyword alert's result.
+    const HEADLINES: &[(&str, &str, &str, f32, Option<&str>)] = &[
+        (
+            "Field Notes",
+            "Science",
+            "A quiet comet, a loud discovery: water ice where none should be",
+            0.2,
+            None,
+        ),
+        (
+            "Harbor Ledger",
+            "World",
+            "Port cities trade notes on keeping the lights on during heat waves",
+            0.6,
+            None,
+        ),
+        (
+            "Kernel Weekly",
+            "Linux",
+            "Scheduler rework lands with a promise: no more stutter under load",
+            1.1,
+            None,
+        ),
+        (
+            r#""heat pumps""#,
+            "Alerts",
+            "Cold-climate heat pumps pass their first real winter test",
+            1.4,
+            Some("Northline Energy Desk"),
+        ),
+        (
+            "Byte Review",
+            "Technology",
+            "The case for software that does one thing and stays out of the way",
+            2.0,
+            None,
+        ),
+        (
+            "Harbor Ledger",
+            "World",
+            "Ferry strike ends after a night of talks and cold coffee",
+            2.6,
+            None,
+        ),
+        (
+            "Tiling Weekly",
+            "Linux",
+            "Ten minutes with a tiling window manager changed how I read",
+            3.2,
+            None,
+        ),
+        (
+            "Field Notes",
+            "Science",
+            "Why the oldest trees in the valley are suddenly growing faster",
+            3.9,
+            None,
+        ),
+        (
+            r#""heat pumps""#,
+            "Alerts",
+            "City council approves rebates for apartment retrofits",
+            4.5,
+            Some("Metro Bulletin"),
+        ),
+        (
+            "Kernel Weekly",
+            "Linux",
+            "Filesystem maintainers agree on a slower, safer release rhythm",
+            5.3,
+            None,
+        ),
+        (
+            "Byte Review",
+            "Technology",
+            "Keyboard-first apps are having a moment. Here is why it sticks",
+            6.0,
+            None,
+        ),
+        (
+            "Harbor Ledger",
+            "World",
+            "A lighthouse keeper's log, digitized after 140 years",
+            7.4,
+            None,
+        ),
+        (
+            "Tiling Weekly",
+            "Linux",
+            "Dotfiles as a diary: what five years of config commits reveal",
+            8.8,
+            None,
+        ),
+        (
+            "Field Notes",
+            "Science",
+            "Bees remember faces. Researchers now know how",
+            10.5,
+            None,
+        ),
+        (
+            "Byte Review",
+            "Technology",
+            "Local-first software, explained with a grocery list",
+            12.0,
+            None,
+        ),
+        (
+            "Kernel Weekly",
+            "Linux",
+            "Release candidate 3 is boring, and that is the point",
+            14.2,
+            None,
+        ),
+        (
+            "Harbor Ledger",
+            "World",
+            "Night markets return to the old quarter",
+            18.0,
+            None,
+        ),
+        (
+            "Field Notes",
+            "Science",
+            "The sound of a glacier calving, recorded from a kayak",
+            22.0,
+            None,
+        ),
+    ];
+
+    /// The story the reader-view scenes open: what `v` fetches.
+    pub const FEATURE: usize = 0;
+
+    const FIGURE: &str = "https://fieldnotes.example/img/comet.svg";
+
+    /// The feed's own summary of the feature: short, as feeds are.
+    const FEATURE_SUMMARY: &str = r#"<p>A small comet on a long orbit is carrying <strong>water ice
+        near its surface</strong>, closer to the sun than models allow.</p>
+        <p>Press <code>v</code> for the whole story.</p>"#;
+
+    /// The feature's page as the reader view keeps it.
+    const FEATURE_PAGE: &str = r#"<article>
+        <h1>A quiet comet, a loud discovery</h1>
+        <p>For three nights in August, a small telescope on a ridge above the valley
+        tracked a comet nobody had paid much attention to. It was faint, slow and,
+        by every model, <em>dry</em>: too close to the sun for long to keep any ice
+        near its surface.</p>
+        <p><img src="https://fieldnotes.example/img/comet.svg" alt="The comet's tail against the evening sky"></p>
+        <p>The spectrum said otherwise. The light coming off its tail carried the
+        clear signature of <strong>water ice</strong>, and not a trace of it, either:
+        enough to change how long astronomers think comets like this one last.</p>
+        <h2>Why it matters</h2>
+        <ul>
+          <li>Ice this close in means the crust insulates far better than assumed.</li>
+          <li>It may explain the comet's odd brightening in spring.</li>
+          <li>It gives the next mission a cheaper target.</li>
+        </ul>
+        <blockquote><p>"We went looking for dust and found weather," said the
+        observatory's director.</p></blockquote>
+        <p>The team has published its raw spectra so others can check the work.</p>
+    </article>"#;
+
+    const STORY: &str = r#"<p>Reporters spent a week with the people closest to it. What they found
+        was less a single turning point than a <em>long series of small, sensible decisions</em>
+        that added up.</p>
+        <h2>What we know</h2>
+        <ul><li>The change began quietly, months before anyone wrote about it.</li>
+        <li>It held up through the worst week of the year.</li>
+        <li>Others are already copying it.</li></ul>
+        <blockquote><p>"Nobody planned for this to be the story," one of them said.</p></blockquote>
+        <p>Read on for how it happened, and what comes next.</p>"#;
+
+    const TECH: &str = r#"<p>The release notes are short, which is the best news in them. The
+        maintainers spent the cycle on <strong>fewer surprises</strong> rather than more features.</p>
+        <h2>Try it</h2>
+        <pre>$ sudo pacman -Syu
+$ uname -r</pre>
+        <p>If something regresses, the <a href="https://example.com/bugs">tracker</a>
+        is open and the bisect is cheap.</p>"#;
+
+    /// A simple mark for each source, in the place a site's icon goes.
+    fn icon_for(source: &str) -> Option<&'static str> {
+        Some(match source {
+            "Field Notes" => {
+                r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="#2f9e7a"/><circle cx="8" cy="8" r="3.5" fill="#e8fff6"/></svg>"##
+            }
+            "Harbor Ledger" => {
+                r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="#2a5db0"/><path d="M3 10h10l-2 3H5z" fill="#eaf1ff"/><path d="M8 3v7" stroke="#eaf1ff" stroke-width="1.5"/></svg>"##
+            }
+            "Kernel Weekly" => {
+                r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="#d9822b"/><path d="M4 5l3 3-3 3M8 11h4" stroke="#fff6ea" stroke-width="1.6" fill="none"/></svg>"##
+            }
+            "Byte Review" => {
+                r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="#8b5cf6"/><rect x="4" y="4" width="8" height="8" rx="1" fill="none" stroke="#f3eeff" stroke-width="1.6"/></svg>"##
+            }
+            "Tiling Weekly" => {
+                r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="#c2415d"/><path d="M3 3h4v10H3zM9 3h4v4H9zM9 9h4v4H9z" fill="#ffeef2"/></svg>"##
+            }
+            _ => return None,
+        })
+    }
+
+    /// The feature's figure: a comet over a ridge.
+    const FIGURE_SVG: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" width="640" height="300">
+        <defs>
+          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#0b1026"/><stop offset="0.7" stop-color="#2b2f5c"/><stop offset="1" stop-color="#c9725a"/>
+          </linearGradient>
+          <linearGradient id="tail" x1="1" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#e6f4ff" stop-opacity="0.95"/><stop offset="1" stop-color="#7fb6ff" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <rect width="640" height="300" fill="url(#sky)"/>
+        <g fill="#ffffff" opacity="0.8">
+          <circle cx="40" cy="30" r="1.2"/><circle cx="120" cy="70" r="0.9"/><circle cx="210" cy="24" r="1.4"/>
+          <circle cx="300" cy="90" r="0.8"/><circle cx="560" cy="40" r="1.1"/><circle cx="600" cy="120" r="0.9"/>
+          <circle cx="80" cy="140" r="0.7"/><circle cx="350" cy="30" r="1"/><circle cx="500" cy="80" r="0.8"/>
+        </g>
+        <path d="M470 70 L170 190 L190 205 Z" fill="url(#tail)"/>
+        <circle cx="470" cy="70" r="7" fill="#f4fbff"/>
+        <path d="M0 250 L90 215 L160 238 L250 196 L330 230 L420 205 L520 240 L640 210 L640 300 L0 300 Z" fill="#141626"/>
+        <rect x="300" y="219" width="10" height="14" fill="#141626"/><path d="M296 221 l9 -10 l9 10 z" fill="#141626"/>
+      </svg>"##;
+
+    /// The window over the sample sources, one scene step at a time.
+    pub struct Demo {
+        app: App,
+        size: (f32, f32),
+        icons: HashMap<i64, Icon>,
+        url: String,
+    }
+
+    impl Demo {
+        /// Five feeds in four folders and a keyword alert, eighteen
+        /// articles, a few read and starred, the feature open.
+        pub fn new(tokens: Tokens, size: (f32, f32)) -> Self {
+            let mut store = Store::open_in_memory().expect("in-memory store");
+            let now = unix_now();
+            let mut sources: Vec<(&str, i64)> = Vec::new();
+            let mut icons = HashMap::new();
+            let mut feature_url = String::new();
+            let mut articles = Vec::new();
+            for (i, &(source, folder, title, hours, publisher)) in HEADLINES.iter().enumerate() {
+                let id = match sources.iter().find(|(s, _)| *s == source) {
+                    Some(&(_, id)) => id,
+                    None => {
+                        let folder = (folder != "Alerts")
+                            .then(|| store.folder_named(folder).expect("folder").id);
+                        let id = match publisher {
+                            Some(_) => {
+                                let query = keyword::Keyword::new(source).expect("query");
+                                store
+                                    .add_source(&NewSource {
+                                        folder_id: folder,
+                                        kind: SourceKind::Keyword,
+                                        title: source.into(),
+                                        url: None,
+                                        config: query.to_config(),
+                                    })
+                                    .expect("keyword")
+                                    .id
+                            }
+                            None => add_feed(&store, source, folder),
+                        };
+                        if let Some(svg) = icon_for(source) {
+                            icons
+                                .insert(id, Icon::Vector(svg::Handle::from_memory(svg.as_bytes())));
+                        }
+                        sources.push((source, id));
+                        id
+                    }
+                };
+                let url = format!("https://stories.example/{i}");
+                let summary = if i == FEATURE {
+                    feature_url = url.clone();
+                    FEATURE_SUMMARY
+                } else if folder == "Linux" || folder == "Technology" {
+                    TECH
+                } else {
+                    STORY
+                };
+                articles.push(NewArticle {
+                    source_id: id,
+                    guid: i.to_string(),
+                    url: Some(url),
+                    title: title.into(),
+                    author: Some(publisher.unwrap_or("Staff").into()),
+                    summary_html: Some(summary.into()),
+                    published_at: Some(now - (hours * 3_600.0) as i64),
+                    fetched_at: now,
+                });
+            }
+            store.insert_articles(&articles).expect("articles");
+
+            let mut app = App::with_store(Config::default(), None, Ok(store), None);
+            app.tokens = tokens;
+            app.height = size.1;
+            for i in [5, 9, 12, 14] {
+                app.open(i);
+            }
+            for i in [2, 7] {
+                app.select(i);
+                let _ = app.update(Message::Key(Action::Star));
+            }
+            app.select(FEATURE);
+            app.open(FEATURE);
+            Self {
+                app,
+                size,
+                icons,
+                url: feature_url,
+            }
+        }
+
+        /// A fresh install: Add sources with the starter feeds ticked.
+        pub fn first_run(tokens: Tokens, size: (f32, f32)) -> Self {
+            let store = Store::open_in_memory().expect("in-memory store");
+            let mut app = App::with_store(Config::default(), None, Ok(store), None);
+            app.tokens = tokens;
+            app.height = size.1;
+            Self {
+                app,
+                size,
+                icons: HashMap::new(),
+                url: String::new(),
+            }
+        }
+
+        pub fn set_tokens(&mut self, tokens: Tokens) {
+            self.app.tokens = tokens;
+        }
+
+        fn key(&mut self, action: Action) {
+            let _ = self.app.update(Message::Key(action));
+        }
+
+        /// `j`.
+        pub fn down(&mut self) {
+            self.key(Action::Down);
+        }
+
+        /// `k`.
+        pub fn up(&mut self) {
+            self.key(Action::Up);
+        }
+
+        /// `o`.
+        pub fn open(&mut self) {
+            self.key(Action::Open);
+        }
+
+        /// `s`.
+        pub fn star(&mut self) {
+            self.key(Action::Star);
+        }
+
+        /// `u`.
+        pub fn unread(&mut self) {
+            self.key(Action::View(View::Unread));
+        }
+
+        /// `A`.
+        pub fn all(&mut self) {
+            self.key(Action::View(View::All));
+        }
+
+        /// Picks a folder in the sources pane by name.
+        pub fn folder(&mut self, name: &str) {
+            if let Some(id) = self
+                .app
+                .folders
+                .iter()
+                .find(|f| f.name == name)
+                .map(|f| f.id)
+            {
+                self.app.choose(Entry::Folder(id));
+            }
+        }
+
+        /// Picks All articles in the sources pane.
+        pub fn everything(&mut self) {
+            self.app.choose(Entry::View(View::All));
+        }
+
+        /// Selects and opens the feature.
+        pub fn open_feature(&mut self) {
+            if let Some(i) = self
+                .app
+                .rows
+                .iter()
+                .position(|r| r.url.as_deref() == Some(&self.url))
+            {
+                self.app.select(i);
+                self.app.open(i);
+            }
+        }
+
+        /// `v`: the page arrives at once, its figure with it.
+        pub fn reader(&mut self) {
+            self.key(Action::Reader);
+            let page = Answer::Page {
+                url: self.url.clone(),
+                html: FEATURE_PAGE.into(),
+            };
+            let _ = self.app.update(Message::WebAnswer(Arc::new(page)));
+            self.app.pictures.insert(
+                FIGURE.into(),
+                article::Picture::Vector(svg::Handle::from_memory(FIGURE_SVG.as_bytes())),
+            );
+        }
+
+        /// `/`.
+        pub fn search(&mut self) {
+            self.key(Action::Search);
+        }
+
+        /// A key typed into the search line.
+        pub fn search_type(&mut self, c: char) {
+            let _ = self
+                .app
+                .update(Message::Search(palette::Input::Type(c.to_string())));
+        }
+
+        /// `Esc` from the search line, then from the results.
+        pub fn end_search(&mut self) {
+            let _ = self.app.update(Message::Search(palette::Input::Close));
+        }
+
+        /// `:`.
+        pub fn palette(&mut self) {
+            self.key(Action::Palette);
+        }
+
+        /// A key typed into the palette.
+        pub fn palette_type(&mut self, c: char) {
+            let _ = self
+                .app
+                .update(Message::Palette(palette::Input::Type(c.to_string())));
+        }
+
+        /// `↓` in the palette.
+        pub fn palette_down(&mut self) {
+            let _ = self.app.update(Message::Palette(palette::Input::Down));
+        }
+
+        /// `?`.
+        pub fn help(&mut self) {
+            self.key(Action::Help);
+        }
+
+        /// `Esc` on the palette or help.
+        pub fn close(&mut self) {
+            let _ = self.app.update(Message::CloseOverlay);
+        }
+
+        /// `a`.
+        pub fn add_sources(&mut self) {
+            self.key(Action::AddSources);
+        }
+
+        /// `j` on Add sources.
+        pub fn sources_down(&mut self) {
+            let _ = self
+                .app
+                .update(Message::Onboarding(onboarding::Action::Down));
+        }
+
+        /// `l` on Add sources: the next category.
+        pub fn sources_next(&mut self) {
+            let _ = self
+                .app
+                .update(Message::Onboarding(onboarding::Action::NextCategory));
+        }
+
+        /// `Space` on Add sources.
+        pub fn sources_toggle(&mut self) {
+            let _ = self
+                .app
+                .update(Message::Onboarding(onboarding::Action::ToggleCursor));
+        }
+
+        /// `n` on Add sources: the keyword alerts page, typing.
+        pub fn new_query(&mut self) {
+            let _ = self
+                .app
+                .update(Message::Onboarding(onboarding::Action::NewQuery));
+        }
+
+        /// A key typed into a keyword alert's query.
+        pub fn query_type(&mut self, c: char) {
+            let _ = self
+                .app
+                .update(Message::OnboardingQuery(palette::Input::Type(
+                    c.to_string(),
+                )));
+        }
+
+        /// `Esc` on Add sources.
+        pub fn close_sources(&mut self) {
+            let _ = self
+                .app
+                .update(Message::Onboarding(onboarding::Action::Close));
+        }
+
+        /// Writes `path` with `.png` (iced_test names it `<path>-tiny-skia.png`;
+        /// this moves it in place).
+        pub fn shot(&mut self, path: &std::path::Path) {
+            // A reload reads icons from disk, and the sample's live in memory.
+            self.app.source_icons = self.icons.clone();
+            let written = PathBuf::from(format!("{}-tiny-skia.png", path.display()));
+            let _ = std::fs::remove_file(&written);
+            snapshot(&self.app, self.size, path);
+            std::fs::rename(&written, path.with_extension("png")).expect("rename the screenshot");
+        }
     }
 }
 

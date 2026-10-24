@@ -15,7 +15,8 @@ url.workspace = true
 iced_test = { version = "0.14", optional = true }
 
 [features]
-# Headless screenshots of the window per theme: examples/theme_shots.rs.
+# Headless screenshots of the window: examples/theme_shots.rs per theme,
+# examples/site_media.rs for the site's screenshots and trailer frames.
 shots = ["dep:iced_test"]
 
 [dev-dependencies]
@@ -28,4 +29,8 @@ harness = false
 
 [[example]]
 name = "theme_shots"
+required-features = ["shots"]
+
+[[example]]
+name = "site_media"
 required-features = ["shots"]

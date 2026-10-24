@@ -23,7 +23,47 @@
     margin: 0; background: var(--bg); color: var(--fg);
     font: 16px/1.6 ui-monospace, "CaskaydiaMono Nerd Font", "JetBrains Mono", Menlo, Consolas, monospace;
   }
-  main { max-width: 46rem; margin: 0 auto; padding: 4rem 1rem 3rem; }
+  /* Pictures and video get the full width; text keeps a reading measure. */
+  main { max-width: 72rem; margin: 0 auto; padding: 4rem 1rem 3rem; }
+  main > :not(.wide) { max-width: 44rem; margin-left: auto; margin-right: auto; }
+  .frame {
+    display: block; width: 100%; height: auto; border: 1px solid var(--border);
+    border-radius: 10px; background: var(--panel);
+    box-shadow: 0 1.5rem 3rem -1.5rem rgba(0, 0, 0, .55);
+  }
+  .hero { margin: 0 0 1rem; position: relative; }
+  .hero .still { display: none; }
+  .hero .sound {
+    position: absolute; right: .75rem; bottom: .75rem; font: inherit; font-size: .8rem;
+    color: #f2f4ff; background: rgba(10, 12, 20, .72); border: 1px solid rgba(242, 244, 255, .25);
+    border-radius: 999px; padding: .3rem .8rem; cursor: pointer;
+  }
+  .hero .sound:hover, .hero .sound:focus-visible { border-color: #f2f4ff; }
+  @media (prefers-reduced-motion: reduce) {
+    .hero video, .hero .sound { display: none; }
+    .hero .still { display: block; }
+  }
+  .features { display: grid; gap: 3rem; margin: 1.5rem 0 1rem; }
+  .feature { display: grid; gap: 1rem 2rem; align-items: center; }
+  .feature h3 { font-size: 1rem; margin: 0 0 .25rem; }
+  .feature p { color: var(--muted); }
+  @media (min-width: 52rem) {
+    .feature { grid-template-columns: 1fr 2fr; }
+    .feature:nth-child(even) { grid-template-columns: 2fr 1fr; }
+    .feature:nth-child(even) .text { order: 2; }
+  }
+  kbd {
+    font: inherit; font-size: .88em; padding: .05em .4em; color: var(--fg);
+    border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; background: var(--panel);
+  }
+  .themes {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 1.25rem 1rem; margin: 1rem 0;
+  }
+  .themes figure { margin: 0; }
+  .themes figcaption { color: var(--muted); font-size: .875rem; margin-top: .4rem; }
+  a.zoom { display: block; }
+  a.zoom:hover .frame, a.zoom:focus-visible .frame { border-color: var(--accent); }
   h1 { font-size: 2rem; margin: 0 0 .25rem; letter-spacing: -.02em; }
   h2 { font-size: 1rem; margin: 2.5rem 0 .5rem; color: var(--accent); }
   p { margin: .5rem 0; }
@@ -58,12 +98,87 @@
   <h1>Gutenberg</h1>
   <p class="lede">A fast, keyboard-driven news reader for Omarchy. Feeds, keyword alerts and MCP sources in one window that takes its colors and font from your theme. Local, private, no account.</p>
 
+  <div class="hero wide">
+    <video class="frame" src="media/trailer-short.mp4" poster="media/trailer-poster.webp"
+      width="1280" height="720" autoplay muted loop playsinline
+      aria-label="Gutenberg in use: moving through articles, opening the full story, searching, and changing themes"></video>
+    <button type="button" class="sound" id="sound" aria-pressed="false">sound on</button>
+    <img class="frame still" src="media/trailer-poster.webp" width="1600" height="900"
+      alt="Gutenberg's three panes: sources, articles and the open story">
+  </div>
+
   <h2>Install</h2>
   <div class="install">
     <pre id="cmd">curl -fsSL https://gutenbergapp.com/install.sh | sh</pre>
     <button type="button" id="copy" aria-label="Copy the install command">copy</button>
   </div>
   <p>Linux on x86_64 or aarch64. The script downloads the latest release from GitHub, checks it against the release's <code>SHA256SUMS</code>, and puts one binary in <code>~/.local/bin</code>. Nothing else is touched. <a href="install.sh">Read the script</a> before you run it.</p>
+
+  <h2>See it</h2>
+  <div class="features wide">
+    <section class="feature">
+      <div class="text">
+        <h3>Three panes, all keyboard</h3>
+        <p>Sources with unread counts on the left, articles in the middle, the story on the right. <kbd>j</kbd> and <kbd>k</kbd> move, <kbd>o</kbd> opens, <kbd>s</kbd> stars. Folders, plus views for unread, starred and today.</p>
+      </div>
+      <a class="zoom" href="media/reading.webp"><img class="frame" src="media/reading.webp" width="1600" height="1000" loading="lazy" alt="The sources pane with folders and unread counts, the article list, and an open story"></a>
+    </section>
+    <section class="feature">
+      <div class="text">
+        <h3>The whole story, without the clutter</h3>
+        <p>Feeds often send a paragraph. Press <kbd>v</kbd> and Gutenberg loads the page and keeps only the article: headings, pictures, quotes and code, in your theme's font.</p>
+      </div>
+      <a class="zoom" href="media/reader.webp"><img class="frame" src="media/reader.webp" width="1600" height="1000" loading="lazy" alt="Reader view showing a full article with a picture of a comet"></a>
+    </section>
+    <section class="feature">
+      <div class="text">
+        <h3>Search everything you have</h3>
+        <p>Press <kbd>/</kbd> and matches arrive as you type, across titles, authors and summaries, newest first.</p>
+      </div>
+      <a class="zoom" href="media/search.webp"><img class="frame" src="media/search.webp" width="1600" height="1000" loading="lazy" alt="The search line above the list, with two matches for heat"></a>
+    </section>
+    <section class="feature">
+      <div class="text">
+        <h3>Every command, a few letters away</h3>
+        <p><kbd>:</kbd> opens the command palette: type a few letters of what you want and press Enter. <kbd>?</kbd> lists every key.</p>
+      </div>
+      <a class="zoom" href="media/palette.webp"><img class="frame" src="media/palette.webp" width="1600" height="1000" loading="lazy" alt="The command palette narrowed to commands matching st"></a>
+    </section>
+    <section class="feature">
+      <div class="text">
+        <h3>232 feeds to start with</h3>
+        <p>A fresh install opens on Add sources: hand-picked, checked-working feeds in 21 categories, with twelve free starters already ticked. Or bring your subscriptions with <code>gutenberg --import</code>.</p>
+      </div>
+      <a class="zoom" href="media/add-sources.webp"><img class="frame" src="media/add-sources.webp" width="1600" height="1000" loading="lazy" alt="The Add sources screen on the World category, two feeds ticked"></a>
+    </section>
+    <section class="feature">
+      <div class="text">
+        <h3>Keyword alerts</h3>
+        <p>Turn a news search into a source. Press <kbd>n</kbd>, type a query like <code>"night trains"</code>, and Gutenberg asks Google News for it on every refresh. Quotes, <code>-word</code> and <code>site:</code> work.</p>
+      </div>
+      <a class="zoom" href="media/keyword.webp"><img class="frame" src="media/keyword.webp" width="1600" height="1000" loading="lazy" alt="The keyword alerts page with the query &quot;night trains&quot; typed"></a>
+    </section>
+  </div>
+
+  <h2>Your theme, live</h2>
+  <p>Colors and font come from your Omarchy theme, light ones included, and an open window follows <code>omarchy theme set</code> within a fraction of a second. Where a theme's dim text would be hard to read, Gutenberg nudges it just enough to read.</p>
+  <div class="themes wide">
+    <figure><a class="zoom" href="media/theme-tokyo-night.webp"><img class="frame" src="media/theme-tokyo-night.webp" width="1600" height="1000" loading="lazy" alt="Gutenberg in Tokyo Night"></a><figcaption>Tokyo Night</figcaption></figure>
+    <figure><a class="zoom" href="media/theme-catppuccin-latte.webp"><img class="frame" src="media/theme-catppuccin-latte.webp" width="1600" height="1000" loading="lazy" alt="Gutenberg in Catppuccin Latte"></a><figcaption>Catppuccin Latte</figcaption></figure>
+    <figure><a class="zoom" href="media/theme-gruvbox.webp"><img class="frame" src="media/theme-gruvbox.webp" width="1600" height="1000" loading="lazy" alt="Gutenberg in Gruvbox"></a><figcaption>Gruvbox</figcaption></figure>
+    <figure><a class="zoom" href="media/theme-rose-pine.webp"><img class="frame" src="media/theme-rose-pine.webp" width="1600" height="1000" loading="lazy" alt="Gutenberg in Rosé Pine"></a><figcaption>Rosé Pine</figcaption></figure>
+    <figure><a class="zoom" href="media/theme-everforest.webp"><img class="frame" src="media/theme-everforest.webp" width="1600" height="1000" loading="lazy" alt="Gutenberg in Everforest"></a><figcaption>Everforest</figcaption></figure>
+    <figure><a class="zoom" href="media/theme-flexoki-light.webp"><img class="frame" src="media/theme-flexoki-light.webp" width="1600" height="1000" loading="lazy" alt="Gutenberg in Flexoki Light"></a><figcaption>Flexoki Light</figcaption></figure>
+    <figure><a class="zoom" href="media/theme-kanagawa.webp"><img class="frame" src="media/theme-kanagawa.webp" width="1600" height="1000" loading="lazy" alt="Gutenberg in Kanagawa"></a><figcaption>Kanagawa</figcaption></figure>
+    <figure><a class="zoom" href="media/theme-nord.webp"><img class="frame" src="media/theme-nord.webp" width="1600" height="1000" loading="lazy" alt="Gutenberg in Nord"></a><figcaption>Nord</figcaption></figure>
+  </div>
+
+  <h2>Watch the tour</h2>
+  <p>Fifty seconds, sound on: picking sources, a keyword alert, reading, the whole story, search, the palette, and themes. Music: “Beautiful” by avdrav.</p>
+  <div class="wide">
+    <video class="frame" src="media/trailer.mp4" poster="media/trailer-long-poster.webp"
+      width="1920" height="1080" controls preload="none" playsinline></video>
+  </div>
 
   <h2>Use</h2>
   <pre class="block">gutenberg                      # open the reader
@@ -111,6 +226,21 @@ rm -r ~/.config/gutenberg ~/.local/share/gutenberg   # settings and saved articl
     }
     setTimeout(() => { button.textContent = "copy"; button.classList.remove("done"); }, 2000);
   });
+
+  // The hero autoplays muted, as browsers require; this turns its music on.
+  const hero = document.querySelector(".hero video");
+  const sound = document.getElementById("sound");
+  const setSound = (on) => {
+    hero.muted = !on;
+    sound.textContent = on ? "sound off" : "sound on";
+    sound.setAttribute("aria-pressed", String(on));
+  };
+  sound.addEventListener("click", () => {
+    setSound(hero.muted);
+    hero.play().catch(() => {});
+  });
+  // One track at a time: the tour quiets the hero.
+  document.querySelector("video[controls]").addEventListener("play", () => setSound(false));
 </script>
 </body>
 </html>

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- https://gutenbergapp.com now shows what Gutenberg looks like: a short clip at the top, a screenshot of each feature, the app in eight Omarchy themes, and a fifty-second tour set to music.
+
 ## 0.12.0 — 2026-10-24
 
 - Without Omarchy, on Ubuntu or any other desktop, Gutenberg follows your light or dark setting. It uses Catppuccin Latte when you prefer light, Tokyo Night otherwise, and switches when you change the setting.
