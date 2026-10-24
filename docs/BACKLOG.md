@@ -51,7 +51,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 
 | ID | Story | Acceptance | Status |
 | --- | --- | --- | --- |
-| S5.1 | Add a keyword source; query Google News RSS search | "Cory Booker" returns stories as a source; the catalog's keyword presets become addable on the Add sources screen | todo |
+| S5.1 | Add a keyword source; query Google News RSS search | "Cory Booker" returns stories as a source; the catalog's keyword presets become addable on the Add sources screen | doing |
 | S5.2 | Add Bing News RSS and GDELT as providers; merge and dedupe | The same story from three providers appears once | todo |
 | S5.3 | Query syntax: quotes, `-exclude`, `site:`, language and region | Passed through to each provider that supports it | todo |
 | S5.4 | Group near-duplicate headlines into one story with a source count | Jaccard over title shingles; "5 sources" badge | todo |
