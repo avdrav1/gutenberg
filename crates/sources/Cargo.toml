@@ -9,8 +9,21 @@ dom_smoothie.workspace = true
 feed-rs.workspace = true
 quick-xml.workspace = true
 reqwest.workspace = true
+rmcp.workspace = true
+tokio.workspace = true
+# The child-process wrapper rmcp takes, and a signal to end a server's whole
+# process group: npx and uvx servers run as several processes.
+process-wrap = { version = "10", default-features = false, features = ["tokio1", "process-group"] }
+nix = { version = "0.31", default-features = false, features = ["signal"] }
+shlex = "1"
+# The reqwest rmcp uses, named to read the cause out of its errors.
+reqwest13 = { package = "reqwest", version = "0.13", default-features = false }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 html-escape.workspace = true
 thiserror.workspace = true
 url.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

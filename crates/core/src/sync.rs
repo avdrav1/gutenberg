@@ -14,6 +14,7 @@ use futures::stream::{FuturesUnordered, StreamExt};
 use gutenberg_sources::feed::{self, Entry, Feed, FeedError, Fetched};
 use gutenberg_sources::image::Format;
 use gutenberg_sources::keyword::{self, Keyword, Provider, Providers, Seen};
+use gutenberg_sources::mcp::{self, Mcp};
 use gutenberg_sources::{favicon, google_news};
 use gutenberg_store::{DueSource, NewArticle, SourceKind, Store, Validators};
 use tokio::sync::Semaphore;
@@ -99,9 +100,17 @@ struct Job {
     /// What `--refresh` calls it: a feed's URL, a keyword alert's query.
     label: String,
     url: String,
-    keyword: Option<KeywordJob>,
+    work: Work,
     validators: Validators,
     failures: i64,
+}
+
+/// What refreshing a source means.
+enum Work {
+    Feed,
+    Keyword(KeywordJob),
+    /// Reach the server and list its tools.
+    Mcp(Mcp),
 }
 
 /// What a keyword alert's refresh needs from the store.
@@ -114,13 +123,14 @@ struct KeywordJob {
     unresolved: Vec<(i64, String)>,
 }
 
-/// `(url, label, keyword)` for a due source. A keyword source's URL is its
-/// Google News search; settings that can't be read are its failure.
+/// `(url, label, work)` for a due source. A keyword source's URL is its
+/// Google News search, an MCP server's its URL or command line; settings
+/// that can't be read are its failure.
 fn resolve(
     store: &Store,
     due: &DueSource,
     providers: &Providers,
-) -> Result<(String, String, Option<KeywordJob>), String> {
+) -> Result<(String, String, Work), String> {
     match (due.kind, &due.url) {
         (SourceKind::Keyword, _) => {
             let keyword = Keyword::from_config(&due.config).map_err(|e| e.to_string())?;
@@ -146,19 +156,24 @@ fn resolve(
                     .search_url(Provider::GoogleNews, providers)
                     .expect("Google News reads every query"),
                 format!("keyword alert {}", keyword.query),
-                Some(KeywordJob {
+                Work::Keyword(KeywordJob {
                     keyword,
                     seen,
                     unresolved,
                 }),
             ))
         }
-        (_, Some(url)) => Ok((url.clone(), url.clone(), None)),
+        (SourceKind::Mcp, _) => {
+            let mcp = Mcp::from_config(&due.config).map_err(|e| e.to_string())?;
+            let label = mcp.server.label();
+            Ok((label.clone(), format!("MCP server {label}"), Work::Mcp(mcp)))
+        }
+        (_, Some(url)) => Ok((url.clone(), url.clone(), Work::Feed)),
         (_, None) => Err("no URL".to_owned()),
     }
 }
 
-/// Refreshes every feed and keyword alert due at `now`. Store errors stop
+/// Refreshes every feed, keyword alert and MCP server due at `now`. Store errors stop
 /// the refresh; a source's own failure is recorded on it and the refresh
 /// goes on.
 ///
@@ -202,11 +217,11 @@ async fn refresh_some(
     let mut jobs = Vec::with_capacity(due.len());
     for due in due {
         match resolve(store, &due, &limits.providers) {
-            Ok((url, label, keyword)) => jobs.push(Job {
+            Ok((url, label, work)) => jobs.push(Job {
                 source_id: due.source_id,
                 label,
                 url,
-                keyword,
+                work,
                 validators: due.validators,
                 failures: due.failures,
             }),
@@ -235,11 +250,12 @@ async fn refresh_some(
         .into_iter()
         .map(|mut due| {
             let (client, hosts) = (&client, &hosts);
-            let icons =
-                icons.filter(|_| due.keyword.is_none() && !settled.contains(&Icons::key(&due.url)));
+            let icons = icons.filter(|_| {
+                matches!(due.work, Work::Feed) && !settled.contains(&Icons::key(&due.url))
+            });
             async move {
-                let outcome = match due.keyword.take() {
-                    Some(job) => {
+                let outcome = match std::mem::replace(&mut due.work, Work::Feed) {
+                    Work::Keyword(job) => {
                         let fetch = Fetch {
                             client,
                             hosts,
@@ -247,7 +263,8 @@ async fn refresh_some(
                         };
                         fetch_keyword(&fetch, job, due.source_id, now).await
                     }
-                    None => fetch_one(client, hosts, &due, now, icons.is_some()).await,
+                    Work::Mcp(server) => list_tools(server).await,
+                    Work::Feed => fetch_one(client, hosts, &due, now, icons.is_some()).await,
                 };
                 if let (Some(icons), Outcome::Fetched { site_url, .. }) = (icons, &outcome) {
                     let page = site_url.clone().or_else(|| site_root(&due.url));
@@ -282,6 +299,11 @@ async fn refresh_some(
                 } else {
                     summary.unchanged += 1;
                 }
+            }
+            Outcome::Listed { config } => {
+                store.set_source_config(due.source_id, &config)?;
+                store.record_not_modified(due.source_id, now)?;
+                summary.unchanged += 1;
             }
             Outcome::Failed { error, retry_after } => {
                 let wait = backoff(due.failures + 1, retry_after);
@@ -325,10 +347,30 @@ enum Outcome {
         /// Articles already stored whose link now goes to the publisher.
         moved: Vec<(i64, String)>,
     },
+    /// An MCP server answered; its settings with the tools it listed.
+    Listed {
+        config: String,
+    },
     Failed {
         error: String,
         retry_after: Option<u64>,
     },
+}
+
+/// Reaches an MCP server and lists its tools.
+async fn list_tools(mut server: Mcp) -> Outcome {
+    match mcp::tools(&server.server, mcp::TIMEOUT).await {
+        Ok(tools) => {
+            server.tools = tools;
+            Outcome::Listed {
+                config: server.to_config(),
+            }
+        }
+        Err(e) => Outcome::Failed {
+            error: e.to_string(),
+            retry_after: None,
+        },
+    }
 }
 
 /// `fresh` drops the validators, so the server sends the feed in full.

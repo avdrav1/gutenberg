@@ -1,5 +1,6 @@
 mod add;
 mod keyword;
+mod mcp;
 mod opml;
 mod refresh;
 
@@ -27,6 +28,16 @@ fn main() -> std::process::ExitCode {
                 [query] => keyword::run(query, None),
                 [query, flag, folder] | [flag, folder, query] if flag == "--folder" => {
                     keyword::run(query, Some(folder))
+                }
+                _ => usage(),
+            };
+        }
+        Some("--mcp") => {
+            let rest: Vec<String> = std::env::args().skip(2).collect();
+            return match rest.as_slice() {
+                [typed] => mcp::run(typed, None),
+                [typed, flag, folder] | [flag, folder, typed] if flag == "--folder" => {
+                    mcp::run(typed, Some(folder))
                 }
                 _ => usage(),
             };
@@ -69,7 +80,7 @@ fn main() -> std::process::ExitCode {
 
 fn usage() -> std::process::ExitCode {
     eprintln!(
-        "usage: gutenberg [--version | --add <url> [--folder <name>] | --keyword <query> [--folder <name>] | --import <file.opml> | --export | --refresh | --reload-theme]"
+        "usage: gutenberg [--version | --add <url> [--folder <name>] | --keyword <query> [--folder <name>] | --mcp <command or URL> [--folder <name>] | --import <file.opml> | --export | --refresh | --reload-theme]"
     );
     std::process::ExitCode::from(2)
 }
