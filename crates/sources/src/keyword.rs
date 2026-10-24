@@ -9,7 +9,7 @@ use quick_xml::Reader;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::feed::{Entry, Feed};
+use crate::feed::{self, Entry, Feed};
 
 /// A news search a keyword alert asks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,7 +45,8 @@ impl Default for Providers {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Keyword {
     /// As the user typed it, runs of whitespace made one space. Quotes,
-    /// `-word`, `OR` and `site:` mean what they mean to Google News.
+    /// `-word`, `OR` and `site:` mean what they mean to Google News;
+    /// `lang:fr` and `region:CA` pick the edition searched.
     pub query: String,
 }
 
@@ -55,10 +56,14 @@ pub struct Keyword {
 pub struct KeywordError(String);
 
 impl Keyword {
-    /// `None` for a query with nothing in it.
+    /// `None` for a query with nothing to search, such as `lang:fr` alone.
     pub fn new(query: &str) -> Option<Self> {
         let query = query.split_whitespace().collect::<Vec<_>>().join(" ");
-        (!query.is_empty()).then_some(Self { query })
+        let keyword = Self { query };
+        keyword
+            .provider_query(Provider::GoogleNews)
+            .is_some()
+            .then_some(keyword)
     }
 
     /// The JSON for `source.config`.
@@ -72,33 +77,239 @@ impl Keyword {
         Self::new(&stored.query).ok_or_else(|| KeywordError("the query is empty".into()))
     }
 
-    /// The RSS search for this query, in U.S. English: Google's `hl`, `gl`
-    /// and `ceid` together pick the edition.
+    /// Google News's RSS search for this query.
     pub fn google_news_url(&self) -> String {
         self.search_url(Provider::GoogleNews, &Providers::default())
+            .expect("Google News reads every query")
     }
 
-    /// `provider`'s RSS search for this query, in U.S. English: Google's
-    /// `hl`, `gl` and `ceid` together pick the edition, Bing's `mkt`.
-    pub fn search_url(&self, provider: Provider, providers: &Providers) -> String {
-        let (base, path, edition): (_, _, &[(&str, &str)]) = match provider {
+    /// `provider`'s RSS search for this query, in its edition: Google's
+    /// `hl`, `gl` and `ceid` together pick it, Bing's `mkt`. Google
+    /// redirects a pair it has no edition for to its nearest one. `None`
+    /// when the provider can't ask it.
+    pub fn search_url(&self, provider: Provider, providers: &Providers) -> Option<String> {
+        let q = self.provider_query(provider)?;
+        let Edition { language, region } = self.edition();
+        let locale = format!("{language}-{region}");
+        let (base, path, edition) = match provider {
             Provider::GoogleNews => (
                 &providers.google_news,
                 "/rss/search",
-                &[("hl", "en-US"), ("gl", "US"), ("ceid", "US:en")],
+                vec![
+                    ("hl", locale),
+                    ("gl", region.clone()),
+                    ("ceid", format!("{region}:{language}")),
+                ],
             ),
             Provider::BingNews => (
                 &providers.bing_news,
                 "/news/search",
-                &[("format", "rss"), ("mkt", "en-US")],
+                vec![("format", "rss".to_owned()), ("mkt", locale)],
             ),
         };
         let mut url = Url::parse(&format!("{base}{path}")).expect("a valid URL");
         url.query_pairs_mut()
-            .append_pair("q", &self.query)
+            .append_pair("q", &q)
             .extend_pairs(edition);
-        url.into()
+        Some(url.into())
     }
+
+    /// The query as `provider` is asked it: without `lang:` and `region:`,
+    /// and for Bing without exclusions, which it ignores (they're applied
+    /// to the results instead, by [`Keyword::excludes`]). `None` for a
+    /// query Bing can't ask: it finds nothing for one with `OR`.
+    pub fn provider_query(&self, provider: Provider) -> Option<String> {
+        let tokens = tokens(&self.query);
+        if provider == Provider::BingNews && tokens.contains(&Token::Or) {
+            return None;
+        }
+        let kept: Vec<&str> = tokens
+            .iter()
+            .filter_map(|token| match *token {
+                Token::Language(_) | Token::Region(_) => None,
+                Token::Exclude(_) if provider == Provider::BingNews => None,
+                Token::Exclude(raw) | Token::Term(raw) => Some(raw),
+                Token::Or => Some("OR"),
+            })
+            .collect();
+        (!kept.is_empty()).then(|| kept.join(" "))
+    }
+
+    /// The language and region searched: U.S. English unless the query
+    /// names one. With only one named, the other is the usual pairing
+    /// (`lang:fr` is France, `region:CA` is English).
+    pub fn edition(&self) -> Edition {
+        let (mut language, mut region) = (None, None);
+        for token in tokens(&self.query) {
+            match token {
+                Token::Language(l) => language = Some(l.to_ascii_lowercase()),
+                Token::Region(r) => region = Some(r.to_ascii_uppercase()),
+                _ => {}
+            }
+        }
+        let (language, region) = match (language, region) {
+            (Some(l), Some(r)) => (l, r),
+            (Some(l), None) => {
+                let r = home_region(&l);
+                (l, r)
+            }
+            (None, Some(r)) => (main_language(&r), r),
+            (None, None) => ("en".to_owned(), "US".to_owned()),
+        };
+        Edition { language, region }
+    }
+
+    /// Whether the query's exclusions leave `entry` out: a `-word` or
+    /// `-"phrase"` in its headline or summary, or a `-site:` that hosts
+    /// its link. Bing ignores exclusions, and Google lets the odd one by.
+    pub fn excludes(&self, entry: &Entry) -> bool {
+        let text = format!(
+            "{} {}",
+            entry.title,
+            entry
+                .summary_html
+                .as_deref()
+                .map(feed::html_to_text)
+                .unwrap_or_default()
+        );
+        let text = title_key(&text).map(|t| format!(" {t} "));
+        let host = entry
+            .url
+            .as_deref()
+            .and_then(|u| Url::parse(u).ok())
+            .and_then(|u| u.host_str().map(str::to_ascii_lowercase));
+        tokens(&self.query).iter().any(|token| {
+            let Token::Exclude(raw) = token else {
+                return false;
+            };
+            let raw = &raw[1..];
+            if let Some(site) = raw.strip_prefix("site:") {
+                let site = site.trim_matches('"').to_ascii_lowercase();
+                let site = site.trim_start_matches("www.");
+                return !site.is_empty()
+                    && host.as_deref().is_some_and(|h| {
+                        h == site || h.strip_suffix(site).is_some_and(|p| p.ends_with('.'))
+                    });
+            }
+            match (title_key(raw), &text) {
+                (Some(words), Some(text)) => text.contains(&format!(" {words} ")),
+                _ => false,
+            }
+        })
+    }
+}
+
+/// The language and region a keyword alert searches in: `fr` and `CA`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Edition {
+    pub language: String,
+    pub region: String,
+}
+
+/// A piece of a query, each borrowed as typed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Token<'a> {
+    /// `lang:fr`; holds `fr`.
+    Language(&'a str),
+    /// `region:CA`; holds `CA`.
+    Region(&'a str),
+    /// `-word`, `-"a phrase"` or `-site:example.com`, dash included.
+    Exclude(&'a str),
+    Or,
+    /// A word, a quoted phrase, `site:` or anything else.
+    Term(&'a str),
+}
+
+/// The query split at spaces outside quotes.
+fn tokens(query: &str) -> Vec<Token<'_>> {
+    let mut pieces = Vec::new();
+    let mut start = None;
+    let mut quoted = false;
+    for (i, c) in query.char_indices() {
+        match (c, start) {
+            ('"', _) => {
+                quoted = !quoted;
+                start = start.or(Some(i));
+            }
+            (c, Some(s)) if c.is_whitespace() && !quoted => {
+                pieces.push(&query[s..i]);
+                start = None;
+            }
+            (c, None) if !c.is_whitespace() => start = Some(i),
+            _ => {}
+        }
+    }
+    pieces.extend(start.map(|s| &query[s..]));
+    let letters = |s: &str, lens: &[usize]| {
+        lens.contains(&s.len()) && s.bytes().all(|b| b.is_ascii_alphabetic())
+    };
+    pieces
+        .into_iter()
+        .map(|piece| match piece.split_once(':') {
+            Some(("lang", l)) if letters(l, &[2, 3]) => Token::Language(l),
+            Some(("region", r)) if letters(r, &[2]) => Token::Region(r),
+            _ if piece == "OR" => Token::Or,
+            _ if piece.len() > 1 && piece.starts_with('-') => Token::Exclude(piece),
+            _ => Token::Term(piece),
+        })
+        .collect()
+}
+
+/// Where a language is mostly read, for `lang:` alone. Most codes name
+/// their country too (`fr`, `de`, `it`); these don't.
+fn home_region(language: &str) -> String {
+    const ELSEWHERE: &[(&str, &str)] = &[
+        ("ar", "EG"),
+        ("cs", "CZ"),
+        ("da", "DK"),
+        ("el", "GR"),
+        ("en", "US"),
+        ("he", "IL"),
+        ("hi", "IN"),
+        ("ja", "JP"),
+        ("ko", "KR"),
+        ("pt", "BR"),
+        ("sv", "SE"),
+        ("uk", "UA"),
+        ("vi", "VN"),
+        ("zh", "CN"),
+    ];
+    ELSEWHERE
+        .iter()
+        .find(|(l, _)| *l == language)
+        .map_or_else(|| language.to_ascii_uppercase(), |(_, r)| (*r).to_owned())
+}
+
+/// A region's main language, for `region:` alone. Most countries' codes
+/// name it too (`FR`, `DE`, `IT`); these don't.
+fn main_language(region: &str) -> String {
+    const OTHERWISE: &[(&str, &[&str])] = &[
+        (
+            "en",
+            &[
+                "AU", "CA", "GB", "GH", "IE", "IN", "KE", "NG", "NZ", "PH", "PK", "SG", "US", "ZA",
+            ],
+        ),
+        ("es", &["AR", "CL", "CO", "CU", "MX", "PE", "VE"]),
+        ("pt", &["AO", "BR", "MZ"]),
+        ("de", &["AT", "CH"]),
+        ("fr", &["BE", "CI", "SN"]),
+        ("ar", &["AE", "EG", "LB", "SA"]),
+        ("zh", &["CN", "HK", "TW"]),
+        ("cs", &["CZ"]),
+        ("da", &["DK"]),
+        ("el", &["GR"]),
+        ("he", &["IL"]),
+        ("ja", &["JP"]),
+        ("ko", &["KR"]),
+        ("sv", &["SE"]),
+        ("uk", &["UA"]),
+        ("vi", &["VN"]),
+    ];
+    OTHERWISE
+        .iter()
+        .find(|(_, regions)| regions.contains(&region))
+        .map_or_else(|| region.to_ascii_lowercase(), |(l, _)| (*l).to_owned())
 }
 
 /// Fixes up a provider's results so they read like a feed's: the headline
@@ -302,7 +513,8 @@ mod tests {
     fn bing_searches_in_us_english_and_providers_can_move() {
         let k = Keyword::new("\"Cory Booker\"").unwrap();
         assert_eq!(
-            k.search_url(Provider::BingNews, &Providers::default()),
+            k.search_url(Provider::BingNews, &Providers::default())
+                .unwrap(),
             "https://www.bing.com/news/search?q=%22Cory+Booker%22&format=rss&mkt=en-US"
         );
         let local = Providers {
@@ -311,7 +523,119 @@ mod tests {
         };
         assert!(k
             .search_url(Provider::GoogleNews, &local)
+            .unwrap()
             .starts_with("http://127.0.0.1:9/rss/search?q="));
+    }
+
+    #[test]
+    fn queries_split_at_spaces_outside_quotes() {
+        assert_eq!(
+            tokens(r#""night trains" -"sleeper car" OR site:nj.com lang:fr region:ca -x"#),
+            [
+                Token::Term("\"night trains\""),
+                Token::Exclude("-\"sleeper car\""),
+                Token::Or,
+                Token::Term("site:nj.com"),
+                Token::Language("fr"),
+                Token::Region("ca"),
+                Token::Exclude("-x"),
+            ]
+        );
+        // Lowercase `or`, a lone dash and a quoted `lang:` are words.
+        assert_eq!(
+            tokens(r#"a or - "lang:fr" lang:french"#),
+            [
+                Token::Term("a"),
+                Token::Term("or"),
+                Token::Term("-"),
+                Token::Term("\"lang:fr\""),
+                Token::Term("lang:french"),
+            ]
+        );
+    }
+
+    #[test]
+    fn each_provider_is_asked_what_it_reads() {
+        let k = Keyword::new(r#""Cory Booker" -Senate -site:nj.com lang:en"#).unwrap();
+        assert_eq!(
+            k.provider_query(Provider::GoogleNews).unwrap(),
+            r#""Cory Booker" -Senate -site:nj.com"#
+        );
+        assert_eq!(
+            k.provider_query(Provider::BingNews).unwrap(),
+            r#""Cory Booker""#
+        );
+        let either = Keyword::new("Booker OR Kim").unwrap();
+        assert_eq!(
+            either.provider_query(Provider::GoogleNews).unwrap(),
+            "Booker OR Kim"
+        );
+        assert_eq!(
+            either.search_url(Provider::BingNews, &Providers::default()),
+            None
+        );
+        assert!(Keyword::new("lang:fr region:CA").is_none());
+        assert!(Keyword::new("\"lang:fr\"").is_some());
+    }
+
+    #[test]
+    fn language_and_region_pick_the_edition() {
+        let edition = |q: &str| {
+            let Edition { language, region } = Keyword::new(q).unwrap().edition();
+            format!("{language}-{region}")
+        };
+        assert_eq!(edition("Macron"), "en-US");
+        assert_eq!(edition("Macron lang:FR"), "fr-FR");
+        assert_eq!(edition("Lula lang:pt"), "pt-BR");
+        assert_eq!(edition("Carney region:ca"), "en-CA");
+        assert_eq!(edition("Carney region:CA lang:fr"), "fr-CA");
+        assert_eq!(edition("Meloni region:IT"), "it-IT");
+        assert_eq!(edition("Macron lang:de lang:fr"), "fr-FR");
+
+        let k = Keyword::new("Carney lang:fr region:CA").unwrap();
+        assert_eq!(
+            k.search_url(Provider::GoogleNews, &Providers::default())
+                .unwrap(),
+            "https://news.google.com/rss/search?q=Carney&hl=fr-CA&gl=CA&ceid=CA%3Afr"
+        );
+        assert_eq!(
+            k.search_url(Provider::BingNews, &Providers::default())
+                .unwrap(),
+            "https://www.bing.com/news/search?q=Carney&format=rss&mkt=fr-CA"
+        );
+    }
+
+    #[test]
+    fn exclusions_leave_out_matching_results() {
+        let entry = |url: &str, title: &str, summary: &str| Entry {
+            guid: url.into(),
+            url: Some(url.into()),
+            title: title.into(),
+            author: None,
+            summary_html: Some(summary.into()),
+            published_at: None,
+        };
+        let k = Keyword::new(r#"Booker -senate -"New Jersey" -site:nj.com"#).unwrap();
+        let excludes = |url, title, summary| k.excludes(&entry(url, title, summary));
+        assert!(excludes("https://a.example/1", "Booker's Senate seat", ""));
+        assert!(excludes(
+            "https://a.example/2",
+            "Booker on tour",
+            "<p>Back in <b>New</b>&nbsp;Jersey</p>"
+        ));
+        assert!(excludes("https://www.nj.com/3", "Booker on tour", ""));
+        assert!(excludes("https://politics.nj.com/4", "Booker on tour", ""));
+        assert!(!excludes("https://notnj.com/5", "Booker on tour", ""));
+        assert!(!excludes(
+            "https://a.example/6",
+            "Booker and the senators",
+            ""
+        ));
+        assert!(!excludes(
+            "https://a.example/7",
+            "Booker in New York",
+            "Jersey City"
+        ));
     }
 
     #[test]

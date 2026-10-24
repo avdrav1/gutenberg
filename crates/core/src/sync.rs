@@ -142,7 +142,9 @@ fn resolve(
                 }
             }
             Ok((
-                keyword.search_url(Provider::GoogleNews, providers),
+                keyword
+                    .search_url(Provider::GoogleNews, providers)
+                    .expect("Google News reads every query"),
                 format!("keyword alert {}", keyword.query),
                 Some(KeywordJob {
                     keyword,
@@ -390,17 +392,22 @@ async fn fetch_keyword(fetch: &Fetch<'_>, job: KeywordJob, source_id: i64, now: 
         unresolved,
     } = job;
     let keyword = &keyword;
-    let searches = Provider::ALL.map(|provider| async move {
-        let url = keyword.search_url(provider, fetch.providers);
-        match get(fetch.client, fetch.hosts, &url, None, None).await {
-            Ok(Fetched::Body { bytes, .. }) => {
-                let mut parsed = feed::parse(&bytes, &url).map_err(|e| (e.to_string(), None))?;
-                keyword::tidy(provider, &mut parsed, &bytes);
-                Ok(parsed.entries)
+    // A provider that can't ask the query sits it out.
+    let searches = Provider::ALL.into_iter().filter_map(|provider| {
+        let url = keyword.search_url(provider, fetch.providers)?;
+        Some(async move {
+            match get(fetch.client, fetch.hosts, &url, None, None).await {
+                Ok(Fetched::Body { bytes, .. }) => {
+                    let mut parsed =
+                        feed::parse(&bytes, &url).map_err(|e| (e.to_string(), None))?;
+                    keyword::tidy(provider, &mut parsed, &bytes);
+                    parsed.entries.retain(|e| !keyword.excludes(e));
+                    Ok(parsed.entries)
+                }
+                Ok(Fetched::NotModified) => Ok(Vec::new()),
+                Err(err) => Err((err.to_string(), retry_after(&err))),
             }
-            Ok(Fetched::NotModified) => Ok(Vec::new()),
-            Err(err) => Err((err.to_string(), retry_after(&err))),
-        }
+        })
     });
     let mut found = Vec::new();
     let mut failure = None;

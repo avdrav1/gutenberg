@@ -347,7 +347,7 @@ fn title_from_html(html: &str) -> Option<String> {
     Some(title)
 }
 
-fn html_to_text(html: &str) -> String {
+pub(crate) fn html_to_text(html: &str) -> String {
     let mut text = String::with_capacity(html.len());
     let mut rest = html;
     while let Some(open) = rest.find('<') {

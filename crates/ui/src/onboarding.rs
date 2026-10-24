@@ -503,7 +503,8 @@ fn query_field<'a>(
     let (line, line_color) = match &state.draft {
         Some(draft) => (format!("{draft}▏"), t.foreground),
         None => (
-            "Type a news search, like \"Cory Booker\" or climate -opinion".to_owned(),
+            "Type a news search, like \"Cory Booker\", climate -opinion or Macron lang:fr"
+                .to_owned(),
             t.muted,
         ),
     };
