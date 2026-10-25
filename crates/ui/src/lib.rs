@@ -18,9 +18,10 @@ use gutenberg_core::config::{self, Config};
 use gutenberg_core::favicon::Icons;
 use gutenberg_core::sync::unix_now;
 use gutenberg_core::web::{self, Answer, Web};
-use gutenberg_core::{keyword, mcp, secrets};
+use gutenberg_core::{ipc, keyword, mcp, secrets};
 use gutenberg_store::{ArticleRow, Filter, Folder, Source, SourceKind, Store, View, ViewCounts};
 use gutenberg_theme::{Rgb, Scheme, Tokens};
+use iced::futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use iced::futures::Stream;
 use iced::keyboard;
 use iced::mouse::ScrollDelta;
@@ -51,16 +52,19 @@ const ICON_SIZE: f32 = 16.0;
 
 /// Opens the window and blocks until it closes. When `config_path` is set,
 /// edits to that file apply while the window is open. `store_path` is the
-/// SQLite file to read articles from.
+/// SQLite file to read articles from. `inbox` takes the socket's commands
+/// for the window.
 pub fn run(
     config: Config,
     config_path: Option<PathBuf>,
     store_path: Option<PathBuf>,
+    inbox: Inbox,
 ) -> iced::Result {
     use_desktop_font();
     iced::application(
         move || {
-            let app = App::new(config.clone(), config_path.clone(), store_path.as_deref());
+            let mut app = App::new(config.clone(), config_path.clone(), store_path.as_deref());
+            app.inbox = Some(inbox.clone());
             // The desktop's light or dark preference, for the built-in theme.
             (app, iced::system::theme().map(Message::SystemTheme))
         },
@@ -83,6 +87,50 @@ pub fn run(
         ..Default::default()
     })
     .run()
+}
+
+/// Hands the window commands from the socket (`ipc::Command::ReloadTheme`
+/// and `Focus`); [`run`] takes the [`Inbox`] end.
+#[derive(Clone)]
+pub struct Outbox(UnboundedSender<ipc::Command>);
+
+impl Outbox {
+    /// `false` once the window has closed.
+    pub fn send(&self, command: ipc::Command) -> bool {
+        self.0.unbounded_send(command).is_ok()
+    }
+}
+
+/// The window's end of [`inbox`]. Its stream takes the receiver once.
+#[derive(Clone)]
+pub struct Inbox(Arc<std::sync::Mutex<Option<Channel>>>);
+
+type Channel = (
+    UnboundedSender<ipc::Command>,
+    UnboundedReceiver<ipc::Command>,
+);
+
+/// One window, one inbox: always the same subscription.
+impl std::hash::Hash for Inbox {
+    fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
+}
+
+impl Inbox {
+    fn take(&self) -> Option<Channel> {
+        self.0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .take()
+    }
+}
+
+/// A channel from the socket to the window.
+pub fn inbox() -> (Outbox, Inbox) {
+    let (tx, rx) = iced::futures::channel::mpsc::unbounded();
+    (
+        Outbox(tx.clone()),
+        Inbox(Arc::new(std::sync::Mutex::new(Some((tx, rx))))),
+    )
 }
 
 /// Draws all text in the desktop's font: fontconfig's `monospace` family,
@@ -177,6 +225,8 @@ struct App {
     pictures: HashMap<String, article::Picture>,
     pending_g: bool,
     bench: Option<Bench>,
+    /// Commands from the socket; `None` in tests.
+    inbox: Option<Inbox>,
     /// The Add sources screen, shown instead of the panes while open.
     onboarding: Option<onboarding::Onboarding>,
     /// The command palette or help, drawn over the panes.
@@ -355,6 +405,8 @@ enum Message {
     /// The Omarchy theme, if there is one, and the desktop font if it
     /// changed, read again.
     ThemeReloaded(Option<Tokens>, Option<NewFont>),
+    /// Another launch found this window open: come forward.
+    Focus,
     /// The desktop's light or dark preference, at start and when it changes.
     SystemTheme(iced::theme::Mode),
     /// Mouse down on a sources-pane row.
@@ -465,6 +517,7 @@ impl App {
             pictures: HashMap::new(),
             pending_g: false,
             bench,
+            inbox: None,
             onboarding: None,
             overlay: None,
             search: None,
@@ -695,6 +748,14 @@ impl App {
                     let file = font.file.map(Arc::unwrap_or_clone);
                     set_font(&font.family, file);
                 }
+            }
+            // Wayland has no "raise": the window asks for activation, which
+            // Hyprland grants with `misc:focus_on_activate`, Omarchy's
+            // default, switching to the window's workspace.
+            Message::Focus => {
+                return window::latest().and_then(|id| {
+                    window::request_user_attention(id, Some(window::UserAttention::Informational))
+                });
             }
             Message::SystemTheme(mode) => {
                 self.scheme = match mode {
@@ -1185,8 +1246,10 @@ impl App {
         if let Some(path) = &self.config_path {
             subscriptions.push(Subscription::run_with(path.clone(), watch_config));
         }
+        if let Some(inbox) = self.inbox.as_ref().filter(|_| self.bench.is_none()) {
+            subscriptions.push(Subscription::run_with(inbox.clone(), window_commands));
+        }
         if self.bench.is_none() {
-            subscriptions.push(Subscription::run(theme_reloads));
             subscriptions.push(Subscription::run(web_worker));
         }
         if self.bench.is_some() {
@@ -2788,34 +2851,37 @@ struct NewFont {
     file: Option<Arc<Vec<u8>>>,
 }
 
-/// Live theme reload. Two things ask for one: an Omarchy hook through the
-/// socket (`gutenberg --reload-theme`), and the inotify watch on Omarchy's
-/// theme and fontconfig, for installs without the hooks. Each reads the
-/// theme and the font again here, off the UI thread.
-fn theme_reloads() -> impl Stream<Item = Message> {
-    use gutenberg_core::ipc;
+/// The socket's commands for the window, and live theme reload. Two
+/// things ask for a reload: an Omarchy hook through the socket (`gutenberg
+/// --reload-theme`), and the inotify watch on Omarchy's theme and
+/// fontconfig, for installs without the hooks. Each reads the theme and
+/// the font again here, off the UI thread.
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "Subscription::run_with passes &Inbox"
+)]
+fn window_commands(inbox: &Inbox) -> impl Stream<Item = Message> + use<> {
     use gutenberg_theme::{font, watch};
-    use iced::futures::{channel::mpsc, SinkExt, StreamExt};
-    iced::stream::channel(4, async |mut output| {
-        let (asks, mut asked) = mpsc::unbounded::<()>();
-        let on_watch = {
-            let asks = asks.clone();
-            move || {
-                let _ = asks.unbounded_send(());
-            }
+    use iced::futures::{SinkExt, StreamExt};
+    let channel = inbox.take();
+    iced::stream::channel(4, async move |mut output| {
+        let Some((asks, mut asked)) = channel else {
+            return;
+        };
+        let on_watch = move || {
+            let _ = asks.unbounded_send(ipc::Command::ReloadTheme);
         };
         let _watching = watch::watch(watch::watched(), on_watch)
             .map_err(|err| eprintln!("gutenberg: watching the theme: {err}"))
             .ok();
-        let _listening = ipc::socket_path().and_then(|path| {
-            ipc::listen(&path, move |ipc::Command::ReloadTheme| {
-                let _ = asks.unbounded_send(());
-            })
-            .map_err(|err| eprintln!("gutenberg: {err}"))
-            .ok()
-        });
         let mut family = font::monospace().map(|face| face.family);
-        while asked.next().await.is_some() {
+        while let Some(command) = asked.next().await {
+            if command != ipc::Command::ReloadTheme {
+                if command == ipc::Command::Focus && output.send(Message::Focus).await.is_err() {
+                    return;
+                }
+                continue;
+            }
             let tokens = Tokens::omarchy();
             let font = match font::monospace() {
                 Some(face) if family.as_deref() != Some(face.family.as_str()) => {

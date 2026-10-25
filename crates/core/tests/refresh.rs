@@ -289,3 +289,41 @@ fn a_keyword_alert_without_a_query_fails_alone_and_backs_off() {
     assert_eq!((state.failures, state.retry_at), (1, Some(1_300)));
     assert!(store.fetch_state(feed).unwrap().error.is_none());
 }
+
+#[test]
+fn a_refresh_asked_for_runs_even_with_background_refresh_off() {
+    // S7.3: `gutenberg --refresh` with a window open goes to its refresh
+    // thread, which answers with the summary.
+    let log = Arc::new(Log::default());
+    let base = serve(
+        feed_reply("lwn-headlines.xml", "\"lwn-1\""),
+        Duration::ZERO,
+        log,
+    );
+    let tmp = tempfile::tempdir().unwrap();
+    let path = tmp.path().join("gutenberg.db");
+    add_feed(
+        &Store::open(&path).unwrap(),
+        &format!("{base}/headlines/rss"),
+    );
+    let mut config = gutenberg_core::config::Config::default();
+    config.refresh.minutes = 0;
+    let refresher = gutenberg_core::sync::spawn(path.clone(), None, &config);
+
+    let summary = refresher.now().unwrap();
+    assert_eq!(
+        (summary.updated, summary.new_articles),
+        (1, 10),
+        "{summary}"
+    );
+    assert_eq!(
+        Store::open(&path)
+            .unwrap()
+            .list_articles(None, 100)
+            .unwrap()
+            .len(),
+        10
+    );
+    // Asked again: answered again, with nothing new.
+    assert_eq!(refresher.now().unwrap().new_articles, 0);
+}

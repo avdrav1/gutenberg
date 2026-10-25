@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use futures::stream::{FuturesUnordered, StreamExt};
@@ -748,12 +748,13 @@ impl Host {
 }
 
 /// Refreshes in the background for as long as the app runs: once at
-/// start, then every `[refresh] minutes` (0 pauses it). The interval
-/// follows `config.toml` edits. Opens its own store connection, so the UI
-/// thread never waits on it.
-pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config) {
+/// start, then every `[refresh] minutes` (0 pauses it), and whenever the
+/// returned [`Refresher`] asks. The interval follows `config.toml` edits.
+/// Opens its own store connection, so the UI thread never waits on it.
+pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config) -> Refresher {
     let minutes = Arc::new(AtomicU32::new(config.refresh.minutes));
     let watched = minutes.clone();
+    let (asks, asked) = mpsc::channel();
     let spawned = std::thread::Builder::new()
         .name("refresh".into())
         .spawn(move || {
@@ -765,16 +766,39 @@ pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config)
                 })
                 .ok()
             });
-            if let Err(err) = run(&store_path, &minutes) {
+            if let Err(err) = run(&store_path, &minutes, &asked) {
                 eprintln!("gutenberg: background refresh stopped: {err}");
             }
         });
     if let Err(err) = spawned {
         eprintln!("gutenberg: background refresh did not start: {err}");
     }
+    Refresher(asks)
 }
 
-fn run(store_path: &std::path::Path, minutes: &AtomicU32) -> Result<(), String> {
+/// Asks the background refresh to run now (`gutenberg --refresh` with a
+/// window open).
+pub struct Refresher(mpsc::Sender<Reply>);
+
+/// Where a refresh asked for sends how it went.
+type Reply = mpsc::Sender<Result<Summary, String>>;
+
+impl Refresher {
+    /// Refreshes what's due now, or after the refresh already running, and
+    /// waits for it.
+    pub fn now(&self) -> Result<Summary, String> {
+        let (reply, answer) = mpsc::channel();
+        let stopped = || "the background refresh stopped".to_owned();
+        self.0.send(reply).map_err(|_| stopped())?;
+        answer.recv().map_err(|_| stopped())?
+    }
+}
+
+fn run(
+    store_path: &std::path::Path,
+    minutes: &AtomicU32,
+    asked: &mpsc::Receiver<Reply>,
+) -> Result<(), String> {
     let mut store = Store::open(store_path).map_err(|e| e.to_string())?;
     let icons = Icons::beside(store_path);
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -782,16 +806,31 @@ fn run(store_path: &std::path::Path, minutes: &AtomicU32) -> Result<(), String> 
         .build()
         .map_err(|e| e.to_string())?;
     let limits = Limits::default();
+    let mut waiting: Vec<Reply> = Vec::new();
     loop {
-        if minutes.load(Ordering::Relaxed) > 0 {
-            runtime
+        if minutes.load(Ordering::Relaxed) > 0 || !waiting.is_empty() {
+            let done = runtime
                 .block_on(refresh(&mut store, unix_now(), &limits, Some(&icons)))
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| e.to_string());
+            for reply in waiting.drain(..) {
+                let _ = reply.send(done.clone());
+            }
+            done?;
         }
         // Wait out the interval, re-reading it so an edit applies now.
         let since = Instant::now();
         loop {
-            std::thread::sleep(Duration::from_secs(1));
+            match asked.recv_timeout(Duration::from_secs(1)) {
+                Ok(reply) => {
+                    waiting.push(reply);
+                    break;
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+                // The app is closing; the wait goes on until it has.
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    std::thread::sleep(Duration::from_secs(1))
+                }
+            }
             let every = u64::from(minutes.load(Ordering::Relaxed)) * 60;
             if every > 0 && since.elapsed().as_secs() >= every {
                 break;

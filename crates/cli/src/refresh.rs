@@ -1,13 +1,29 @@
-//! `gutenberg --refresh`: refresh every due feed now and say how it went.
-//! Runs in this process until the app's socket (S7.3) can take it.
+//! `gutenberg --refresh`: refresh every due source now and say how it
+//! went. With a window open, its refresh thread does it, over the socket;
+//! otherwise this process does.
 
 use std::process::ExitCode;
 
 use gutenberg_core::favicon::Icons;
+use gutenberg_core::ipc;
 use gutenberg_core::sync::{self, Limits};
 use gutenberg_store::Store;
 
 pub fn run() -> ExitCode {
+    if let Some(path) = ipc::socket_path() {
+        match ipc::send(&path, ipc::Command::Refresh) {
+            // The window shows what failed in its sources pane.
+            Ok(summary) => {
+                println!("{summary}");
+                return ExitCode::SUCCESS;
+            }
+            Err(ipc::Error::NotRunning) => {}
+            Err(err) => {
+                eprintln!("gutenberg: refresh: {err}");
+                return ExitCode::FAILURE;
+            }
+        }
+    }
     match refresh() {
         Ok(summary) => {
             for (url, error) in &summary.failed {
