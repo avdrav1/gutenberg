@@ -438,12 +438,16 @@ impl App {
             .filter_map(|s| keyword::Keyword::from_config(&s.config).ok())
             .map(|k| k.query)
             .collect();
-        self.onboarding = Some(onboarding::Onboarding::new(
-            catalog::builtin(),
-            known,
-            known_queries,
-            self.sources.is_empty(),
-        ));
+        let known_mcp: Vec<_> = self.sources.iter().filter_map(mcp::settings).collect();
+        self.onboarding = Some(
+            onboarding::Onboarding::new(
+                catalog::builtin(),
+                known,
+                known_queries,
+                self.sources.is_empty(),
+            )
+            .with_known_mcp(catalog::builtin(), &known_mcp),
+        );
     }
 
     fn update_onboarding(&mut self, action: onboarding::Action) -> Task<Message> {

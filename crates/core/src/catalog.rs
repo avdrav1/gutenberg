@@ -9,6 +9,7 @@ use gutenberg_store::{NewSource, SourceKind, Store};
 use serde::Deserialize;
 
 use crate::keyword;
+use crate::mcp::{self, Mcp, Server};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -134,11 +135,13 @@ pub struct Picks {
     pub keywords: Vec<usize>,
     /// Keyword alerts typed in, as `Keyword::new` keeps them.
     pub queries: Vec<String>,
+    /// Indices into `catalog.mcp`.
+    pub mcp: Vec<usize>,
 }
 
 impl Picks {
     pub fn len(&self) -> usize {
-        self.feeds.len() + self.keywords.len() + self.queries.len()
+        self.feeds.len() + self.keywords.len() + self.queries.len() + self.mcp.len()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -215,7 +218,33 @@ pub fn subscribe(
         keyword::insert(store, &keyword, title, folder_id)?;
         result.added += 1;
     }
+    for preset in sorted(&picks.mcp).filter_map(|i| catalog.mcp.get(i)) {
+        match mcp::add(store, &preset.settings(), &preset.title, None)? {
+            Some(_) => result.added += 1,
+            None => result.known += 1,
+        }
+    }
     Ok(result)
+}
+
+impl McpPreset {
+    /// The source settings for this preset: its server, tool and arguments.
+    pub fn settings(&self) -> Mcp {
+        let server = match self.transport {
+            McpTransport::Stdio => Server::Command {
+                command: self.command.clone(),
+                args: self.args.clone(),
+            },
+            McpTransport::Http => Server::Url {
+                url: self.url.clone(),
+            },
+        };
+        let mut settings = Mcp::new(server);
+        settings
+            .pick(&self.tool, &self.arguments)
+            .expect("the catalog's arguments are JSON objects (tested)");
+        settings
+    }
 }
 
 /// Each index once, in order.
@@ -263,6 +292,8 @@ mod tests {
         assert!(starters.iter().all(|f| f.paywall == Paywall::None));
         for mcp in &catalog.mcp {
             assert!(mcp.arguments.starts_with('{'), "{}", mcp.title);
+            // The template is a JSON object once filled.
+            let _ = mcp.settings();
             match mcp.transport {
                 McpTransport::Stdio => assert!(!mcp.command.is_empty(), "{}", mcp.title),
                 McpTransport::Http => assert!(!mcp.url.is_empty(), "{}", mcp.title),
@@ -287,6 +318,11 @@ mod tests {
             })
             .unwrap();
 
+        let papers = catalog
+            .mcp
+            .iter()
+            .position(|m| m.title == "Hugging Face – Daily Papers")
+            .unwrap();
         let picks = Picks {
             feeds: vec![science, world[2], world[0], world[1], world[1]],
             keywords: vec![un, un],
@@ -295,9 +331,29 @@ mod tests {
                 "\"Cory Booker\"".into(),
                 format!(" {} ", catalog.keywords[un].query),
             ],
+            mcp: vec![papers, papers],
         };
         let got = subscribe(&store, catalog, &picks).unwrap();
-        assert_eq!(got, Subscribed { added: 5, known: 2 });
+        assert_eq!(got, Subscribed { added: 6, known: 2 });
+        // An MCP server comes with its tool, unfiled; added again, it's known.
+        let server = store
+            .sources()
+            .unwrap()
+            .into_iter()
+            .find(|s| s.kind == SourceKind::Mcp)
+            .unwrap();
+        assert_eq!(server.title, catalog.mcp[papers].title);
+        assert_eq!(server.folder_id, None);
+        let settings = mcp::settings(&server).unwrap();
+        assert_eq!(settings.tool.as_deref(), Some("hf_fs"));
+        let again = Picks {
+            mcp: vec![papers],
+            ..Picks::default()
+        };
+        assert_eq!(
+            subscribe(&store, catalog, &again).unwrap(),
+            Subscribed { added: 0, known: 1 }
+        );
         let names: Vec<String> = store
             .folders()
             .unwrap()
@@ -320,7 +376,7 @@ mod tests {
         );
 
         let again = subscribe(&store, catalog, &picks).unwrap();
-        assert_eq!(again, Subscribed { added: 0, known: 7 });
+        assert_eq!(again, Subscribed { added: 0, known: 8 });
         assert_eq!(store.folders().unwrap().len(), 2);
     }
 }

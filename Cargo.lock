@@ -1959,6 +1959,7 @@ dependencies = [
 name = "gutenberg-sources"
 version = "0.17.0"
 dependencies = [
+ "chrono",
  "dom_smoothie",
  "feed-rs",
  "html-escape",

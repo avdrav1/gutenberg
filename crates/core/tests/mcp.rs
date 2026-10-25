@@ -3,7 +3,7 @@
 //! server is the recorded Hugging Face one, played by
 //! `tests/fixtures/mcp/replay.sh`.
 
-use gutenberg_core::mcp::{self, Server};
+use gutenberg_core::mcp::{self, Mcp, Server};
 use gutenberg_core::sync::{refresh, Limits};
 use gutenberg_store::Store;
 
@@ -33,12 +33,12 @@ fn tool_names(store: &Store, id: i64) -> Vec<String> {
 fn a_refresh_keeps_each_servers_tools_and_errors() {
     let mut store = Store::open_in_memory().unwrap();
     let replay = Server::parse(&format!("sh {REPLAY}")).unwrap();
-    let good = mcp::add(&store, &replay, "Hugging Face", None)
+    let good = mcp::add(&store, &Mcp::new(replay), "Hugging Face", None)
         .unwrap()
         .unwrap()
         .id;
     let broken = Server::parse("sh -c 'echo Error: no token >&2; exit 1'").unwrap();
-    let bad = mcp::add(&store, &broken, "Broken", None)
+    let bad = mcp::add(&store, &Mcp::new(broken), "Broken", None)
         .unwrap()
         .unwrap()
         .id;
@@ -66,4 +66,45 @@ fn a_refresh_keeps_each_servers_tools_and_errors() {
         Some("the server stopped: Error: no token")
     );
     assert!(tool_names(&store, bad).is_empty());
+}
+
+#[test]
+fn a_picked_tool_is_called_and_its_results_kept_once() {
+    let mut store = Store::open_in_memory().unwrap();
+    let mut papers =
+        Mcp::new(Server::parse(&format!("sh {REPLAY} huggingface-hf-fs-trending.json")).unwrap());
+    papers
+        .pick(
+            "hf_fs",
+            r#"{"operations": [{"cmd": "ls", "args": ["hf://papers/trending", "--since", "{{since}}"]}]}"#,
+        )
+        .unwrap();
+    let id = mcp::add(&store, &papers, "Trending papers", None)
+        .unwrap()
+        .unwrap()
+        .id;
+    let rt = runtime();
+    // 2026-10-24 12:00 UTC.
+    let noon = 1_792_843_200;
+    let first = rt
+        .block_on(refresh(&mut store, noon, &Limits::default(), None))
+        .unwrap();
+    assert_eq!((first.updated, first.new_articles), (1, 10), "{first}");
+    let titles: Vec<_> = store
+        .list_articles(Some(id), 20)
+        .unwrap()
+        .into_iter()
+        .map(|a| a.title)
+        .collect();
+    assert!(titles
+        .contains(&"Kronos: A Foundation Model for the Language of Financial Markets".to_owned()));
+    let source = store.sources().unwrap().remove(0);
+    let settings = mcp::settings(&source).unwrap();
+    assert_eq!(settings.called.as_deref(), Some("2026-10-24"));
+    assert_eq!(settings.tools.len(), 4);
+
+    let second = rt
+        .block_on(refresh(&mut store, noon + 3_600, &Limits::default(), None))
+        .unwrap();
+    assert_eq!(second.new_articles, 0, "{second}");
 }

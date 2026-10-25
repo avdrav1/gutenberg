@@ -1,0 +1,183 @@
+{
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "## Operation 1\n\n# hf_fs ls\n\nURI: `hf://papers/trending`\n\nOrder: Hugging Face global trending rank (not total upvotes)\n\n| Type | Path | URI | Target | Details |\n|---|---|---|---|---|\n| paper | 2610.14224 | hf://papers/2610.14224 |  | title=Harness^2: Recursive Agent Harnessing for an Open World, summary=Harness² improves agent execution harnesses through recursive task-level refinement and continual harness-level learning, boosting performance across benchmarks without ground-truth verifiers., upvotes=122, created=2026-10-09T00:00:00.000Z, published=2026-10-09T00:00:00.000Z, daily papers=2026-10-14, daily papers uri=hf://papers/daily/2026/10/14, web=https://huggingface.co/papers/2610.14224, arXiv=https://arxiv.org/abs/2610.14224, observed=2026-10-25T00:06:29.640Z |\n| paper | 2508.02739 | hf://papers/2508.02739 |  | title=Kronos: A Foundation Model for the Language of Financial Markets, summary=Kronos, a specialized pre-training framework for financial K-line data, outperforms existing models in forecasting and synthetic data generation through a unique tokenizer and autoregressive pre-training on a large dataset., upvotes=62, created=2025-08-02T13:15:59.000Z, published=2025-08-02T13:15:59.000Z, web=https://huggingface.co/papers/2508.02739, arXiv=https://arxiv.org/abs/2508.02739, observed=2026-10-25T00:06:29.640Z |\n| paper | 2412.20138 | hf://papers/2412.20138 |  | title=TradingAgents: Multi-Agents LLM Financial Trading Framework, summary=A multi-agent framework using large language models for stock trading simulates real-world trading firms, improving performance metrics like cumulative returns and Sharpe ratio., upvotes=154, created=2024-12-28T12:54:06.000Z, published=2024-12-28T12:54:06.000Z, web=https://huggingface.co/papers/2412.20138, arXiv=https://arxiv.org/abs/2412.20138, observed=2026-10-25T00:06:29.640Z |\n| paper | 2609.18063 | hf://papers/2609.18063 |  | title=The Other Half of the Memory Wall: Serving 35B MoEs from SSD with Trained Routing Prediction, summary=Edge0 enables efficient mixture-of-experts inference on consumer hardware by predicting expert routing ahead of time and using recovery adapters to maintain quality with minimal active memory., upvotes=30, created=2026-09-16T00:00:00.000Z, published=2026-09-16T00:00:00.000Z, daily papers=2026-09-17, daily papers uri=hf://papers/daily/2026/09/17, web=https://huggingface.co/papers/2609.18063, arXiv=https://arxiv.org/abs/2609.18063, observed=2026-10-25T00:06:29.640Z |\n| paper | 2610.23374 | hf://papers/2610.23374 |  | title=MOSS-Image Technical Report, summary=MOSS-Image is an open diffusion transformer that combines high-fidelity synthesis with intent-aware prompt enhancement to generate text-rich, layout-coherent images, achieving state-of-the-art open-weight results on long-form text and layo…, upvotes=98, created=2026-10-16T00:00:00.000Z, published=2026-10-16T00:00:00.000Z, daily papers=2026-10-19, daily papers uri=hf://papers/daily/2026/10/19, web=https://huggingface.co/papers/2610.23374, arXiv=https://arxiv.org/abs/2610.23374, observed=2026-10-25T00:06:29.640Z |\n| paper | 2610.08699 | hf://papers/2610.08699 |  | title=nanoMuse: An Open-Source Personal Agent for Every Device You Own, summary=Assistants from 2011 answered and waited, and agents from 2023 did a task and stopped. In September 2026 Meta's Muse showed an agent for one person, with accounts, devices, memory and a conversation that lasts, closed, in a vendor's cloud,…, upvotes=120, created=2026-10-06T00:00:00.000Z, published=2026-10-06T00:00:00.000Z, daily papers=2026-10-08, daily papers uri=hf://papers/daily/2026/10/08, web=https://huggingface.co/papers/2610.08699, arXiv=https://arxiv.org/abs/2610.08699, observed=2026-10-25T00:06:29.640Z |\n| paper | 2610.17309 | hf://papers/2610.17309 |  | title=StartLux-Decision: AutoThink Decision Models with Reinforcement Learning for Calibrated Deliberative Decisions, summary=StartLux-Decision introduces efficient and adaptive decision models using single-pass prediction and confidence-guided reasoning, trained via a three-stage pipeline with RLCD² reinforcement learning, and evaluates them on Decision Index an…, upvotes=81, created=2026-10-12T00:00:00.000Z, published=2026-10-12T00:00:00.000Z, daily papers=2026-10-15, daily papers uri=hf://papers/daily/2026/10/15, web=https://huggingface.co/papers/2610.17309, arXiv=https://arxiv.org/abs/2610.17309, observed=2026-10-25T00:06:29.640Z |\n| paper | 2610.14162 | hf://papers/2610.14162 |  | title=Next-Concept Modeling: Fast, Parallel Coarse-to-Fine Text Generation, summary=Next-Concept Modeling uses hierarchical discrete codes and parallel level-wise generation to accelerate diffusion language models while improving quality and reasoning performance., upvotes=16, created=2026-10-09T00:00:00.000Z, published=2026-10-09T00:00:00.000Z, daily papers=2026-10-15, daily papers uri=hf://papers/daily/2026/10/15, web=https://huggingface.co/papers/2610.14162, arXiv=https://arxiv.org/abs/2610.14162, observed=2026-10-25T00:06:29.640Z |\n| paper | 2603.23509 | hf://papers/2603.23509 |  | title=Internal Safety Collapse in Frontier Large Language Models, summary=Frontier large language models exhibit Internal Safety Collapse, where they generate harmful content under specific task conditions, revealing inherent vulnerabilities despite alignment efforts., upvotes=31, created=2026-03-04T12:55:34.000Z, published=2026-03-04T12:55:34.000Z, web=https://huggingface.co/papers/2603.23509, arXiv=https://arxiv.org/abs/2603.23509, observed=2026-10-25T00:06:29.640Z |\n| paper | 2610.28698 | hf://papers/2610.28698 |  | title=Scaling in Games: Continued Pre-Training For Embodied Agents In Diverse Virtual Worlds, summary=Continued pre-training across data scale, diversity, and model size improves embodied learning in virtual worlds but reveals limits in distant-world generalization, motivating richer training beyond imitation., upvotes=73, created=2026-10-20T00:00:00.000Z, published=2026-10-20T00:00:00.000Z, daily papers=2026-10-22, daily papers uri=hf://papers/daily/2026/10/22, web=https://huggingface.co/papers/2610.28698, arXiv=https://arxiv.org/abs/2610.28698, observed=2026-10-25T00:06:29.640Z |\n\nShowing 10 papers in Hugging Face global trending rank. More papers are available; rerun ls hf://papers/trending with --limit up to 100."
+      }
+    ],
+    "structuredContent": {
+      "results": [
+        {
+          "index": 0,
+          "status": "success",
+          "result": {
+            "uri": "hf://papers/trending",
+            "op": "ls",
+            "entries": [
+              {
+                "type": "paper",
+                "name": "2610.14224",
+                "path": "2610.14224",
+                "uri": "hf://papers/2610.14224",
+                "title": "Harness^2: Recursive Agent Harnessing for an Open World",
+                "description": "Harness² improves agent execution harnesses through recursive task-level refinement and continual harness-level learning, boosting performance across benchmarks without ground-truth verifiers.",
+                "upvotes": 122,
+                "created_at": "2026-10-09T00:00:00.000Z",
+                "published_at": "2026-10-09T00:00:00.000Z",
+                "daily_papers_date": "2026-10-14",
+                "daily_papers_uri": "hf://papers/daily/2026/10/14",
+                "url": "https://huggingface.co/papers/2610.14224",
+                "arxiv_url": "https://arxiv.org/abs/2610.14224",
+                "observed_at": "2026-10-25T00:06:29.640Z"
+              },
+              {
+                "type": "paper",
+                "name": "2508.02739",
+                "path": "2508.02739",
+                "uri": "hf://papers/2508.02739",
+                "title": "Kronos: A Foundation Model for the Language of Financial Markets",
+                "description": "Kronos, a specialized pre-training framework for financial K-line data, outperforms existing models in forecasting and synthetic data generation through a unique tokenizer and autoregressive pre-training on a large dataset.",
+                "upvotes": 62,
+                "created_at": "2025-08-02T13:15:59.000Z",
+                "published_at": "2025-08-02T13:15:59.000Z",
+                "url": "https://huggingface.co/papers/2508.02739",
+                "arxiv_url": "https://arxiv.org/abs/2508.02739",
+                "observed_at": "2026-10-25T00:06:29.640Z"
+              },
+              {
+                "type": "paper",
+                "name": "2412.20138",
+                "path": "2412.20138",
+                "uri": "hf://papers/2412.20138",
+                "title": "TradingAgents: Multi-Agents LLM Financial Trading Framework",
+                "description": "A multi-agent framework using large language models for stock trading simulates real-world trading firms, improving performance metrics like cumulative returns and Sharpe ratio.",
+                "upvotes": 154,
+                "created_at": "2024-12-28T12:54:06.000Z",
+                "published_at": "2024-12-28T12:54:06.000Z",
+                "url": "https://huggingface.co/papers/2412.20138",
+                "arxiv_url": "https://arxiv.org/abs/2412.20138",
+                "observed_at": "2026-10-25T00:06:29.640Z"
+              },
+              {
+                "type": "paper",
+                "name": "2609.18063",
+                "path": "2609.18063",
+                "uri": "hf://papers/2609.18063",
+                "title": "The Other Half of the Memory Wall: Serving 35B MoEs from SSD with Trained Routing Prediction",
+                "description": "Edge0 enables efficient mixture-of-experts inference on consumer hardware by predicting expert routing ahead of time and using recovery adapters to maintain quality with minimal active memory.",
+                "upvotes": 30,
+                "created_at": "2026-09-16T00:00:00.000Z",
+                "published_at": "2026-09-16T00:00:00.000Z",
+                "daily_papers_date": "2026-09-17",
+                "daily_papers_uri": "hf://papers/daily/2026/09/17",
+                "url": "https://huggingface.co/papers/2609.18063",
+                "arxiv_url": "https://arxiv.org/abs/2609.18063",
+                "observed_at": "2026-10-25T00:06:29.640Z"
+              },
+              {
+                "type": "paper",
+                "name": "2610.23374",
+                "path": "2610.23374",
+                "uri": "hf://papers/2610.23374",
+                "title": "MOSS-Image Technical Report",
+                "description": "MOSS-Image is an open diffusion transformer that combines high-fidelity synthesis with intent-aware prompt enhancement to generate text-rich, layout-coherent images, achieving state-of-the-art open-weight results on long-form text and layo…",
+                "upvotes": 98,
+                "created_at": "2026-10-16T00:00:00.000Z",
+                "published_at": "2026-10-16T00:00:00.000Z",
+                "daily_papers_date": "2026-10-19",
+                "daily_papers_uri": "hf://papers/daily/2026/10/19",
+                "url": "https://huggingface.co/papers/2610.23374",
+                "arxiv_url": "https://arxiv.org/abs/2610.23374",
+                "observed_at": "2026-10-25T00:06:29.640Z"
+              },
+              {
+                "type": "paper",
+                "name": "2610.08699",
+                "path": "2610.08699",
+                "uri": "hf://papers/2610.08699",
+                "title": "nanoMuse: An Open-Source Personal Agent for Every Device You Own",
+                "description": "Assistants from 2011 answered and waited, and agents from 2023 did a task and stopped. In September 2026 Meta's Muse showed an agent for one person, with accounts, devices, memory and a conversation that lasts, closed, in a vendor's cloud,…",
+                "upvotes": 120,
+                "created_at": "2026-10-06T00:00:00.000Z",
+                "published_at": "2026-10-06T00:00:00.000Z",
+                "daily_papers_date": "2026-10-08",
+                "daily_papers_uri": "hf://papers/daily/2026/10/08",
+                "url": "https://huggingface.co/papers/2610.08699",
+                "arxiv_url": "https://arxiv.org/abs/2610.08699",
+                "observed_at": "2026-10-25T00:06:29.640Z"
+              },
+              {
+                "type": "paper",
+                "name": "2610.17309",
+                "path": "2610.17309",
+                "uri": "hf://papers/2610.17309",
+                "title": "StartLux-Decision: AutoThink Decision Models with Reinforcement Learning for Calibrated Deliberative Decisions",
+                "description": "StartLux-Decision introduces efficient and adaptive decision models using single-pass prediction and confidence-guided reasoning, trained via a three-stage pipeline with RLCD² reinforcement learning, and evaluates them on Decision Index an…",
+                "upvotes": 81,
+                "created_at": "2026-10-12T00:00:00.000Z",
+                "published_at": "2026-10-12T00:00:00.000Z",
+                "daily_papers_date": "2026-10-15",
+                "daily_papers_uri": "hf://papers/daily/2026/10/15",
+                "url": "https://huggingface.co/papers/2610.17309",
+                "arxiv_url": "https://arxiv.org/abs/2610.17309",
+                "observed_at": "2026-10-25T00:06:29.640Z"
+              },
+              {
+                "type": "paper",
+                "name": "2610.14162",
+                "path": "2610.14162",
+                "uri": "hf://papers/2610.14162",
+                "title": "Next-Concept Modeling: Fast, Parallel Coarse-to-Fine Text Generation",
+                "description": "Next-Concept Modeling uses hierarchical discrete codes and parallel level-wise generation to accelerate diffusion language models while improving quality and reasoning performance.",
+                "upvotes": 16,
+                "created_at": "2026-10-09T00:00:00.000Z",
+                "published_at": "2026-10-09T00:00:00.000Z",
+                "daily_papers_date": "2026-10-15",
+                "daily_papers_uri": "hf://papers/daily/2026/10/15",
+                "url": "https://huggingface.co/papers/2610.14162",
+                "arxiv_url": "https://arxiv.org/abs/2610.14162",
+                "observed_at": "2026-10-25T00:06:29.640Z"
+              },
+              {
+                "type": "paper",
+                "name": "2603.23509",
+                "path": "2603.23509",
+                "uri": "hf://papers/2603.23509",
+                "title": "Internal Safety Collapse in Frontier Large Language Models",
+                "description": "Frontier large language models exhibit Internal Safety Collapse, where they generate harmful content under specific task conditions, revealing inherent vulnerabilities despite alignment efforts.",
+                "upvotes": 31,
+                "created_at": "2026-03-04T12:55:34.000Z",
+                "published_at": "2026-03-04T12:55:34.000Z",
+                "url": "https://huggingface.co/papers/2603.23509",
+                "arxiv_url": "https://arxiv.org/abs/2603.23509",
+                "observed_at": "2026-10-25T00:06:29.640Z"
+              },
+              {
+                "type": "paper",
+                "name": "2610.28698",
+                "path": "2610.28698",
+                "uri": "hf://papers/2610.28698",
+                "title": "Scaling in Games: Continued Pre-Training For Embodied Agents In Diverse Virtual Worlds",
+                "description": "Continued pre-training across data scale, diversity, and model size improves embodied learning in virtual worlds but reveals limits in distant-world generalization, motivating richer training beyond imitation.",
+                "upvotes": 73,
+                "created_at": "2026-10-20T00:00:00.000Z",
+                "published_at": "2026-10-20T00:00:00.000Z",
+                "daily_papers_date": "2026-10-22",
+                "daily_papers_uri": "hf://papers/daily/2026/10/22",
+                "url": "https://huggingface.co/papers/2610.28698",
+                "arxiv_url": "https://arxiv.org/abs/2610.28698",
+                "observed_at": "2026-10-25T00:06:29.640Z"
+              }
+            ],
+            "truncated": true,
+            "truncation_reason": "limit",
+            "truncation_message": "Showing 10 papers in Hugging Face global trending rank. More papers are available; rerun ls hf://papers/trending with --limit up to 100."
+          }
+        }
+      ]
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 2
+}

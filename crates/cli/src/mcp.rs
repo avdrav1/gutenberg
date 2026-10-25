@@ -1,33 +1,85 @@
-//! `gutenberg --mcp <command or URL>`: add an MCP server and list its tools.
+//! `gutenberg --mcp <command or URL> [--tool <name> [--args <json>]]`: add
+//! an MCP server, list its tools, and with `--tool` read its results as
+//! articles on every refresh.
 
 use std::process::ExitCode;
 
 use gutenberg_core::{mcp, sync};
 use gutenberg_store::Store;
 
-pub fn run(typed: &str, folder: Option<&str>) -> ExitCode {
-    match add(typed, folder) {
+/// What follows `--mcp`.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Options {
+    pub server: String,
+    pub tool: Option<String>,
+    /// The tool's argument template; `{}` when not given.
+    pub arguments: Option<String>,
+    pub folder: Option<String>,
+}
+
+impl Options {
+    /// The server, then `--tool`, `--args` and `--folder` in any order.
+    /// `None` for anything else, or `--args` without `--tool`.
+    pub fn parse(args: &[String]) -> Option<Self> {
+        let (server, mut rest) = args.split_first()?;
+        if server.starts_with("--") {
+            return None;
+        }
+        let mut options = Options {
+            server: server.clone(),
+            tool: None,
+            arguments: None,
+            folder: None,
+        };
+        while let [flag, value, more @ ..] = rest {
+            let slot = match flag.as_str() {
+                "--tool" => &mut options.tool,
+                "--args" => &mut options.arguments,
+                "--folder" => &mut options.folder,
+                _ => return None,
+            };
+            if slot.replace(value.clone()).is_some() {
+                return None;
+            }
+            rest = more;
+        }
+        (rest.is_empty() && (options.tool.is_some() || options.arguments.is_none()))
+            .then_some(options)
+    }
+}
+
+pub fn run(options: &Options) -> ExitCode {
+    match add(options) {
         Ok(message) => {
             println!("{message}");
             ExitCode::SUCCESS
         }
         Err(message) => {
-            eprintln!("gutenberg: {typed}: {message}");
+            eprintln!("gutenberg: {}: {message}", options.server);
             ExitCode::FAILURE
         }
     }
 }
 
-fn add(typed: &str, folder: Option<&str>) -> Result<String, String> {
-    let server = mcp::Server::parse(typed).map_err(|e| e.to_string())?;
+fn add(options: &Options) -> Result<String, String> {
+    let mut settings =
+        mcp::Mcp::new(mcp::Server::parse(&options.server).map_err(|e| e.to_string())?);
+    if let Some(tool) = &options.tool {
+        settings
+            .pick(tool, options.arguments.as_deref().unwrap_or("{}"))
+            .map_err(|e| e.to_string())?;
+    }
     let path = Store::default_path().map_err(|e| e.to_string())?;
     let mut store = Store::open(&path).map_err(|e| e.to_string())?;
-    let folder_id = match folder {
+    let folder_id = match &options.folder {
         Some(name) => Some(store.folder_named(name).map_err(|e| e.to_string())?.id),
         None => None,
     };
-    let label = server.label();
-    let source = mcp::add(&store, &server, &label, folder_id)
+    let label = match &options.tool {
+        Some(tool) => format!("{} · {tool}", settings.server.label()),
+        None => settings.server.label(),
+    };
+    let source = mcp::add(&store, &settings, &label, folder_id)
         .map_err(|e| e.to_string())?
         .ok_or("already added")?;
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -56,14 +108,58 @@ fn add(typed: &str, folder: Option<&str>) -> Result<String, String> {
         .find(|s| s.id == source.id)
         .ok_or("the server's source went missing")?;
     let tools = mcp::tools(&source);
-    let place = folder.map_or(String::new(), |name| format!(" to {name}"));
-    let noun = if tools.len() == 1 { "tool" } else { "tools" };
-    let mut message = format!("Added MCP server {label}{place}: {} {noun}", tools.len());
-    for tool in tools {
-        message.push_str(&format!("\n  {}", tool.name));
-        if let Some(description) = tool.description {
-            message.push_str(&format!(" · {description}"));
+    let place = options
+        .folder
+        .as_ref()
+        .map_or(String::new(), |name| format!(" to {name}"));
+    let plural = |n: usize, word: &str| format!("{n} {word}{}", if n == 1 { "" } else { "s" });
+    let mut message = match &options.tool {
+        Some(tool) => format!(
+            "Added MCP server {label}{place}: {} from {tool}",
+            plural(summary.new_articles, "article")
+        ),
+        None => format!(
+            "Added MCP server {label}{place}: {}",
+            plural(tools.len(), "tool")
+        ),
+    };
+    if options.tool.is_none() {
+        for tool in tools {
+            message.push_str(&format!("\n  {}", tool.name));
+            if let Some(description) = tool.description {
+                message.push_str(&format!(" · {description}"));
+            }
         }
     }
     Ok(message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse(args: &[&str]) -> Option<Options> {
+        Options::parse(&args.iter().map(|a| a.to_string()).collect::<Vec<_>>())
+    }
+
+    #[test]
+    fn flags_come_in_any_order_once_each() {
+        let options = parse(&["uvx x", "--args", "{}", "--folder", "AI", "--tool", "t"]).unwrap();
+        assert_eq!(
+            options,
+            Options {
+                server: "uvx x".into(),
+                tool: Some("t".into()),
+                arguments: Some("{}".into()),
+                folder: Some("AI".into()),
+            }
+        );
+        assert!(parse(&["uvx x"]).is_some());
+        assert!(parse(&[]).is_none());
+        assert!(parse(&["--tool", "t"]).is_none());
+        assert!(parse(&["uvx x", "--args", "{}"]).is_none());
+        assert!(parse(&["uvx x", "--tool"]).is_none());
+        assert!(parse(&["uvx x", "--tool", "a", "--tool", "b"]).is_none());
+        assert!(parse(&["uvx x", "--color", "red"]).is_none());
+    }
 }

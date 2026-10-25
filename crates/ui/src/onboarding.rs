@@ -7,6 +7,7 @@ use std::collections::HashSet;
 
 use gutenberg_core::catalog::{Catalog, McpTransport, Paywall, Picks};
 use gutenberg_core::keyword::Keyword;
+use gutenberg_core::mcp::Mcp;
 use gutenberg_theme::{Rgb, Tokens};
 use iced::keyboard::{Key, Modifiers};
 use iced::widget::{checkbox, column, container, mouse_area, scrollable, text, Column, Row, Space};
@@ -64,6 +65,10 @@ pub struct Onboarding {
     pub known_queries: HashSet<String>,
     /// Presets whose query the store already has.
     known_presets: HashSet<usize>,
+    /// Checked MCP servers, as indices into `catalog.mcp`.
+    pub checked_mcp: HashSet<usize>,
+    /// MCP servers the store already has calling the same tool.
+    known_mcp: HashSet<usize>,
 }
 
 pub fn action_for(key: &Key, modifiers: Modifiers) -> Option<Action> {
@@ -127,7 +132,27 @@ impl Onboarding {
             known,
             known_queries,
             known_presets,
+            checked_mcp: HashSet::new(),
+            known_mcp: HashSet::new(),
         }
+    }
+
+    /// Marks the catalog's MCP servers the store already has, with the
+    /// same tool, as added.
+    pub fn with_known_mcp(mut self, catalog: &Catalog, known: &[Mcp]) -> Self {
+        self.known_mcp = catalog
+            .mcp
+            .iter()
+            .enumerate()
+            .filter(|(_, preset)| {
+                let settings = preset.settings();
+                known
+                    .iter()
+                    .any(|m| m.server == settings.server && m.tool == settings.tool)
+            })
+            .map(|(i, _)| i)
+            .collect();
+        self
     }
 
     /// The keyword alerts page.
@@ -247,6 +272,7 @@ impl Onboarding {
                 .filter(|(_, checked)| *checked)
                 .map(|(q, _)| q.clone())
                 .collect(),
+            mcp: sorted(&self.checked_mcp),
         }
     }
 
@@ -263,7 +289,7 @@ impl Onboarding {
         } else if category == Self::keywords_page(catalog) {
             self.checked_keywords.len() + self.queries.iter().filter(|(_, c)| *c).count()
         } else {
-            0
+            self.checked_mcp.len()
         }
     }
 
@@ -272,7 +298,8 @@ impl Onboarding {
         match entry {
             Entry::Feed(i) => self.known.contains(&catalog.feeds[i].url),
             Entry::Keyword(i) => self.known_presets.contains(&i),
-            Entry::NewQuery | Entry::Query(_) | Entry::Mcp(_) => false,
+            Entry::Mcp(i) => self.known_mcp.contains(&i),
+            Entry::NewQuery | Entry::Query(_) => false,
         }
     }
 
@@ -283,7 +310,8 @@ impl Onboarding {
                 Entry::Feed(i) => self.checked.contains(&i),
                 Entry::Keyword(i) => self.checked_keywords.contains(&i),
                 Entry::Query(i) => self.queries.get(i).is_some_and(|(_, c)| *c),
-                Entry::NewQuery | Entry::Mcp(_) => false,
+                Entry::Mcp(i) => self.checked_mcp.contains(&i),
+                Entry::NewQuery => false,
             }
     }
 
@@ -293,10 +321,12 @@ impl Onboarding {
         self.draft = None;
     }
 
-    /// Rows that can be checked: not MCP, not the field, not in the store.
+    /// Rows that can be checked: not the field, not in the store.
     fn addable(&self, catalog: &Catalog, entry: Entry) -> bool {
-        matches!(entry, Entry::Feed(_) | Entry::Keyword(_) | Entry::Query(_))
-            && !self.is_known(catalog, entry)
+        matches!(
+            entry,
+            Entry::Feed(_) | Entry::Keyword(_) | Entry::Query(_) | Entry::Mcp(_)
+        ) && !self.is_known(catalog, entry)
     }
 
     fn set_checked(&mut self, entry: Entry, on: bool) {
@@ -315,7 +345,8 @@ impl Onboarding {
                     typed.1 = on;
                 }
             }
-            Entry::NewQuery | Entry::Mcp(_) => {}
+            Entry::Mcp(i) => flip(&mut self.checked_mcp, i),
+            Entry::NewQuery => {}
         }
     }
 
@@ -478,9 +509,9 @@ fn entries_view<'a>(
             }
             Entry::Mcp(m) => {
                 if i == 0 {
-                    list = list.push(section("MCP servers · coming with MCP sources", t));
+                    list = list.push(section("MCP servers", t));
                 }
-                mcp_row(catalog, m, at_cursor, t)
+                mcp_row(catalog, m, checked, known, i, at_cursor, t)
             }
         };
         list = list.push(row);
@@ -612,11 +643,13 @@ fn check_row<'a>(
 fn mcp_row<'a>(
     catalog: &'a Catalog,
     m: usize,
+    checked: bool,
+    known: bool,
+    index: usize,
     at_cursor: bool,
     t: &Tokens,
 ) -> Element<'a, Message> {
     let m = &catalog.mcp[m];
-    let muted = color(t.muted);
     let how = match m.transport {
         McpTransport::Stdio => std::iter::once(m.command.as_str())
             .chain(m.args.iter().map(String::as_str))
@@ -624,20 +657,15 @@ fn mcp_row<'a>(
             .join(" "),
         McpTransport::Http => m.url.clone(),
     };
-    let mut lines = column![
-        text(&m.title).size(15).color(muted),
-        text(&m.blurb).size(12).color(muted),
-        text(how)
-            .size(12)
-            .color(muted)
-            .wrapping(text::Wrapping::None),
-    ]
-    .spacing(2);
+    let mut detail = format!("{} · {} · {how}", m.blurb, m.tool);
     if !m.secret.is_empty() {
-        lines = lines.push(text(format!("needs {}", m.secret)).size(12).color(muted));
+        detail.push_str(&format!(" · needs {}", m.secret));
     }
-    lines = lines.push(text(&m.maintainer).size(12).color(muted));
-    cursor_row(lines.into(), at_cursor, t)
+    let tags = [
+        known.then_some("added"),
+        (!m.secret.is_empty()).then_some("needs a key"),
+    ];
+    check_row(checked, known, &m.title, tags, detail, index, at_cursor, t)
 }
 
 /// A row with the cursor's background when it's on it.
@@ -888,10 +916,13 @@ mod tests {
             state.apply(catalog, Action::Down);
         }
         assert_eq!(state.cursor, catalog.mcp.len() - 1);
-        // Nothing to check among MCP servers.
+        // MCP servers check like feeds: all of them, then not the last.
         state.apply(catalog, Action::ToggleAll);
         state.apply(catalog, Action::ToggleCursor);
-        assert!(state.picks().is_empty());
+        let picks = state.picks();
+        assert_eq!(picks.mcp, (0..catalog.mcp.len() - 1).collect::<Vec<_>>());
+        assert_eq!(picks.len(), catalog.mcp.len() - 1);
+        assert_eq!(state.checked_in(catalog, mcp), catalog.mcp.len() - 1);
     }
 
     #[test]

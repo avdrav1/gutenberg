@@ -263,7 +263,7 @@ async fn refresh_some(
                         };
                         fetch_keyword(&fetch, job, due.source_id, now).await
                     }
-                    Work::Mcp(server) => list_tools(server).await,
+                    Work::Mcp(server) => visit_server(server, due.source_id, now).await,
                     Work::Feed => fetch_one(client, hosts, &due, now, icons.is_some()).await,
                 };
                 if let (Some(icons), Outcome::Fetched { site_url, .. }) = (icons, &outcome) {
@@ -300,10 +300,16 @@ async fn refresh_some(
                     summary.unchanged += 1;
                 }
             }
-            Outcome::Listed { config } => {
+            Outcome::Listed { config, articles } => {
                 store.set_source_config(due.source_id, &config)?;
-                store.record_not_modified(due.source_id, now)?;
-                summary.unchanged += 1;
+                let new =
+                    store.record_fetched(due.source_id, &articles, &Validators::default(), now)?;
+                if new > 0 {
+                    summary.updated += 1;
+                    summary.new_articles += new;
+                } else {
+                    summary.unchanged += 1;
+                }
             }
             Outcome::Failed { error, retry_after } => {
                 let wait = backoff(due.failures + 1, retry_after);
@@ -347,9 +353,11 @@ enum Outcome {
         /// Articles already stored whose link now goes to the publisher.
         moved: Vec<(i64, String)>,
     },
-    /// An MCP server answered; its settings with the tools it listed.
+    /// An MCP server answered: its settings with the tools it listed, and
+    /// the articles its tool returned, if one is picked.
     Listed {
         config: String,
+        articles: Vec<NewArticle>,
     },
     Failed {
         error: String,
@@ -357,19 +365,55 @@ enum Outcome {
     },
 }
 
-/// Reaches an MCP server and lists its tools.
-async fn list_tools(mut server: Mcp) -> Outcome {
-    match mcp::tools(&server.server, mcp::TIMEOUT).await {
-        Ok(tools) => {
-            server.tools = tools;
-            Outcome::Listed {
-                config: server.to_config(),
+/// Reaches an MCP server, lists its tools and, once one is picked, calls
+/// it with its template filled in: `{{today}}` is `now`'s day, `{{since}}`
+/// the day of the last call that worked, or the day before on the first.
+async fn visit_server(mut server: Mcp, source_id: i64, now: i64) -> Outcome {
+    let failed = |e: mcp::McpError| Outcome::Failed {
+        error: e.to_string(),
+        retry_after: None,
+    };
+    let today = mcp::day(now);
+    let picked = match (&server.tool, &server.arguments) {
+        (Some(tool), arguments) => {
+            let since = server
+                .called
+                .clone()
+                .unwrap_or_else(|| mcp::day(now - 86_400));
+            match mcp::fill(arguments.as_deref().unwrap_or("{}"), &today, &since) {
+                Ok(arguments) => Some((tool.clone(), arguments)),
+                Err(e) => return failed(e),
             }
         }
-        Err(e) => Outcome::Failed {
-            error: e.to_string(),
-            retry_after: None,
+        (None, _) => None,
+    };
+    let visit = match picked {
+        Some((tool, arguments)) => mcp::call(&server.server, &tool, arguments, mcp::TIMEOUT).await,
+        None => mcp::tools(&server.server, mcp::TIMEOUT)
+            .await
+            .map(|tools| mcp::Visit {
+                tools,
+                result: None,
+            }),
+    };
+    let visit = match visit {
+        Ok(visit) => visit,
+        Err(e) => return failed(e),
+    };
+    let entries = match (&visit.result, &server.tool) {
+        (Some(result), Some(tool)) => match mcp::articles::articles(result, tool) {
+            Ok(entries) => entries,
+            Err(e) => return failed(e),
         },
+        _ => Vec::new(),
+    };
+    server.tools = visit.tools;
+    if visit.result.is_some() {
+        server.called = Some(today);
+    }
+    Outcome::Listed {
+        config: server.to_config(),
+        articles: rows(&entries, source_id, now),
     }
 }
 

@@ -63,7 +63,7 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | ID | Story | Acceptance | Status |
 | --- | --- | --- | --- |
 | S6.1 | Add an MCP server by command (stdio) or URL (streamable HTTP) with `rmcp`. Added with `gutenberg --mcp`; the tools a server lists are kept in `source.config` and shown when it's chosen. A command runs in its own process group, ended after each use (rmcp only ends the process it started, on a task that may never run). rmcp's HTTP client is reqwest 0.13, so the binary carries two reqwest versions until the feed client moves to 0.13 | Lists the server's tools; connection errors are one line in the source pane | done |
-| S6.2 | Pick a tool and an argument template; call it on refresh | A Cronkite or filesystem server's results show as articles; the catalog's MCP servers become addable on the Add sources screen | todo |
+| S6.2 | Pick a tool and an argument template; call it on refresh | A Cronkite or filesystem server's results show as articles; the catalog's MCP servers become addable on the Add sources screen | doing |
 | S6.3 | Map tool results to articles: JSON array, feed document, Markdown with links, or plain text | Fixtures for each shape; unknown shapes become one article | todo |
 | S6.4 | Secrets for HTTP servers from the system keyring or an env var | No token stored in `config.toml` | todo |
 

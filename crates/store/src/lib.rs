@@ -262,6 +262,17 @@ impl Store {
         Ok(())
     }
 
+    /// Has the next refresh reach a source as if it were new, within a
+    /// second if the window is open: its settings changed.
+    pub fn recheck(&self, id: i64) -> Result<()> {
+        self.conn.execute(
+            "UPDATE source SET checked_at = NULL, retry_at = NULL, error = NULL, failures = 0
+             WHERE id = ?1",
+            [id],
+        )?;
+        Ok(())
+    }
+
     /// Why each source failed its last refresh, for those that did.
     pub fn source_errors(&self) -> Result<HashMap<i64, String>> {
         let mut stmt = self
