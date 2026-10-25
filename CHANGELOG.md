@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.20.0 — 2026-10-25
+
 - Gutenberg is in your app launcher now, with an icon: Omarchy's Apps (Super+Alt+Space) and other desktops' launchers list it after you install or update with the one-liner.
 - `gutenberg --unread` prints how many stories are unread, and `gutenberg --unread --json` prints it for a Waybar module. On Omarchy, the installer also adds a bar widget with the count: show it with `omarchy bar put gutenberg.unread`. Click it to open Gutenberg. `docs/DESKTOP.md` has the Waybar setup.
 
