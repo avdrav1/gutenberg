@@ -38,6 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # rust-toolchain.toml pins stable; the fuzz run asks for nightly by name.
       - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@v2
         with:
@@ -54,7 +55,7 @@ jobs:
         run: |
           fuzz() {
             mkdir -p "corpus/$1"
-            cargo fuzz run "$1" "corpus/$1" "${@:2}" -- -max_total_time=60 -timeout=10 -rss_limit_mb=2048
+            cargo +nightly fuzz run "$1" "corpus/$1" "${@:2}" -- -max_total_time=60 -timeout=10 -rss_limit_mb=2048
           }
           fuzz feed ../tests/fixtures/feeds
           fuzz opml ../tests/fixtures/opml
