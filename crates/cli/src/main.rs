@@ -6,7 +6,11 @@ mod opml;
 mod refresh;
 mod unread;
 
+use std::sync::{Arc, OnceLock};
+
 use gutenberg_core::config::Config;
+use gutenberg_core::ipc;
+use gutenberg_core::sync::Refresher;
 
 fn main() -> std::process::ExitCode {
     if std::env::args().nth(1).as_deref() == Some("--version") {
@@ -78,15 +82,77 @@ fn main() -> std::process::ExitCode {
         }
         None => Config::default(),
     };
+    let (outbox, inbox) = gutenberg_ui::inbox();
+    let refresher = Arc::new(OnceLock::new());
+    // One window: the socket is taken before anything else starts, and a
+    // second launch asks the open window to come forward instead.
+    let _listening = match listen(outbox, refresher.clone()) {
+        Listening::Yes(listener) => Some(listener),
+        Listening::Elsewhere => return focus_open_window(),
+        Listening::No => None,
+    };
     // Refresh runs on its own thread with its own store connection.
     if let Ok(store_path) = gutenberg_store::Store::default_path() {
-        gutenberg_core::sync::spawn(store_path, config_path.clone(), &config);
+        let _ = refresher.set(gutenberg_core::sync::spawn(
+            store_path,
+            config_path.clone(),
+            &config,
+        ));
     }
     let store_path = gutenberg_store::Store::default_path().ok();
-    match gutenberg_ui::run(config, config_path, store_path) {
+    match gutenberg_ui::run(config, config_path, store_path, inbox) {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(err) => {
             eprintln!("gutenberg: {err}");
+            std::process::ExitCode::FAILURE
+        }
+    }
+}
+
+enum Listening {
+    Yes(ipc::Listener),
+    /// Another window has the socket.
+    Elsewhere,
+    /// No runtime directory, or the socket couldn't be made: the window
+    /// opens without it.
+    No,
+}
+
+/// Opens the window's socket: theme reloads and coming forward go to the
+/// window, refreshes to the refresh thread once it has started.
+fn listen(outbox: gutenberg_ui::Outbox, refresher: Arc<OnceLock<Refresher>>) -> Listening {
+    let Some(path) = ipc::socket_path() else {
+        return Listening::No;
+    };
+    let on_command = move |command| match command {
+        ipc::Command::ReloadTheme | ipc::Command::Focus => match outbox.send(command) {
+            true => Ok(String::new()),
+            false => Err("the window is closing".to_owned()),
+        },
+        ipc::Command::Refresh => match refresher.get() {
+            Some(refresher) => refresher.now().map(|summary| summary.to_string()),
+            None => Err("the window has no store to refresh".to_owned()),
+        },
+    };
+    match ipc::listen(&path, on_command) {
+        Ok(listener) => Listening::Yes(listener),
+        Err(ipc::Error::InUse(_)) => Listening::Elsewhere,
+        Err(err) => {
+            eprintln!("gutenberg: {err}");
+            Listening::No
+        }
+    }
+}
+
+/// A second launch: the open window comes forward, and this one exits.
+fn focus_open_window() -> std::process::ExitCode {
+    let sent = ipc::socket_path()
+        .ok_or(ipc::Error::NotRunning)
+        .and_then(|path| ipc::send(&path, ipc::Command::Focus));
+    match sent {
+        Ok(_) => std::process::ExitCode::SUCCESS,
+        Err(err) => {
+            eprintln!("gutenberg: a window is open but didn't come forward: {err}");
             std::process::ExitCode::FAILURE
         }
     }
@@ -104,13 +170,12 @@ fn usage() -> std::process::ExitCode {
 /// it. With no window open there's nothing to reload, which isn't a
 /// failure.
 fn reload_theme() -> std::process::ExitCode {
-    use gutenberg_core::ipc;
     let Some(path) = ipc::socket_path() else {
         eprintln!("gutenberg: no runtime directory ($XDG_RUNTIME_DIR) for the socket");
         return std::process::ExitCode::FAILURE;
     };
     match ipc::send(&path, ipc::Command::ReloadTheme) {
-        Ok(()) => std::process::ExitCode::SUCCESS,
+        Ok(_) => std::process::ExitCode::SUCCESS,
         Err(err @ ipc::Error::NotRunning) => {
             eprintln!("gutenberg: {err}");
             std::process::ExitCode::SUCCESS
