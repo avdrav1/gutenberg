@@ -2398,7 +2398,7 @@ blurb = "Today's Hugging Face Daily Papers picks for ML research"
 transport = "http"
 url = "https://huggingface.co/mcp"
 tool = "hf_fs"
-arguments = '{"operations": [{"op": "ls", "uri": "hf://papers/daily/latest", "limit": 30}]}'
+arguments = '{"operations": [{"cmd": "ls", "args": ["hf://papers/daily/latest", "--limit", "30"]}]}'
 homepage = "https://github.com/huggingface/hf-mcp-server"
 maintainer = "Hugging Face (official)"
 

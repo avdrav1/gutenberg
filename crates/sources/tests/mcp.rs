@@ -238,3 +238,54 @@ fn a_server_that_never_answers_times_out_and_is_ended() {
     });
     assert!(gone, "{proc} is still running");
 }
+
+/// S6.2: a tool's recorded results, called over stdio.
+fn call(fixture: &str) -> Result<Vec<gutenberg_sources::feed::Entry>, String> {
+    let server = command(&format!("sh {FIXTURES}/replay.sh {fixture}"));
+    let arguments = mcp::fill(
+        r#"{"operations": [{"cmd": "ls", "args": ["hf://papers/trending", "--limit", "10"]}]}"#,
+        "2026-10-24",
+        "2026-10-23",
+    )
+    .unwrap();
+    let visit = runtime()
+        .block_on(mcp::call(
+            &server,
+            "hf_fs",
+            arguments,
+            Duration::from_secs(10),
+        ))
+        .map_err(|e| e.to_string())?;
+    assert_recorded(&visit.tools);
+    mcp::articles::articles(&visit.result.unwrap(), "hf_fs").map_err(|e| e.to_string())
+}
+
+#[test]
+fn a_tools_list_of_papers_is_articles() {
+    let papers = call("huggingface-hf-fs-trending.json").unwrap();
+    assert_eq!(papers.len(), 10);
+    let first = &papers[0];
+    assert_eq!(
+        first.title,
+        "Harness^2: Recursive Agent Harnessing for an Open World"
+    );
+    assert_eq!(
+        first.url.as_deref(),
+        Some("https://huggingface.co/papers/2610.14224")
+    );
+    assert_eq!(first.guid, "https://huggingface.co/papers/2610.14224");
+    // 2026-10-09T00:00:00.000Z
+    assert_eq!(first.published_at, Some(1_791_504_000));
+    assert!(first
+        .summary_html
+        .as_deref()
+        .unwrap()
+        .starts_with("<p>Harness² improves agent execution harnesses"));
+}
+
+#[test]
+fn an_empty_list_is_no_articles() {
+    assert!(call("huggingface-hf-fs-daily-empty.json")
+        .unwrap()
+        .is_empty());
+}

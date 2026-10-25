@@ -42,6 +42,9 @@ pub enum Action {
     ClearSearch,
     /// Narrows the chosen folder or feed to a view.
     View(View),
+    /// Shows the chosen MCP server's tools, to pick the one its refresh
+    /// calls, or its articles again.
+    Tools,
 }
 
 /// `pending_g` is whether the last key was a lone `g`.
@@ -73,6 +76,7 @@ pub fn action_for(key: &Key, modifiers: Modifiers, pending_g: bool) -> Option<Ac
         Key::Character("u") => Some(Action::View(View::Unread)),
         Key::Character("S") => Some(Action::View(View::Starred)),
         Key::Character("t") => Some(Action::View(View::Today)),
+        Key::Character("T") => Some(Action::Tools),
         _ => None,
     }
 }

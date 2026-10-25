@@ -103,6 +103,11 @@ pub const ALL: &[Command] = &[
         keys: &["t"],
     },
     Command {
+        action: Action::Tools,
+        name: "MCP server's tools: pick the one it calls",
+        keys: &["T"],
+    },
+    Command {
         action: Action::AddSources,
         name: "Add sources",
         keys: &["a"],
@@ -253,6 +258,7 @@ mod tests {
             | A::CopyLink
             | A::Search
             | A::ClearSearch
+            | A::Tools
             | A::View(_) => true,
         };
         let every = [
@@ -278,6 +284,7 @@ mod tests {
             A::View(View::Unread),
             A::View(View::Starred),
             A::View(View::Today),
+            A::Tools,
         ];
         for action in every.into_iter().filter(|a| needs_row(*a)) {
             assert!(

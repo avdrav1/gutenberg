@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- An MCP server can now be a source of articles. Choose it in the sources pane, move to a tool with `j` and `k`, press Enter, and type its arguments as JSON. Each refresh then calls that tool, and every result with a title and a link becomes an article. Write `{{today}}` or `{{since}}` in an argument to get today's date or the date of the last call. Press `T` to pick another tool. From a terminal: `gutenberg --mcp <command or URL> --tool <name> --args '<json>'`.
+- The MCP servers on **Add sources** can now be checked like feeds, and each comes with its tool and arguments filled in. A server marked "needs a key" that runs on your machine reads it from your environment, such as `BRAVE_API_KEY`. Keys for servers on the web come in a later version.
+
 ## 0.17.0 — 2026-10-24
 
 - Add an MCP server as a source: `gutenberg --mcp '<command>'` for one that runs on your machine, or `gutenberg --mcp <url>` for one on the web. Gutenberg connects, lists the server's tools, and shows them when you choose the server in the sources pane. If it can't reach a server, one line under the server's name says why, such as a missing API key or a refused connection, and Gutenberg tries again later. Reading articles from a tool comes next.

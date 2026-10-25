@@ -1,0 +1,25 @@
+{
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "## Operation 1\n\n# hf_fs ls\n\nURI: `hf://papers/daily/latest`\n\nOrder: Daily Papers batch upvotes, then feed placement\n\n| Type | Path | URI | Target | Details |\n|---|---|---|---|---|"
+      }
+    ],
+    "structuredContent": {
+      "results": [
+        {
+          "index": 0,
+          "status": "success",
+          "result": {
+            "uri": "hf://papers/daily/latest",
+            "op": "ls",
+            "entries": []
+          }
+        }
+      ]
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 2
+}
