@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "gutenberg.unread",
+  "name": "Gutenberg unread",
+  "version": "1.0.0",
+  "author": "Gutenberg",
+  "description": "Unread stories in Gutenberg; click to read them",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Unread.qml"
+  },
+  "barWidget": {
+    "displayName": "Gutenberg unread",
+    "description": "Unread stories in Gutenberg; click to read them",
+    "category": "Apps",
+    "allowMultiple": false
+  }
+}

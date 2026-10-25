@@ -55,6 +55,8 @@ jobs:
           cp target/release/gutenberg dist/gutenberg/
           strip dist/gutenberg/gutenberg
           cp LICENSE CHANGELOG.md dist/gutenberg/
+          # The desktop entry, icon and Omarchy bar widget install.sh adds.
+          cp -r share dist/gutenberg/
           dist/gutenberg/gutenberg --version
           tar -C dist -czf "gutenberg-${{ matrix.target }}.tar.gz" gutenberg
       - uses: actions/upload-artifact@v4
@@ -80,8 +82,18 @@ jobs:
           sleep 1
           GUTENBERG_BASE_URL=http://127.0.0.1:8000 GUTENBERG_INSTALL_DIR="$RUNNER_TEMP/bin" sh site/install.sh
           "$RUNNER_TEMP/bin/gutenberg" --version
-          # No ~/.config/omarchy on the runner: no hooks.
+          # No ~/.config/omarchy on the runner: no hooks, no bar widget.
           test ! -e "$HOME/.config/omarchy/hooks"
+          test ! -e "$HOME/.config/omarchy/plugins"
+          # Launchers list it, by the binary's full path.
+          entry="$HOME/.local/share/applications/gutenberg.desktop"
+          cat "$entry"
+          grep -Fx "Exec=$RUNNER_TEMP/bin/gutenberg" "$entry"
+          grep -Fx "TryExec=$RUNNER_TEMP/bin/gutenberg" "$entry"
+          test -s "$HOME/.local/share/icons/hicolor/scalable/apps/gutenberg.svg"
+          # No store yet: nothing unread, and no store made to say so.
+          test "$("$RUNNER_TEMP/bin/gutenberg" --unread)" = 0
+          test ! -e "$HOME/.local/share/gutenberg/gutenberg.db"
       - name: On Omarchy, install.sh adds hooks that reload the theme
         run: |
           home="$RUNNER_TEMP/omarchy-home"
@@ -97,6 +109,13 @@ jobs:
             test -z "$(bash "$hook" 2>&1)"
           done
           grep -F "'$RUNNER_TEMP/it'\\''s bin/gutenberg' --reload-theme" "$home/.config/omarchy/hooks/theme-set.d/gutenberg"
+          # The bar widget, pointed at the binary; a path with a space is
+          # quoted in the desktop entry.
+          widget="$home/.config/omarchy/plugins/gutenberg.unread"
+          test -s "$widget/manifest.json" && test -s "$widget/i18n/en.json"
+          grep -F "\"$RUNNER_TEMP/it's bin/gutenberg\"" "$widget/Unread.qml"
+          ! grep -F "@GUTENBERG@" "$widget/Unread.qml"
+          grep -Fx "Exec=\"$RUNNER_TEMP/it's bin/gutenberg\"" "$home/.local/share/applications/gutenberg.desktop"
       - name: A tampered tarball is refused
         run: |
           printf 'tampered' >> dist/gutenberg-x86_64-unknown-linux-gnu.tar.gz

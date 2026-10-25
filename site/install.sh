@@ -5,9 +5,11 @@
 #
 # Downloads the release tarball for this machine from GitHub Releases,
 # checks it against the release's SHA256SUMS, and installs the binary to
-# ~/.local/bin. On Omarchy it also adds a theme-set and a font-set hook, so
-# an open window follows `omarchy theme set` and `omarchy font set`.
-# Nothing else on the system is touched.
+# ~/.local/bin, with a desktop entry and an icon in ~/.local/share so app
+# launchers list it. On Omarchy it also adds a theme-set and a font-set
+# hook, so an open window follows `omarchy theme set` and `omarchy font set`,
+# and a bar widget with the unread count (not placed on the bar; add it with
+# `omarchy bar`). Nothing else on the system is touched.
 #
 # Environment:
 #   GUTENBERG_VERSION      a release such as 0.1.0 (default: latest)
@@ -76,11 +78,64 @@ main() {
 
     version=$("$dir/gutenberg" --version 2>/dev/null || true)
     say "Installed ${version:-gutenberg} to $dir/gutenberg"
+    install_desktop "$dir/gutenberg" "$tmp/gutenberg/share"
     install_hooks "$dir/gutenberg"
+    install_bar_widget "$dir/gutenberg" "$tmp/gutenberg/share"
     case ":$PATH:" in
         *":$dir:"*) ;;
         *) say "Add $dir to your PATH to run it as 'gutenberg'." ;;
     esac
+}
+
+# The desktop entry and icon, so launchers such as Walker list Gutenberg.
+# Releases before 0.20.0 carry no share/; then there's nothing to add.
+install_desktop() {
+    [ -d "$2" ] || return 0
+    data="${XDG_DATA_HOME:-$HOME/.local/share}"
+    mkdir -p "$data/applications" "$data/icons/hicolor/scalable/apps"
+    cp "$2/icons/hicolor/scalable/apps/gutenberg.svg" "$data/icons/hicolor/scalable/apps/gutenberg.svg"
+    # The binary by its full path: launchers don't always have ~/.local/bin
+    # on their PATH.
+    sed -e "s|^Exec=gutenberg\$|Exec=$(desktop_quote "$1")|" \
+        -e "s|^TryExec=gutenberg\$|TryExec=$(sed_escape "$1")|" \
+        "$2/applications/gutenberg.desktop" > "$data/applications/gutenberg.desktop"
+    if command -v update-desktop-database >/dev/null 2>&1; then
+        update-desktop-database -q "$data/applications" 2>/dev/null || true
+    fi
+    say "Added Gutenberg to your app launcher ($data/applications/gutenberg.desktop)"
+}
+
+# The Omarchy bar widget, in the shell's plugin directory; the shell picks it
+# up on its own. It isn't put on the bar: `omarchy bar` does that.
+install_bar_widget() {
+    plugin="$2/omarchy/plugins/gutenberg.unread"
+    [ -d "$plugin" ] || return 0
+    [ -d "$HOME/.config/omarchy" ] || return 0
+    target="$HOME/.config/omarchy/plugins/gutenberg.unread"
+    mkdir -p "$target/i18n"
+    cp "$plugin/manifest.json" "$target/manifest.json"
+    cp "$plugin/i18n/"*.json "$target/i18n/"
+    # The binary's path as a QML string.
+    path=$(printf '%s' "$1" | sed 's/[\\"]/\\&/g')
+    sed "s|@GUTENBERG@|$(sed_escape "$path")|" "$plugin/Unread.qml" > "$target/Unread.qml"
+    say "Added an unread count for the Omarchy bar; to show it: omarchy bar put gutenberg.unread"
+}
+
+# $1 as one argument of a desktop entry's Exec line.
+desktop_quote() {
+    case $1 in
+        *[[:space:]\"\\\`\$]*) printf '"%s"' "$(printf '%s' "$1" | sed 's/[\\"`$]/\\&/g' | sed_escape_stdin)" ;;
+        *) sed_escape "$1" ;;
+    esac
+}
+
+# $1 safe on the right-hand side of a sed s||| command.
+sed_escape() {
+    printf '%s' "$1" | sed_escape_stdin
+}
+
+sed_escape_stdin() {
+    sed 's/[|&\\]/\\&/g'
 }
 
 # Omarchy runs every file in ~/.config/omarchy/hooks/<name>.d/ after a theme

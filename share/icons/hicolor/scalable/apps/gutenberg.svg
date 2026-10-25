@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Gutenberg: a page of type, a G set above two lines of text. -->
+  <rect x="8" y="8" width="112" height="112" rx="26" fill="#1a1b26"/>
+  <path d="M83.8 34.2 A28 28 0 1 0 92 54 H70" fill="none" stroke="#e8e3d3" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M36 98 H92 M36 108 H72" fill="none" stroke="#7aa2f7" stroke-width="6" stroke-linecap="round"/>
+</svg>

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Gutenberg is in your app launcher now, with an icon: Omarchy's Apps (Super+Alt+Space) and other desktops' launchers list it after you install or update with the one-liner.
+- `gutenberg --unread` prints how many stories are unread, and `gutenberg --unread --json` prints it for a Waybar module. On Omarchy, the installer also adds a bar widget with the count: show it with `omarchy bar put gutenberg.unread`. Click it to open Gutenberg. `docs/DESKTOP.md` has the Waybar setup.
+
 ## 0.19.0 — 2026-10-25
 
 - MCP servers that need a key, such as Jina, GitHub, Brave and Tavily, can have one now. Choose the server and press `K` to type or paste it, or run `gutenberg --key JINA_API_KEY` in a terminal. The key is kept in your system keyring (GNOME Keyring or KWallet), never in Gutenberg's files, and a server on the web gets it too. An environment variable of the same name still comes first. A server that's missing its key, or turns it down, says so under its name. For a server you add by hand, name its key with `--secret`: `gutenberg --mcp <URL> --tool <name> --secret MY_API_KEY`.
