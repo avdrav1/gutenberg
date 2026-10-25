@@ -84,6 +84,6 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | S8.1 | macOS build with native font and menu bar | todo |
 | S8.2 | Windows build | todo |
 | S8.3 | Cronkite bridge: send articles to Cronkite for ranking over MCP | todo |
-| S8.4 | Rules: auto-star, auto-read, mute by keyword. `[[rules]]` in `config.toml` (`match`, optional `in` = a source's title or a folder's name, `action` = `star`, `read` or `mute`), matched whole-word and case-blind against the headline and the summary's text as a refresh or `--add` first stores an article (`core::rules`, `Store::record_arrived`). Mute drops the article unstored and wins over star and read; articles already stored keep their flags. No schema change | review |
+| S8.4 | Rules: auto-star, auto-read, mute by keyword. `[[rules]]` in `config.toml` (`match`, optional `in` = a source's title or a folder's name, `action` = `star`, `read` or `mute`), matched whole-word and case-blind against the headline and the summary's text as a refresh or `--add` first stores an article (`core::rules`, `Store::record_arrived`). Mute drops the article unstored and wins over star and read; articles already stored keep their flags. No schema change | done |
 | S8.5 | Sync via a user-chosen folder (Syncthing-friendly) | todo |
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.23.0 — 2026-10-25
+
 - Rules in `config.toml` star, mark read or mute new articles by a word or phrase in the headline or summary, everywhere or only in one source or folder: `[[rules]]` with `match = "sponsored"` and `action = "mute"` (or `"star"`, `"read"`), and `in = "LWN.net"` to narrow it. Words match whole and in any case, so "AI" doesn't catch "said". A muted article is never stored, and `gutenberg --refresh` says how many were muted. Rules apply to articles as they arrive; ones already in your list stay as they are.
 
 ## 0.22.0 — 2026-10-25
