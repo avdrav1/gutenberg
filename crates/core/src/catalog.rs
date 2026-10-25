@@ -243,6 +243,7 @@ impl McpPreset {
         settings
             .pick(&self.tool, &self.arguments)
             .expect("the catalog's arguments are JSON objects (tested)");
+        settings.secret = (!self.secret.is_empty()).then(|| self.secret.clone());
         settings
     }
 }
@@ -292,8 +293,13 @@ mod tests {
         assert!(starters.iter().all(|f| f.paywall == Paywall::None));
         for mcp in &catalog.mcp {
             assert!(mcp.arguments.starts_with('{'), "{}", mcp.title);
-            // The template is a JSON object once filled.
-            let _ = mcp.settings();
+            // The template is a JSON object once filled, and a key's name
+            // comes along, never a key.
+            let settings = mcp.settings();
+            if !mcp.secret.is_empty() {
+                assert!(crate::secrets::valid_name(&mcp.secret), "{}", mcp.title);
+                assert_eq!(settings.secret.as_deref(), Some(mcp.secret.as_str()));
+            }
             match mcp.transport {
                 McpTransport::Stdio => assert!(!mcp.command.is_empty(), "{}", mcp.title),
                 McpTransport::Http => assert!(!mcp.url.is_empty(), "{}", mcp.title),

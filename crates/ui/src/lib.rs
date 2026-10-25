@@ -18,7 +18,7 @@ use gutenberg_core::config::{self, Config};
 use gutenberg_core::favicon::Icons;
 use gutenberg_core::sync::unix_now;
 use gutenberg_core::web::{self, Answer, Web};
-use gutenberg_core::{keyword, mcp};
+use gutenberg_core::{keyword, mcp, secrets};
 use gutenberg_store::{ArticleRow, Filter, Folder, Source, SourceKind, Store, View, ViewCounts};
 use gutenberg_theme::{Rgb, Scheme, Tokens};
 use iced::futures::Stream;
@@ -209,6 +209,8 @@ enum KeyMode {
     Search,
     /// Typing an MCP tool's arguments.
     ToolArguments,
+    /// Typing an MCP server's key.
+    KeyEntry,
 }
 
 /// The chosen MCP server's tools, in the list pane while it has no
@@ -220,6 +222,31 @@ struct Tools {
     /// The tool the keys are on.
     cursor: usize,
     editor: Option<ArgumentEditor>,
+    /// The server's key being typed, after `K`.
+    key: Option<KeyEditor>,
+}
+
+/// An MCP server's key being typed. It's shown as dots and goes to the
+/// keyring, never the store.
+struct KeyEditor {
+    /// The key's name, like `JINA_API_KEY`.
+    name: String,
+    text: String,
+    /// Whether Enter sent it to the keyring and no answer came yet.
+    saving: bool,
+    /// Why the last Enter didn't save it.
+    error: Option<String>,
+}
+
+/// Never prints the key.
+impl std::fmt::Debug for KeyEditor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KeyEditor")
+            .field("name", &self.name)
+            .field("saving", &self.saving)
+            .field("error", &self.error)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A tool's argument template being typed.
@@ -349,6 +376,10 @@ enum Message {
     Search(palette::Input),
     /// A key while typing an MCP tool's arguments.
     ToolArguments(palette::Input),
+    /// A key while typing an MCP server's key.
+    KeyEntry(palette::Input),
+    /// The keyring's answer to saving server `id`'s key.
+    KeySaved(i64, Result<(), String>),
     /// A link in the article pane was clicked.
     OpenLink(String),
     /// The web worker is up and takes requests.
@@ -569,6 +600,9 @@ impl App {
         match message {
             Message::Key(Action::Tools) => self.toggle_tools(),
             Message::ToolArguments(input) => self.type_arguments(input),
+            Message::Key(Action::EnterKey) => self.open_key_editor(),
+            Message::KeyEntry(input) => return self.type_key(input),
+            Message::KeySaved(id, saved) => self.key_saved(id, saved),
             Message::Key(Action::Quit) => return iced::exit(),
             Message::Key(Action::AddSources) => self.open_onboarding(),
             Message::Key(Action::Reader) => self.toggle_reader(),
@@ -801,6 +835,7 @@ impl App {
             (Some(search), _) if search.editing => Screen::Searching,
             (Some(_), _) => Screen::Results,
             _ if self.tools.editor.is_some() => Screen::Arguments,
+            _ if self.tools.key.is_some() => Screen::Key,
             _ if self.chosen_mcp().is_some() => Screen::Tools,
             _ if self.sources.is_empty() => Screen::Empty,
             (None, None) => Screen::List,
@@ -1094,6 +1129,7 @@ impl App {
             (None, Some(Overlay::Help), _) => KeyMode::Help,
             (None, None, Some(Search { editing: true, .. })) => KeyMode::Search,
             (None, None, _) if self.tools.editor.is_some() => KeyMode::ToolArguments,
+            (None, None, _) if self.tools.key.is_some() => KeyMode::KeyEntry,
             (None, None, _) => KeyMode::List,
         };
         let keys = keyboard::listen().with((self.pending_g, mode)).filter_map(
@@ -1125,6 +1161,9 @@ impl App {
                     }
                     KeyMode::ToolArguments => palette::input_for(&key, modifiers, text.as_deref())
                         .map(Message::ToolArguments),
+                    KeyMode::KeyEntry => {
+                        palette::input_for(&key, modifiers, text.as_deref()).map(Message::KeyEntry)
+                    }
                     KeyMode::Help => {
                         use keyboard::key::Named;
                         match key.as_ref() {
@@ -1518,6 +1557,7 @@ impl App {
             if self.is_mcp(id) {
                 self.tools.asked = !self.tools.asked;
                 self.tools.editor = None;
+                self.tools.key = None;
             }
         }
     }
@@ -1591,6 +1631,78 @@ impl App {
         }
     }
 
+    /// `K`: type the key the chosen MCP server needs. Its tools come into
+    /// view, with the field under the heading.
+    fn open_key_editor(&mut self) {
+        let Filter::Source(id) = self.filter else {
+            return;
+        };
+        let name = self
+            .sources
+            .iter()
+            .find(|s| s.id == id)
+            .and_then(mcp::settings)
+            .and_then(|m| m.secret);
+        if let Some(name) = name {
+            self.tools.asked = true;
+            self.tools.editor = None;
+            self.tools.key = Some(KeyEditor {
+                name,
+                text: String::new(),
+                saving: false,
+                error: None,
+            });
+        }
+    }
+
+    /// A key while typing a server's key. Enter sends it to the keyring,
+    /// off the update loop: the keyring may ask to be unlocked.
+    fn type_key(&mut self, input: palette::Input) -> Task<Message> {
+        let (Some(editor), Filter::Source(id)) = (&mut self.tools.key, self.filter) else {
+            return Task::none();
+        };
+        if editor.saving {
+            return Task::none();
+        }
+        match input {
+            palette::Input::Type(text) => editor.text.push_str(&text),
+            palette::Input::Backspace => {
+                editor.text.pop();
+            }
+            palette::Input::Up | palette::Input::Down => {}
+            palette::Input::Close => self.tools.key = None,
+            palette::Input::Run => {
+                editor.saving = true;
+                editor.error = None;
+                let (name, value) = (editor.name.clone(), editor.text.clone());
+                return Task::perform(
+                    async move { secrets::save(&name, &value).await },
+                    move |saved| Message::KeySaved(id, saved),
+                );
+            }
+        }
+        Task::none()
+    }
+
+    /// Saved: the next refresh, within a second, reaches the server with it.
+    fn key_saved(&mut self, id: i64, saved: Result<(), String>) {
+        match saved {
+            Ok(()) => {
+                if let Ok(store) = &self.store {
+                    let _ = store.recheck(id);
+                }
+                self.tools.key = None;
+                self.reload();
+            }
+            Err(e) => {
+                if let Some(editor) = &mut self.tools.key {
+                    editor.saving = false;
+                    editor.error = Some(e);
+                }
+            }
+        }
+    }
+
     /// An MCP server's tools, the one its refresh calls marked, or why it
     /// couldn't be reached. The keys move through them and Enter edits the
     /// arguments of the one they're on.
@@ -1603,6 +1715,7 @@ impl App {
             .find(|s| s.id == id)
             .and_then(mcp::settings);
         let answered = settings.as_ref().is_some_and(|m| m.called.is_some());
+        let secret = settings.as_ref().and_then(|m| m.secret.clone());
         let picked = settings.and_then(|m| m.tool);
         let heading = match (self.source_errors.get(&id), tools.len(), &picked) {
             (Some(error), _, _) => {
@@ -1629,6 +1742,24 @@ impl App {
             )
             .spacing(6)
             .padding(16);
+        // Unless the heading already says it's missing.
+        let said = |name: &str| {
+            self.source_errors.get(&id).map(String::as_str)
+                == Some(gutenberg_core::sync::missing_key(name).as_str())
+        };
+        if let Some(name) = secret.filter(|name| !said(name)) {
+            column = column.push(
+                text(format!(
+                    "Needs {name}: K enters it, kept in your keyring. An environment variable of that name comes first."
+                ))
+                .size(12)
+                .color(color(t.muted))
+                .wrapping(text::Wrapping::WordOrGlyph),
+            );
+        }
+        if let Some(editor) = &self.tools.key {
+            column = column.push(self.key_field(editor));
+        }
         for (i, tool) in tools.into_iter().enumerate() {
             let at_cursor = i == self.tools.cursor;
             let in_use = picked.as_deref() == Some(tool.name.as_str());
@@ -1656,6 +1787,48 @@ impl App {
             ));
         }
         scrollable(column).height(Length::Fill).into()
+    }
+
+    /// The key being typed, as dots.
+    fn key_field<'a>(&self, editor: &'a KeyEditor) -> Element<'a, Message> {
+        let t = &self.tokens;
+        let (background, border_color) = (color(t.background), color(t.border));
+        let dots = "•".repeat(editor.text.chars().count());
+        let field = container(text(format!("{dots}▏")).size(13).color(color(t.foreground)))
+            .padding([6, 10])
+            .width(Length::Fill)
+            .style(move |_| container::Style {
+                background: Some(background.into()),
+                border: Border {
+                    color: border_color,
+                    width: 1.0,
+                    radius: border::radius(4),
+                },
+                ..Default::default()
+            });
+        let help = if editor.saving {
+            "Saving in the keyring…".to_owned()
+        } else {
+            format!(
+                "{}: paste or type it. Enter saves it in the keyring · Esc cancels",
+                editor.name
+            )
+        };
+        column![field]
+            .push(editor.error.as_ref().map(|e| {
+                text(e.clone())
+                    .size(12)
+                    .color(color(t.accent))
+                    .wrapping(text::Wrapping::WordOrGlyph)
+            }))
+            .push(
+                text(help)
+                    .size(12)
+                    .color(color(t.muted))
+                    .wrapping(text::Wrapping::WordOrGlyph),
+            )
+            .spacing(4)
+            .into()
     }
 
     /// The arguments being typed, with a cursor, why they didn't save, and
@@ -3376,6 +3549,78 @@ mod tests {
         let _ = app.update(Message::Key(Action::ClearSearch));
         assert_eq!(app.chosen_mcp(), None);
         assert_eq!(app.rows[0].title, "A paper");
+    }
+
+    #[test]
+    fn a_servers_key_is_typed_as_dots_and_goes_to_the_keyring() {
+        secrets::use_memory_keyring();
+        let (mut app, ..) = app_with_folders();
+        let id = app
+            .store
+            .as_ref()
+            .unwrap()
+            .add_source(&NewSource {
+                folder_id: None,
+                kind: SourceKind::Mcp,
+                title: "Jina".into(),
+                url: None,
+                config: r#"{"url":"https://mcp.jina.ai/v1","tool":"search_web","secret":"GUTENBERG_UI_TEST_KEY"}"#
+                    .into(),
+            })
+            .unwrap()
+            .id;
+        app.store
+            .as_ref()
+            .unwrap()
+            .record_failure(id, "needs GUTENBERG_UI_TEST_KEY", 999, 1)
+            .unwrap();
+        app.reload();
+        let _ = app.update(Message::Press(Entry::Source { id, filed: false }));
+        let _ = app.update(Message::Release);
+        let _ = app.update(Message::Key(Action::EnterKey));
+        assert_eq!(app.screen(), hints::Screen::Key);
+        for typed in ["jina_", "abc", "d"] {
+            let _ = app.update(Message::KeyEntry(palette::Input::Type(typed.into())));
+        }
+        let _ = app.update(Message::KeyEntry(palette::Input::Backspace));
+        let editor = app.tools.key.as_ref().unwrap();
+        assert_eq!(editor.text, "jina_abc");
+        assert!(!format!("{editor:?}").contains("jina_abc"));
+        let _ = app.view();
+
+        // Enter hands it to the keyring and waits; keys do nothing meanwhile.
+        let _ = app.update(Message::KeyEntry(palette::Input::Run));
+        assert!(app.tools.key.as_ref().unwrap().saving);
+        let _ = app.update(Message::KeyEntry(palette::Input::Type("x".into())));
+        assert_eq!(app.tools.key.as_ref().unwrap().text, "jina_abc");
+        let _ = app.update(Message::KeySaved(id, Err("the keyring is locked".into())));
+        let editor = app.tools.key.as_ref().unwrap();
+        assert_eq!(editor.error.as_deref(), Some("the keyring is locked"));
+        assert!(!editor.saving);
+
+        // The memory keyring answers at once, so any executor does.
+        let saved = iced::futures::executor::block_on(async {
+            secrets::save("GUTENBERG_UI_TEST_KEY", "jina_abc").await?;
+            secrets::lookup("GUTENBERG_UI_TEST_KEY").await
+        });
+        assert_eq!(saved, Ok(Some("jina_abc".to_owned())));
+        let _ = app.update(Message::KeySaved(id, Ok(())));
+        assert!(app.tools.key.is_none());
+        let store = app.store.as_ref().unwrap();
+        assert!(store.has_unchecked_sources().unwrap());
+        assert_eq!(store.fetch_state(id).unwrap().error, None);
+        assert!(!store
+            .sources()
+            .unwrap()
+            .iter()
+            .any(|s| s.config.contains("jina_abc")));
+
+        // A feed has no key to enter.
+        let (mut app, _, a, _) = app_with_folders();
+        let _ = app.update(Message::Press(Entry::Source { id: a, filed: true }));
+        let _ = app.update(Message::Release);
+        let _ = app.update(Message::Key(Action::EnterKey));
+        assert!(app.tools.key.is_none());
     }
 
     #[test]

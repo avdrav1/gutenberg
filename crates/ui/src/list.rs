@@ -45,6 +45,8 @@ pub enum Action {
     /// Shows the chosen MCP server's tools, to pick the one its refresh
     /// calls, or its articles again.
     Tools,
+    /// Types the key the chosen MCP server needs, to save in the keyring.
+    EnterKey,
 }
 
 /// `pending_g` is whether the last key was a lone `g`.
@@ -77,6 +79,7 @@ pub fn action_for(key: &Key, modifiers: Modifiers, pending_g: bool) -> Option<Ac
         Key::Character("S") => Some(Action::View(View::Starred)),
         Key::Character("t") => Some(Action::View(View::Today)),
         Key::Character("T") => Some(Action::Tools),
+        Key::Character("K") => Some(Action::EnterKey),
         _ => None,
     }
 }

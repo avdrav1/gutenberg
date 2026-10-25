@@ -1,4 +1,5 @@
 mod add;
+mod key;
 mod keyword;
 mod mcp;
 mod opml;
@@ -39,6 +40,13 @@ fn main() -> std::process::ExitCode {
                 None => usage(),
             };
         }
+        Some("--key") => {
+            let rest: Vec<String> = std::env::args().skip(2).collect();
+            return match rest.as_slice() {
+                [name] => key::run(name),
+                _ => usage(),
+            };
+        }
         Some("--import") => {
             let rest: Vec<String> = std::env::args().skip(2).collect();
             return match rest.as_slice() {
@@ -77,7 +85,7 @@ fn main() -> std::process::ExitCode {
 
 fn usage() -> std::process::ExitCode {
     eprintln!(
-        "usage: gutenberg [--version | --add <url> [--folder <name>] | --keyword <query> [--folder <name>] | --mcp <command or URL> [--tool <name> [--args <json>]] [--folder <name>] | --import <file.opml> | --export | --refresh | --reload-theme]"
+        "usage: gutenberg [--version | --add <url> [--folder <name>] | --keyword <query> [--folder <name>] | --mcp <command or URL> [--tool <name> [--args <json>]] [--secret <NAME>] [--folder <name>] | --key <NAME> | --import <file.opml> | --export | --refresh | --reload-theme]"
     );
     std::process::ExitCode::from(2)
 }
