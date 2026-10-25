@@ -2030,6 +2030,7 @@ dependencies = [
  "gutenberg-theme",
  "gutenberg-ui",
  "nix",
+ "serde_json",
  "tempfile",
  "tokio",
 ]

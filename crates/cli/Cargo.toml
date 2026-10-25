@@ -19,4 +19,5 @@ name = "gutenberg"
 path = "src/main.rs"
 
 [dev-dependencies]
+serde_json.workspace = true
 tempfile.workspace = true

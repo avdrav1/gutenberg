@@ -4,6 +4,7 @@ mod keyword;
 mod mcp;
 mod opml;
 mod refresh;
+mod unread;
 
 use gutenberg_core::config::Config;
 
@@ -56,6 +57,14 @@ fn main() -> std::process::ExitCode {
         }
         Some("--export") if std::env::args().len() == 2 => return opml::export(),
         Some("--refresh") => return refresh::run(),
+        Some("--unread") => {
+            let rest: Vec<String> = std::env::args().skip(2).collect();
+            return match rest.as_slice() {
+                [] => unread::run(false),
+                [flag] if flag == "--json" => unread::run(true),
+                _ => usage(),
+            };
+        }
         Some("--reload-theme") if std::env::args().len() == 2 => return reload_theme(),
         Some(_) => return usage(),
         None => {}
@@ -85,7 +94,7 @@ fn main() -> std::process::ExitCode {
 
 fn usage() -> std::process::ExitCode {
     eprintln!(
-        "usage: gutenberg [--version | --add <url> [--folder <name>] | --keyword <query> [--folder <name>] | --mcp <command or URL> [--tool <name> [--args <json>]] [--secret <NAME>] [--folder <name>] | --key <NAME> | --import <file.opml> | --export | --refresh | --reload-theme]"
+        "usage: gutenberg [--version | --add <url> [--folder <name>] | --keyword <query> [--folder <name>] | --mcp <command or URL> [--tool <name> [--args <json>]] [--secret <NAME>] [--folder <name>] | --key <NAME> | --import <file.opml> | --export | --unread [--json] | --refresh | --reload-theme]"
     );
     std::process::ExitCode::from(2)
 }
