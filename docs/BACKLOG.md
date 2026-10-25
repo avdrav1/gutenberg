@@ -84,6 +84,6 @@ Epics in build order. Each story is one PR, sized for a day or less. "Done" mean
 | S8.1 | macOS build with native font and menu bar | todo |
 | S8.2 | Windows build | todo |
 | S8.3 | Cronkite bridge: send articles to Cronkite for ranking over MCP | todo |
-| S8.4 | Rules: auto-star, auto-read, mute by keyword | todo |
+| S8.4 | Rules: auto-star, auto-read, mute by keyword | doing |
 | S8.5 | Sync via a user-chosen folder (Syncthing-friendly) | todo |
 
