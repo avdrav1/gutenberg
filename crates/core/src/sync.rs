@@ -15,6 +15,8 @@ use gutenberg_sources::feed::{self, Entry, Feed, FeedError, Fetched};
 use gutenberg_sources::image::Format;
 use gutenberg_sources::keyword::{self, Keyword, Provider, Providers, Seen};
 use gutenberg_sources::mcp::{self, Mcp};
+
+use crate::secrets;
 use gutenberg_sources::{favicon, google_news};
 use gutenberg_store::{DueSource, NewArticle, SourceKind, Store, Validators};
 use tokio::sync::Semaphore;
@@ -368,10 +370,22 @@ enum Outcome {
 /// Reaches an MCP server, lists its tools and, once one is picked, calls
 /// it with its template filled in: `{{today}}` is `now`'s day, `{{since}}`
 /// the day of the last call that worked, or the day before on the first.
+/// A server that needs a key gets it from the environment or the keyring.
 async fn visit_server(mut server: Mcp, source_id: i64, now: i64) -> Outcome {
     let failed = |e: mcp::McpError| Outcome::Failed {
         error: e.to_string(),
         retry_after: None,
+    };
+    let key = match &server.secret {
+        Some(name) => match secrets::lookup(name).await {
+            Ok(Some(value)) => Some(mcp::Key {
+                name: name.clone(),
+                value,
+            }),
+            Ok(None) => return failed(mcp::McpError::new(missing_key(name))),
+            Err(e) => return failed(mcp::McpError::new(format!("{name}: {e}"))),
+        },
+        None => None,
     };
     let today = mcp::day(now);
     let picked = match (&server.tool, &server.arguments) {
@@ -388,8 +402,10 @@ async fn visit_server(mut server: Mcp, source_id: i64, now: i64) -> Outcome {
         (None, _) => None,
     };
     let visit = match picked {
-        Some((tool, arguments)) => mcp::call(&server.server, &tool, arguments, mcp::TIMEOUT).await,
-        None => mcp::tools(&server.server, mcp::TIMEOUT)
+        Some((tool, arguments)) => {
+            mcp::call(&server.server, key.as_ref(), &tool, arguments, mcp::TIMEOUT).await
+        }
+        None => mcp::tools(&server.server, key.as_ref(), mcp::TIMEOUT)
             .await
             .map(|tools| mcp::Visit {
                 tools,
@@ -398,6 +414,13 @@ async fn visit_server(mut server: Mcp, source_id: i64, now: i64) -> Outcome {
     };
     let visit = match visit {
         Ok(visit) => visit,
+        // A server that turns its key down says so with a 401 or 403.
+        Err(e) if key.is_some() && refused(&e.to_string()) => {
+            let name = server.secret.as_deref().unwrap_or_default();
+            return failed(mcp::McpError::new(format!(
+                "{name} was turned down ({e}); press K to enter another"
+            )));
+        }
         Err(e) => return failed(e),
     };
     let entries = match (&visit.result, &server.tool) {
@@ -415,6 +438,17 @@ async fn visit_server(mut server: Mcp, source_id: i64, now: i64) -> Outcome {
         config: server.to_config(),
         articles: rows(&entries, source_id, now),
     }
+}
+
+/// What the source pane says of a server whose key is nowhere.
+pub fn missing_key(name: &str) -> String {
+    format!("needs {name}: press K to enter it, or set it in the environment")
+}
+
+fn refused(error: &str) -> bool {
+    ["HTTP 401", "HTTP 403", "Unauthorized", "Forbidden"]
+        .iter()
+        .any(|word| error.contains(word))
 }
 
 /// `fresh` drops the validators, so the server sends the feed in full.

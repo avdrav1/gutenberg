@@ -15,6 +15,7 @@ toml.workspace = true
 notify.workspace = true
 directories.workspace = true
 thiserror.workspace = true
+secret-service.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

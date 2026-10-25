@@ -1,6 +1,7 @@
-//! `gutenberg --mcp <command or URL> [--tool <name> [--args <json>]]`: add
-//! an MCP server, list its tools, and with `--tool` read its results as
-//! articles on every refresh.
+//! `gutenberg --mcp <command or URL> [--tool <name> [--args <json>]]
+//! [--secret <NAME>]`: add an MCP server, list its tools, and with `--tool`
+//! read its results as articles on every refresh. `--secret` names the key
+//! it needs, from the environment or the keyring (`--key`).
 
 use std::process::ExitCode;
 
@@ -14,11 +15,14 @@ pub struct Options {
     pub tool: Option<String>,
     /// The tool's argument template; `{}` when not given.
     pub arguments: Option<String>,
+    /// The name of the key the server needs.
+    pub secret: Option<String>,
     pub folder: Option<String>,
 }
 
 impl Options {
-    /// The server, then `--tool`, `--args` and `--folder` in any order.
+    /// The server, then `--tool`, `--args`, `--secret` and `--folder` in
+    /// any order.
     /// `None` for anything else, or `--args` without `--tool`.
     pub fn parse(args: &[String]) -> Option<Self> {
         let (server, mut rest) = args.split_first()?;
@@ -29,12 +33,14 @@ impl Options {
             server: server.clone(),
             tool: None,
             arguments: None,
+            secret: None,
             folder: None,
         };
         while let [flag, value, more @ ..] = rest {
             let slot = match flag.as_str() {
                 "--tool" => &mut options.tool,
                 "--args" => &mut options.arguments,
+                "--secret" => &mut options.secret,
                 "--folder" => &mut options.folder,
                 _ => return None,
             };
@@ -69,6 +75,14 @@ fn add(options: &Options) -> Result<String, String> {
             .pick(tool, options.arguments.as_deref().unwrap_or("{}"))
             .map_err(|e| e.to_string())?;
     }
+    if let Some(name) = &options.secret {
+        if !gutenberg_core::secrets::valid_name(name) {
+            return Err(format!(
+                "--secret {name}: a key's name is letters, digits and _, like JINA_API_KEY"
+            ));
+        }
+        settings.secret = Some(name.clone());
+    }
     let path = Store::default_path().map_err(|e| e.to_string())?;
     let mut store = Store::open(&path).map_err(|e| e.to_string())?;
     let folder_id = match &options.folder {
@@ -97,8 +111,14 @@ fn add(options: &Options) -> Result<String, String> {
     // A server that can't be reached stays, and is tried again on the next
     // refresh; the source pane shows why.
     if let Some((_, error)) = summary.failed.first() {
+        let hint = match &settings.secret {
+            Some(name) if error == &sync::missing_key(name) => {
+                format!("; give it {name} with: gutenberg --key {name}")
+            }
+            _ => String::new(),
+        };
         return Ok(format!(
-            "Added MCP server {label}; couldn't reach it ({error})"
+            "Added MCP server {label}; couldn't reach it ({error}){hint}"
         ));
     }
     let source = store
@@ -144,13 +164,17 @@ mod tests {
 
     #[test]
     fn flags_come_in_any_order_once_each() {
-        let options = parse(&["uvx x", "--args", "{}", "--folder", "AI", "--tool", "t"]).unwrap();
+        let options = parse(&[
+            "uvx x", "--args", "{}", "--folder", "AI", "--secret", "X_KEY", "--tool", "t",
+        ])
+        .unwrap();
         assert_eq!(
             options,
             Options {
                 server: "uvx x".into(),
                 tool: Some("t".into()),
                 arguments: Some("{}".into()),
+                secret: Some("X_KEY".into()),
                 folder: Some("AI".into()),
             }
         );

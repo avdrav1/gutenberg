@@ -14,6 +14,7 @@ use nix::unistd::Pid;
 use process_wrap::tokio::{CommandWrap, ProcessGroup};
 use rmcp::model::{CallToolRequestParams, ClientCapabilities, ClientConfig, Implementation};
 use rmcp::service::ClientInitializeError;
+use rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig;
 use rmcp::transport::streamable_http_client::StreamableHttpError;
 use rmcp::transport::{StreamableHttpClientTransport, TokioChildProcess};
 use rmcp::ServiceExt;
@@ -72,12 +73,40 @@ pub struct Mcp {
     /// `{{since}}`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub called: Option<String>,
+    /// The name of the key the server needs, such as `JINA_API_KEY`: an
+    /// environment variable, else an item in the keyring. Only the name is
+    /// kept here, never the key.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub secret: Option<String>,
+}
+
+/// A key for a server: a command gets it as the environment variable
+/// `name`, a URL as `Authorization: Bearer <value>`.
+#[derive(Clone, PartialEq, Eq)]
+pub struct Key {
+    pub name: String,
+    pub value: String,
+}
+
+/// Never prints the value.
+impl std::fmt::Debug for Key {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Key")
+            .field("name", &self.name)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Why a server couldn't be reached or read, in one line.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("{0}")]
 pub struct McpError(String);
+
+impl McpError {
+    pub fn new(message: impl Into<String>) -> Self {
+        McpError(message.into())
+    }
+}
 
 impl Server {
     /// A server from what the user typed: an `http://` or `https://` URL,
@@ -123,6 +152,7 @@ impl Mcp {
             tool: None,
             arguments: None,
             called: None,
+            secret: None,
         }
     }
 
@@ -168,30 +198,43 @@ pub struct Visit {
     pub result: Option<serde_json::Value>,
 }
 
-/// Connects to `server`, asks for its tools and disconnects, within
-/// `timeout`.
-pub async fn tools(server: &Server, timeout: Duration) -> Result<Vec<Tool>, McpError> {
-    visit(server, None, timeout).await.map(|v| v.tools)
+/// Connects to `server`, with `key` if it needs one, asks for its tools
+/// and disconnects, within `timeout`.
+pub async fn tools(
+    server: &Server,
+    key: Option<&Key>,
+    timeout: Duration,
+) -> Result<Vec<Tool>, McpError> {
+    visit(server, key, None, timeout).await.map(|v| v.tools)
 }
 
-/// Connects to `server`, lists its tools, calls `tool` with `arguments`
-/// and disconnects, all within `timeout`.
+/// Connects to `server`, with `key` if it needs one, lists its tools,
+/// calls `tool` with `arguments` and disconnects, all within `timeout`.
 pub async fn call(
     server: &Server,
+    key: Option<&Key>,
     tool: &str,
     arguments: serde_json::Map<String, serde_json::Value>,
     timeout: Duration,
 ) -> Result<Visit, McpError> {
-    visit(server, Some((tool, arguments)), timeout).await
+    visit(server, key, Some((tool, arguments)), timeout).await
 }
 
 type Call<'a> = Option<(&'a str, serde_json::Map<String, serde_json::Value>)>;
 
-async fn visit(server: &Server, call: Call<'_>, timeout: Duration) -> Result<Visit, McpError> {
+async fn visit(
+    server: &Server,
+    key: Option<&Key>,
+    call: Call<'_>,
+    timeout: Duration,
+) -> Result<Visit, McpError> {
     let visited = match server {
         Server::Command { command, args } => {
             let mut cmd = Command::new(command);
             cmd.args(args);
+            if let Some(key) = key {
+                cmd.env(&key.name, &key.value);
+            }
             // Its own process group, so ending it ends whatever it started.
             let mut cmd = CommandWrap::from(cmd);
             cmd.wrap(ProcessGroup::leader());
@@ -233,7 +276,9 @@ async fn visit(server: &Server, call: Call<'_>, timeout: Duration) -> Result<Vis
         }
         Server::Url { url } => {
             install_crypto();
-            let transport = StreamableHttpClientTransport::from_uri(url.as_str());
+            let mut config = StreamableHttpClientTransportConfig::with_uri(url.as_str());
+            config.auth_header = key.map(|k| k.value.clone());
+            let transport = StreamableHttpClientTransport::from_config(config);
             tokio::time::timeout(timeout, session(transport, call))
                 .await
                 .map(|r| r.map_err(Failure::into_error))

@@ -21,7 +21,7 @@ fn runtime() -> tokio::runtime::Runtime {
 
 fn tools(server: &Server) -> Result<Vec<Tool>, String> {
     runtime()
-        .block_on(mcp::tools(server, Duration::from_secs(10)))
+        .block_on(mcp::tools(server, None, Duration::from_secs(10)))
         .map_err(|e| e.to_string())
 }
 
@@ -56,12 +56,22 @@ fn a_command_lists_its_tools() {
 /// Requests a local server got: method, and the session header if any.
 type Seen = Arc<Mutex<Vec<(String, Option<String>)>>>;
 
+/// The `Authorization` header of each request a local server got.
+type Authorized = Arc<Mutex<Vec<Option<String>>>>;
+
 /// The recorded server over streamable HTTP, answering as Hugging Face did.
 fn serve() -> (String, Seen) {
+    let (url, seen, _) = serve_authorized();
+    (url, seen)
+}
+
+fn serve_authorized() -> (String, Seen, Authorized) {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let url = format!("http://{}/mcp", listener.local_addr().unwrap());
     let seen: Seen = Arc::default();
     let log = seen.clone();
+    let authorized: Authorized = Arc::default();
+    let auth_log = authorized.clone();
     let reply = |name: &str| std::fs::read_to_string(format!("{FIXTURES}/{name}")).unwrap();
     let (init, list) = (
         reply("huggingface-initialize.json"),
@@ -70,8 +80,9 @@ fn serve() -> (String, Seen) {
     std::thread::spawn(move || {
         for stream in listener.incoming() {
             let mut stream = stream.unwrap();
-            let (method, session, body) = read_request(&mut stream);
+            let (method, session, body, auth) = read_request(&mut stream);
             log.lock().unwrap().push((method.clone(), session));
+            auth_log.lock().unwrap().push(auth);
             let json = |body: &str, id: u64, extra: &str| {
                 let mut value: serde_json::Value = serde_json::from_str(body).unwrap();
                 value["id"] = id.into();
@@ -102,11 +113,12 @@ fn serve() -> (String, Seen) {
             let _ = stream.write_all(response.as_bytes());
         }
     });
-    (url, seen)
+    (url, seen, authorized)
 }
 
-/// The request's method, its `mcp-session-id` header, and its body.
-fn read_request(stream: &mut TcpStream) -> (String, Option<String>, Vec<u8>) {
+/// The request's method, its `mcp-session-id` header, its body, and its
+/// `Authorization` header.
+fn read_request(stream: &mut TcpStream) -> (String, Option<String>, Vec<u8>, Option<String>) {
     let mut request = Vec::new();
     let mut buf = [0; 4096];
     let head_end = loop {
@@ -114,7 +126,7 @@ fn read_request(stream: &mut TcpStream) -> (String, Option<String>, Vec<u8>) {
             break i + 4;
         }
         match stream.read(&mut buf) {
-            Ok(0) | Err(_) => return (String::new(), None, Vec::new()),
+            Ok(0) | Err(_) => return (String::new(), None, Vec::new(), None),
             Ok(n) => request.extend_from_slice(&buf[..n]),
         }
     };
@@ -143,6 +155,7 @@ fn read_request(stream: &mut TcpStream) -> (String, Option<String>, Vec<u8>) {
         method,
         header("mcp-session-id"),
         request[head_end..].to_vec(),
+        header("authorization"),
     )
 }
 
@@ -223,7 +236,7 @@ fn a_server_that_never_answers_times_out_and_is_ended() {
     };
     let started = std::time::Instant::now();
     let err = runtime()
-        .block_on(mcp::tools(&silent, Duration::from_secs(1)))
+        .block_on(mcp::tools(&silent, None, Duration::from_secs(1)))
         .unwrap_err();
     assert_eq!(err.to_string(), "no answer in 1 s");
     assert!(started.elapsed() < Duration::from_secs(10));
@@ -251,6 +264,7 @@ fn call(fixture: &str) -> Result<Vec<gutenberg_sources::feed::Entry>, String> {
     let visit = runtime()
         .block_on(mcp::call(
             &server,
+            None,
             "hf_fs",
             arguments,
             Duration::from_secs(10),
@@ -409,4 +423,37 @@ fn markdown_sections_of_repositories_are_articles() {
     // The "## Datasets (5)" heading above them is no article.
     assert_eq!(found[5].title, "vietgpt/news_summarization_vi");
     assert_eq!(found[5].author.as_deref(), Some("vietgpt"));
+}
+
+/// S6.4: a key reaches a URL as a bearer token on every request, and a
+/// command as its environment variable.
+#[test]
+fn a_key_reaches_the_server() {
+    let key = mcp::Key {
+        name: "GUTENBERG_TEST_KEY".into(),
+        value: "s3cret".into(),
+    };
+    let (url, _, authorized) = serve_authorized();
+    let server = Server::parse(&url).unwrap();
+    let listed = runtime()
+        .block_on(mcp::tools(&server, Some(&key), Duration::from_secs(10)))
+        .unwrap();
+    assert_recorded(&listed);
+    let authorized = authorized.lock().unwrap();
+    assert!(authorized.len() >= 3);
+    assert!(authorized
+        .iter()
+        .all(|a| a.as_deref() == Some("Bearer s3cret")));
+    // Without a key, none is sent.
+    let (url, _, authorized) = serve_authorized();
+    tools(&Server::parse(&url).unwrap()).unwrap();
+    assert!(authorized.lock().unwrap().iter().all(Option::is_none));
+
+    let echo = command("sh -c 'echo got $GUTENBERG_TEST_KEY >&2; exit 1'");
+    let err = runtime()
+        .block_on(mcp::tools(&echo, Some(&key), Duration::from_secs(10)))
+        .unwrap_err();
+    assert_eq!(err.to_string(), "the server stopped: got s3cret");
+    // And the key never shows in how it prints.
+    assert!(!format!("{key:?}").contains("s3cret"));
 }

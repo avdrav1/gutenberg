@@ -11,6 +11,8 @@ gutenberg-store.workspace = true
 gutenberg-theme.workspace = true
 gutenberg-ui.workspace = true
 tokio.workspace = true
+# Typing a key at a terminal without it showing.
+nix = { version = "0.31", default-features = false, features = ["term"] }
 
 [[bin]]
 name = "gutenberg"
