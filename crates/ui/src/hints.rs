@@ -22,6 +22,10 @@ pub enum Screen {
     Searching,
     /// Moving through search results.
     Results,
+    /// An MCP server's tools in the list pane.
+    Tools,
+    /// Typing a tool's arguments.
+    Arguments,
 }
 
 /// One entry in the bar: keys, then what they do.
@@ -93,6 +97,27 @@ pub fn for_screen(screen: Screen) -> Vec<Hint> {
             key(Action::ClearSearch, "back to the list"),
             key(Action::Help, "keys"),
         ],
+        Screen::Tools => vec![
+            moves,
+            Hint {
+                keys: "Enter",
+                label: "edit arguments",
+            },
+            key(Action::Tools, "articles"),
+            key(Action::Palette, "commands"),
+            key(Action::Help, "keys"),
+        ],
+        // The field takes every key; these are its own.
+        Screen::Arguments => vec![
+            Hint {
+                keys: "Enter",
+                label: "save",
+            },
+            Hint {
+                keys: "Esc",
+                label: "cancel",
+            },
+        ],
     }
 }
 
@@ -112,13 +137,15 @@ fn key(action: Action, label: &'static str) -> Hint {
 mod tests {
     use super::*;
 
-    const EVERY: [Screen; 6] = [
+    const EVERY: [Screen; 8] = [
         Screen::Empty,
         Screen::List,
         Screen::Summary,
         Screen::Reader,
         Screen::Searching,
         Screen::Results,
+        Screen::Tools,
+        Screen::Arguments,
     ];
 
     #[test]
@@ -133,7 +160,8 @@ mod tests {
 
     #[test]
     fn help_is_a_key_away_wherever_the_list_has_the_keys() {
-        for screen in EVERY.into_iter().filter(|s| *s != Screen::Searching) {
+        let typing = [Screen::Searching, Screen::Arguments];
+        for screen in EVERY.into_iter().filter(|s| !typing.contains(s)) {
             assert!(
                 for_screen(screen).iter().any(|h| h.keys == "?"),
                 "{screen:?}"

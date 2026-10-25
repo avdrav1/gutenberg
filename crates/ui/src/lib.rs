@@ -152,6 +152,7 @@ struct App {
     keyword_sources: HashSet<i64>,
     /// Why each source failed its last refresh, for those that did.
     source_errors: HashMap<i64, String>,
+    tools: Tools,
     folders: Vec<Folder>,
     sources: Vec<Source>,
     /// The favicon cache the refresh thread fills.
@@ -206,6 +207,28 @@ enum KeyMode {
     Palette,
     Help,
     Search,
+    /// Typing an MCP tool's arguments.
+    ToolArguments,
+}
+
+/// The chosen MCP server's tools, in the list pane while it has no
+/// articles or after `T`.
+#[derive(Debug, Default)]
+struct Tools {
+    /// Asked for with `T` while the server has articles.
+    asked: bool,
+    /// The tool the keys are on.
+    cursor: usize,
+    editor: Option<ArgumentEditor>,
+}
+
+/// A tool's argument template being typed.
+#[derive(Debug)]
+struct ArgumentEditor {
+    tool: String,
+    text: String,
+    /// Why the last Enter didn't save it.
+    error: Option<String>,
 }
 
 /// A press on a sources-pane row and where the pointer is now.
@@ -324,6 +347,8 @@ enum Message {
     CloseOverlay,
     /// A key while typing in the search line.
     Search(palette::Input),
+    /// A key while typing an MCP tool's arguments.
+    ToolArguments(palette::Input),
     /// A link in the article pane was clicked.
     OpenLink(String),
     /// The web worker is up and takes requests.
@@ -393,6 +418,7 @@ impl App {
             source_titles: HashMap::new(),
             keyword_sources: HashSet::new(),
             source_errors: HashMap::new(),
+            tools: Tools::default(),
             folders: Vec::new(),
             sources: Vec::new(),
             icons,
@@ -534,7 +560,15 @@ impl App {
         if !matches!(message, Message::Key(Action::PendingG)) {
             self.pending_g = false;
         }
+        // While a server's tools are shown, moving and Enter work on them.
+        if let (Some(id), Message::Key(action)) = (self.chosen_mcp(), &message) {
+            if self.tools_key(id, *action) {
+                return Task::none();
+            }
+        }
         match message {
+            Message::Key(Action::Tools) => self.toggle_tools(),
+            Message::ToolArguments(input) => self.type_arguments(input),
             Message::Key(Action::Quit) => return iced::exit(),
             Message::Key(Action::AddSources) => self.open_onboarding(),
             Message::Key(Action::Reader) => self.toggle_reader(),
@@ -700,6 +734,9 @@ impl App {
             _ => self.view,
         };
         if filter != self.filter || view != self.view || self.search.is_some() {
+            if filter != self.filter {
+                self.tools = Tools::default();
+            }
             self.filter = filter;
             self.view = view;
             self.search = None;
@@ -763,6 +800,8 @@ impl App {
         match (&self.search, &self.opened) {
             (Some(search), _) if search.editing => Screen::Searching,
             (Some(_), _) => Screen::Results,
+            _ if self.tools.editor.is_some() => Screen::Arguments,
+            _ if self.chosen_mcp().is_some() => Screen::Tools,
             _ if self.sources.is_empty() => Screen::Empty,
             (None, None) => Screen::List,
             (None, Some(opened)) if matches!(opened.reader, Reader::Ready(_)) => Screen::Reader,
@@ -1054,6 +1093,7 @@ impl App {
             (None, Some(Overlay::Palette(_)), _) => KeyMode::Palette,
             (None, Some(Overlay::Help), _) => KeyMode::Help,
             (None, None, Some(Search { editing: true, .. })) => KeyMode::Search,
+            (None, None, _) if self.tools.editor.is_some() => KeyMode::ToolArguments,
             (None, None, _) => KeyMode::List,
         };
         let keys = keyboard::listen().with((self.pending_g, mode)).filter_map(
@@ -1083,6 +1123,8 @@ impl App {
                     KeyMode::Search => {
                         palette::input_for(&key, modifiers, text.as_deref()).map(Message::Search)
                     }
+                    KeyMode::ToolArguments => palette::input_for(&key, modifiers, text.as_deref())
+                        .map(Message::ToolArguments),
                     KeyMode::Help => {
                         use keyboard::key::Named;
                         match key.as_ref() {
@@ -1448,33 +1490,135 @@ impl App {
             .any(|s| s.id == id && s.kind == SourceKind::Mcp)
     }
 
-    /// The MCP server chosen in the sources pane, while no search is on and
-    /// it has no articles to list.
+    /// The MCP server chosen in the sources pane whose tools the list pane
+    /// shows: while no search is on, and it has no articles or `T` asked.
     fn chosen_mcp(&self) -> Option<i64> {
         match self.filter {
-            Filter::Source(id) if self.search.is_none() && self.rows.is_empty() => {
+            Filter::Source(id)
+                if self.search.is_none() && (self.rows.is_empty() || self.tools.asked) =>
+            {
                 self.is_mcp(id).then_some(id)
             }
             _ => None,
         }
     }
 
-    /// An MCP server's tools, or why it couldn't be reached.
-    fn mcp_view(&self, id: i64) -> Element<'_, Message> {
-        let t = &self.tokens;
-        let tools = self
-            .sources
+    /// The tools a source listed when last reached.
+    fn tools_of(&self, id: i64) -> Vec<mcp::Tool> {
+        self.sources
             .iter()
             .find(|s| s.id == id)
             .map(mcp::tools)
-            .unwrap_or_default();
-        let heading = match (self.source_errors.get(&id), tools.len()) {
-            (Some(error), _) => {
+            .unwrap_or_default()
+    }
+
+    /// `T`: the chosen MCP server's tools, or its articles again.
+    fn toggle_tools(&mut self) {
+        if let Filter::Source(id) = self.filter {
+            if self.is_mcp(id) {
+                self.tools.asked = !self.tools.asked;
+                self.tools.editor = None;
+            }
+        }
+    }
+
+    /// A list key while server `id`'s tools are shown; whether it was one
+    /// for them.
+    fn tools_key(&mut self, id: i64, action: Action) -> bool {
+        let tools = self.tools_of(id);
+        let last = tools.len().saturating_sub(1);
+        let cursor = self.tools.cursor;
+        match action {
+            Action::Down => self.tools.cursor = (cursor + 1).min(last),
+            Action::Up => self.tools.cursor = cursor.saturating_sub(1),
+            Action::First => self.tools.cursor = 0,
+            Action::Last => self.tools.cursor = last,
+            Action::Open => {
+                let Some(tool) = tools.into_iter().nth(cursor) else {
+                    return true;
+                };
+                let settings = self
+                    .sources
+                    .iter()
+                    .find(|s| s.id == id)
+                    .and_then(mcp::settings);
+                // The template it calls with, if it's the tool in use.
+                let text = settings
+                    .filter(|m| m.tool.as_deref() == Some(tool.name.as_str()))
+                    .and_then(|m| m.arguments)
+                    .or(tool.example)
+                    .unwrap_or_else(|| "{}".to_owned());
+                self.tools.editor = Some(ArgumentEditor {
+                    tool: tool.name,
+                    text,
+                    error: None,
+                });
+            }
+            Action::ClearSearch if self.tools.asked => self.tools.asked = false,
+            _ => return false,
+        }
+        true
+    }
+
+    /// A key while typing a tool's arguments. Enter saves them and the tool,
+    /// and the next refresh, within a second, calls it.
+    fn type_arguments(&mut self, input: palette::Input) {
+        let Some(editor) = &mut self.tools.editor else {
+            return;
+        };
+        match input {
+            palette::Input::Type(text) => editor.text.push_str(&text),
+            palette::Input::Backspace => {
+                editor.text.pop();
+            }
+            palette::Input::Up | palette::Input::Down => {}
+            palette::Input::Close => self.tools.editor = None,
+            palette::Input::Run => {
+                let (Ok(store), Filter::Source(id)) = (&self.store, self.filter) else {
+                    return;
+                };
+                let Some(source) = self.sources.iter().find(|s| s.id == id) else {
+                    return;
+                };
+                match mcp::pick(store, source, &editor.tool, &editor.text) {
+                    Ok(()) => {
+                        self.tools = Tools::default();
+                        self.reload();
+                    }
+                    Err(e) => editor.error = Some(e),
+                }
+            }
+        }
+    }
+
+    /// An MCP server's tools, the one its refresh calls marked, or why it
+    /// couldn't be reached. The keys move through them and Enter edits the
+    /// arguments of the one they're on.
+    fn mcp_view(&self, id: i64) -> Element<'_, Message> {
+        let t = &self.tokens;
+        let tools = self.tools_of(id);
+        let settings = self
+            .sources
+            .iter()
+            .find(|s| s.id == id)
+            .and_then(mcp::settings);
+        let answered = settings.as_ref().is_some_and(|m| m.called.is_some());
+        let picked = settings.and_then(|m| m.tool);
+        let heading = match (self.source_errors.get(&id), tools.len(), &picked) {
+            (Some(error), _, _) => {
                 format!("Can't reach this server: {error}. Gutenberg tries again later.")
             }
-            (None, 0) => "Reaching the server…".to_owned(),
-            (None, 1) => "This server offers 1 tool:".to_owned(),
-            (None, n) => format!("This server offers {n} tools:"),
+            (None, 0, _) => "Reaching the server…".to_owned(),
+            (None, _, Some(tool)) if self.rows.is_empty() && answered => format!(
+                "Calls {tool} on each refresh; its last answer had nothing to read. j and k move, Enter changes a tool's arguments."
+            ),
+            (None, _, Some(tool)) if self.rows.is_empty() => format!(
+                "Calls {tool} on each refresh; its articles show here once it answers. j and k move, Enter changes a tool's arguments."
+            ),
+            (None, _, Some(tool)) => format!(
+                "Calls {tool} on each refresh. j and k move, Enter changes a tool's arguments, T or Esc shows the articles."
+            ),
+            (None, _, None) => "Pick the tool to read from: j and k move, Enter edits its arguments.".to_owned(),
         };
         let mut column = Column::new()
             .push(
@@ -1483,21 +1627,76 @@ impl App {
                     .color(color(t.muted))
                     .wrapping(text::Wrapping::WordOrGlyph),
             )
-            .spacing(10)
+            .spacing(6)
             .padding(16);
-        for tool in tools {
-            column = column.push(
-                column![
-                    text(tool.name).size(14).color(color(t.foreground)),
-                    text(tool.description.unwrap_or_default())
-                        .size(12)
-                        .color(color(t.muted))
-                        .wrapping(text::Wrapping::WordOrGlyph),
-                ]
-                .spacing(2),
-            );
+        for (i, tool) in tools.into_iter().enumerate() {
+            let at_cursor = i == self.tools.cursor;
+            let in_use = picked.as_deref() == Some(tool.name.as_str());
+            let name = row![text(tool.name.clone()).size(14).color(color(t.foreground))]
+                .push(in_use.then(|| text("· calls on refresh").size(12).color(color(t.accent))))
+                .spacing(8)
+                .align_y(Alignment::Center);
+            let mut item = column![
+                name,
+                text(tool.description.unwrap_or_default())
+                    .size(12)
+                    .color(color(t.muted))
+                    .wrapping(text::Wrapping::WordOrGlyph),
+            ]
+            .spacing(2);
+            if let Some(editor) = self.tools.editor.as_ref().filter(|_| at_cursor) {
+                item = item.push(self.argument_field(editor));
+            }
+            let background = at_cursor.then(|| color(t.selection).into());
+            column = column.push(container(item).padding([6, 8]).width(Length::Fill).style(
+                move |_| container::Style {
+                    background,
+                    ..Default::default()
+                },
+            ));
         }
         scrollable(column).height(Length::Fill).into()
+    }
+
+    /// The arguments being typed, with a cursor, why they didn't save, and
+    /// what the placeholders are.
+    fn argument_field<'a>(&self, editor: &'a ArgumentEditor) -> Element<'a, Message> {
+        let t = &self.tokens;
+        let (background, border_color) = (color(t.background), color(t.border));
+        let field = container(
+            text(format!("{}▏", editor.text))
+                .size(13)
+                .color(color(t.foreground))
+                .wrapping(text::Wrapping::WordOrGlyph),
+        )
+        .padding([6, 10])
+        .width(Length::Fill)
+        .style(move |_| container::Style {
+            background: Some(background.into()),
+            border: Border {
+                color: border_color,
+                width: 1.0,
+                radius: border::radius(4),
+            },
+            ..Default::default()
+        });
+        let help = text(
+            "Arguments as JSON. {{today}} is today's date, {{since}} the date of the last call. Enter saves · Esc cancels",
+        )
+        .size(12)
+        .color(color(t.muted))
+        .wrapping(text::Wrapping::WordOrGlyph);
+        column![field]
+            .push(editor.error.as_ref().map(|e| {
+                text(e.clone())
+                    .size(12)
+                    .color(color(t.accent))
+                    .wrapping(text::Wrapping::WordOrGlyph)
+            }))
+            .push(help)
+            .spacing(4)
+            .padding(iced::Padding::ZERO.top(6))
+            .into()
     }
 
     /// `/` and what's typed, with a cursor while typing, and how many
@@ -3097,6 +3296,86 @@ mod tests {
         // A search over everything isn't the server's page.
         let _ = app.update(Message::Key(Action::Search));
         assert_eq!(app.chosen_mcp(), None);
+    }
+
+    #[test]
+    fn a_tool_is_picked_and_its_arguments_typed_in_the_window() {
+        let (mut app, ..) = app_with_folders();
+        let id = app
+            .store
+            .as_ref()
+            .unwrap()
+            .add_source(&NewSource {
+                folder_id: None,
+                kind: SourceKind::Mcp,
+                title: "Hugging Face".into(),
+                url: None,
+                config: r#"{"url":"https://huggingface.co/mcp","tools":[
+                    {"name":"hf_whoami","example":"{}"},
+                    {"name":"hf_fs","example":"{\"operations\":[]}"}]}"#
+                    .into(),
+            })
+            .unwrap()
+            .id;
+        app.reload();
+        let _ = app.update(Message::Press(Entry::Source { id, filed: false }));
+        let _ = app.update(Message::Release);
+        assert_eq!(app.chosen_mcp(), Some(id));
+        assert_eq!(app.screen(), hints::Screen::Tools);
+
+        // j moves to hf_fs; Enter starts from its example.
+        let _ = app.update(Message::Key(Action::Down));
+        let _ = app.update(Message::Key(Action::Open));
+        assert_eq!(app.screen(), hints::Screen::Arguments);
+        let editor = app.tools.editor.as_ref().unwrap();
+        assert_eq!(
+            (editor.tool.as_str(), editor.text.as_str()),
+            ("hf_fs", r#"{"operations":[]}"#)
+        );
+        let _ = app.view();
+
+        // Not JSON yet: it says so and keeps the text.
+        let _ = app.update(Message::ToolArguments(palette::Input::Backspace));
+        let _ = app.update(Message::ToolArguments(palette::Input::Run));
+        assert!(app.tools.editor.as_ref().unwrap().error.is_some());
+        let _ = app.update(Message::ToolArguments(palette::Input::Type("}".into())));
+        let _ = app.update(Message::ToolArguments(palette::Input::Run));
+        assert!(app.tools.editor.is_none());
+        let store = app.store.as_ref().unwrap();
+        let picked = store
+            .sources()
+            .unwrap()
+            .into_iter()
+            .find(|s| s.id == id)
+            .unwrap();
+        let settings = mcp::settings(&picked).unwrap();
+        assert_eq!(settings.tool.as_deref(), Some("hf_fs"));
+        assert_eq!(settings.arguments.as_deref(), Some(r#"{"operations":[]}"#));
+        assert!(store.has_unchecked_sources().unwrap());
+
+        // With articles, the list shows them; T brings the tools back and
+        // Esc the articles.
+        app.store
+            .as_mut()
+            .unwrap()
+            .insert_articles(&[NewArticle {
+                source_id: id,
+                guid: "p1".into(),
+                url: Some("https://huggingface.co/papers/1".into()),
+                title: "A paper".into(),
+                author: None,
+                summary_html: None,
+                published_at: Some(5),
+                fetched_at: 5,
+            }])
+            .unwrap();
+        app.reload();
+        assert_eq!(app.chosen_mcp(), None);
+        let _ = app.update(Message::Key(Action::Tools));
+        assert_eq!(app.chosen_mcp(), Some(id));
+        let _ = app.update(Message::Key(Action::ClearSearch));
+        assert_eq!(app.chosen_mcp(), None);
+        assert_eq!(app.rows[0].title, "A paper");
     }
 
     #[test]

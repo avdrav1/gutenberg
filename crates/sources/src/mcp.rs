@@ -126,6 +126,19 @@ impl Mcp {
         }
     }
 
+    /// Whether both call the same tool of the same server with the same
+    /// arguments (as JSON, so spacing doesn't matter).
+    pub fn same_call(&self, other: &Mcp) -> bool {
+        let arguments = |m: &Mcp| {
+            m.arguments
+                .as_deref()
+                .and_then(|a| serde_json::from_str::<serde_json::Value>(a).ok())
+        };
+        self.server == other.server
+            && self.tool == other.tool
+            && arguments(self) == arguments(other)
+    }
+
     /// Picks the tool to call on refresh and its argument template, which
     /// must be a JSON object once its placeholders are filled.
     pub fn pick(&mut self, tool: &str, arguments: &str) -> Result<(), McpError> {

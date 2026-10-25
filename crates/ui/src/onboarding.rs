@@ -67,7 +67,7 @@ pub struct Onboarding {
     known_presets: HashSet<usize>,
     /// Checked MCP servers, as indices into `catalog.mcp`.
     pub checked_mcp: HashSet<usize>,
-    /// MCP servers the store already has calling the same tool.
+    /// MCP servers the store already has making the same call.
     known_mcp: HashSet<usize>,
 }
 
@@ -137,8 +137,8 @@ impl Onboarding {
         }
     }
 
-    /// Marks the catalog's MCP servers the store already has, with the
-    /// same tool, as added.
+    /// Marks the catalog's MCP servers the store already has, calling the
+    /// same tool with the same arguments, as added.
     pub fn with_known_mcp(mut self, catalog: &Catalog, known: &[Mcp]) -> Self {
         self.known_mcp = catalog
             .mcp
@@ -146,9 +146,7 @@ impl Onboarding {
             .enumerate()
             .filter(|(_, preset)| {
                 let settings = preset.settings();
-                known
-                    .iter()
-                    .any(|m| m.server == settings.server && m.tool == settings.tool)
+                known.iter().any(|m| m.same_call(&settings))
             })
             .map(|(i, _)| i)
             .collect();

@@ -139,7 +139,11 @@ fn item(value: &Value) -> Option<Entry> {
             .find(|s| !s.is_empty())
             .map(str::to_owned)
     };
-    let title = text(TITLE)?;
+    // Titles are one line; some servers wrap theirs.
+    let title = text(TITLE)?
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
     let url = text(URL).filter(|u| url::Url::parse(u).is_ok())?;
     Some(Entry {
         guid: url.clone(),
@@ -225,6 +229,13 @@ mod tests {
         assert_eq!(found[0].guid, "https://arxiv.org/abs/1");
         assert_eq!(found[0].published_at, Some(1_792_713_600));
         assert_eq!(found[1].title, "Paper two");
+        let wrapped = json!({"structuredContent": [
+            {"title": "MinerU2.5: A Decoupled Model for Efficient\n  High-Resolution Parsing", "url": "https://hf.example/1"}
+        ]});
+        assert_eq!(
+            articles(&wrapped, "hf_fs").unwrap()[0].title,
+            "MinerU2.5: A Decoupled Model for Efficient High-Resolution Parsing"
+        );
         assert_eq!(
             found[1].summary_html.as_deref(),
             Some("<p>Line one<br>line &lt;two&gt;</p>")

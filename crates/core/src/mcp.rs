@@ -6,7 +6,7 @@ pub use gutenberg_sources::mcp::{Mcp, McpError, Server, Tool};
 use gutenberg_store::{NewSource, Source, SourceKind, Store};
 
 /// Adds `mcp`, named `title`, in `folder_id`. `None` when the store
-/// already has that server calling the same tool.
+/// already has that server calling the same tool with the same arguments.
 pub fn add(
     store: &Store,
     mcp: &Mcp,
@@ -18,7 +18,7 @@ pub fn add(
         .into_iter()
         .filter(|s| s.kind == SourceKind::Mcp)
         .filter_map(|s| Mcp::from_config(&s.config).ok())
-        .any(|m| m.server == mcp.server && m.tool == mcp.tool);
+        .any(|m| m.same_call(mcp));
     if known {
         return Ok(None);
     }
@@ -75,12 +75,22 @@ mod tests {
         // The same command, spaced differently, is the same server.
         let again = Mcp::new(Server::parse("  uvx   arxiv-mcp-server ").unwrap());
         assert!(add(&store, &again, "arXiv", None).unwrap().is_none());
-        // Another tool of it is another source.
+        // Another tool of it is another source, and so is the same tool
+        // with other arguments.
         let mut search = Mcp::new(server);
         search
             .pick("search_papers", r#"{"query": "agents"}"#)
             .unwrap();
         assert!(add(&store, &search, "arXiv agents", None)
+            .unwrap()
+            .is_some());
+        assert!(add(&store, &search, "arXiv agents", None)
+            .unwrap()
+            .is_none());
+        search
+            .pick("search_papers", r#"{"query": "robots"}"#)
+            .unwrap();
+        assert!(add(&store, &search, "arXiv robots", None)
             .unwrap()
             .is_some());
     }

@@ -16,6 +16,7 @@ The bar along the bottom of the window shows the keys for what's on screen; `hin
 | `/` | search every article's title, author and summary as you type | any |
 | `r` | refresh selected source; `R` all | any |
 | `u` / `S` / `t` / `A` | view unread only / starred / today's (published since midnight) / all; keeps the chosen folder or feed | any |
+| `T` | the chosen MCP server's tools, to pick the one its refresh calls; again for its articles | list |
 | `a` | add sources (the catalog) | any |
 | `Tab` / `Shift-Tab` | next / previous pane | any |
 | `1` `2` `3` | toggle sources / list / article pane | any |
@@ -50,6 +51,26 @@ Opened with `/`. The list shows the newest 500 articles holding every word typed
 | `/` | type in the search again |
 | `Esc` | end the search; the folder or feed you were reading comes back |
 
+## MCP server's tools
+
+Shown in the list pane when you choose an MCP server that has no articles yet, and opened with `T`. The tool marked "calls on refresh" is the one each refresh calls.
+
+| Key | Action |
+|---|---|
+| `j` / `k` / `↓` / `↑` | next / previous tool |
+| `gg` / `G` | first / last tool |
+| `o` / `Enter` | edit the arguments of the tool under the cursor |
+| `Esc` / `T` | back to the server's articles |
+
+While typing arguments (a JSON object; `{{today}}` and `{{since}}` in a string become today's date and the date of the last call that worked):
+
+| Key | Action |
+|---|---|
+| any letter | type it |
+| `Backspace` | delete the last letter |
+| `Enter` | save: the server calls this tool with these arguments from the next refresh, within a second |
+| `Esc` | stop typing without saving |
+
 ## Add sources screen
 
 Shown on first run, when the store has no sources, and opened with `a`. The left column lists the catalog's categories, then **Keyword alerts** and **MCP servers**.
@@ -59,7 +80,7 @@ Shown on first run, when the store has no sources, and opened with `a`. The left
 | `j` / `k` / `↓` / `↑` | next / previous row |
 | `l` / `h` / `→` / `←` | next / previous page |
 | `Tab` / `Shift-Tab` | next / previous page |
-| `Space` | check or uncheck the feed or keyword alert under the cursor; on the query field, start typing |
+| `Space` | check or uncheck the feed, keyword alert or MCP server under the cursor; on the query field, start typing |
 | `a` | check everything on the page, or uncheck it all |
 | `n` | go to Keyword alerts and type a query |
 | `Enter` | add what's checked |
