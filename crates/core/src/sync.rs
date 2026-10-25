@@ -23,8 +23,10 @@ use tokio::sync::Semaphore;
 
 use crate::config::{self, Config};
 use crate::favicon::Icons;
+use crate::rules::Rules;
 
-/// How hard a refresh may hit the network.
+/// How a refresh runs: how hard it may hit the network, where keyword
+/// alerts search, and the rules new articles meet.
 #[derive(Debug, Clone)]
 pub struct Limits {
     /// Fetches in flight at once.
@@ -35,6 +37,8 @@ pub struct Limits {
     pub spacing: Duration,
     /// Where keyword alerts search.
     pub providers: Providers,
+    /// `[[rules]]` from `config.toml`.
+    pub rules: Rules,
 }
 
 impl Default for Limits {
@@ -44,6 +48,7 @@ impl Default for Limits {
             per_host: 2,
             spacing: Duration::from_millis(250),
             providers: Providers::default(),
+            rules: Rules::default(),
         }
     }
 }
@@ -63,6 +68,8 @@ pub struct Summary {
     pub new_articles: usize,
     /// 304s, and 200s with nothing new.
     pub unchanged: usize,
+    /// New articles a rule muted, so never stored.
+    pub muted: usize,
     /// What failed (a feed's URL, a keyword alert's query) and one line of
     /// why.
     pub failed: Vec<(String, String)>,
@@ -79,7 +86,11 @@ impl fmt::Display for Summary {
             plural(self.new_articles, "new article"),
             self.unchanged,
             self.failed.len()
-        )
+        )?;
+        if self.muted > 0 {
+            write!(f, ", {} muted", self.muted)?;
+        }
+        Ok(())
     }
 }
 
@@ -279,6 +290,33 @@ async fn refresh_some(
         })
         .collect();
 
+    // Each source's title and folder, for the rules that name one.
+    let places: HashMap<i64, (String, Option<String>)> = if limits.rules.is_empty() {
+        HashMap::new()
+    } else {
+        let folders: HashMap<i64, String> = store
+            .folders()?
+            .into_iter()
+            .map(|folder| (folder.id, folder.name))
+            .collect();
+        store
+            .sources()?
+            .into_iter()
+            .map(|s| {
+                let folder = s.folder_id.and_then(|id| folders.get(&id).cloned());
+                (s.id, (s.title, folder))
+            })
+            .collect()
+    };
+    let mut arrive = |source_id: i64, articles: Vec<NewArticle>| {
+        let (title, folder) = places
+            .get(&source_id)
+            .map_or(("", None), |(t, f)| (t.as_str(), f.as_deref()));
+        let sorted = limits.rules.sort(title, folder, articles);
+        summary.muted += sorted.muted;
+        sorted
+    };
+
     while let Some((due, outcome)) = results.next().await {
         match outcome {
             Outcome::NotModified => {
@@ -291,7 +329,14 @@ async fn refresh_some(
                 moved,
                 ..
             } => {
-                let new = store.record_fetched(due.source_id, &articles, &validators, now)?;
+                let sorted = arrive(due.source_id, articles);
+                let new = store.record_arrived(
+                    due.source_id,
+                    &sorted.articles,
+                    &sorted.arrivals,
+                    &validators,
+                    now,
+                )?;
                 for (article_id, url) in moved {
                     store.set_article_url(article_id, &url)?;
                 }
@@ -304,8 +349,14 @@ async fn refresh_some(
             }
             Outcome::Listed { config, articles } => {
                 store.set_source_config(due.source_id, &config)?;
-                let new =
-                    store.record_fetched(due.source_id, &articles, &Validators::default(), now)?;
+                let sorted = arrive(due.source_id, articles);
+                let new = store.record_arrived(
+                    due.source_id,
+                    &sorted.articles,
+                    &sorted.arrivals,
+                    &Validators::default(),
+                    now,
+                )?;
                 if new > 0 {
                     summary.updated += 1;
                     summary.new_articles += new;
@@ -754,11 +805,13 @@ impl Host {
 
 /// Refreshes in the background for as long as the app runs: once at
 /// start, then every `[refresh] minutes` (0 pauses it), and whenever the
-/// returned [`Refresher`] asks. The interval follows `config.toml` edits.
+/// returned [`Refresher`] asks. The interval and the rules follow
+/// `config.toml` edits.
 /// Opens its own store connection, so the UI thread never waits on it.
 pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config) -> Refresher {
     let minutes = Arc::new(AtomicU32::new(config.refresh.minutes));
-    let watched = minutes.clone();
+    let rules = Arc::new(Mutex::new(Rules::new(&config.rules)));
+    let (watched, watched_rules) = (minutes.clone(), rules.clone());
     let (asks, asked) = mpsc::channel();
     let spawned = std::thread::Builder::new()
         .name("refresh".into())
@@ -767,11 +820,14 @@ pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config)
                 config::watch(&path, move |loaded| {
                     if let Ok(config) = loaded {
                         watched.store(config.refresh.minutes, Ordering::Relaxed);
+                        if let Ok(mut rules) = watched_rules.lock() {
+                            *rules = Rules::new(&config.rules);
+                        }
                     }
                 })
                 .ok()
             });
-            if let Err(err) = run(&store_path, &minutes, &asked) {
+            if let Err(err) = run(&store_path, &minutes, &rules, &asked) {
                 eprintln!("gutenberg: background refresh stopped: {err}");
             }
         });
@@ -802,6 +858,7 @@ impl Refresher {
 fn run(
     store_path: &std::path::Path,
     minutes: &AtomicU32,
+    rules: &Mutex<Rules>,
     asked: &mpsc::Receiver<Reply>,
 ) -> Result<(), String> {
     let mut store = Store::open(store_path).map_err(|e| e.to_string())?;
@@ -810,10 +867,13 @@ fn run(
         .enable_all()
         .build()
         .map_err(|e| e.to_string())?;
-    let limits = Limits::default();
+    let mut limits = Limits::default();
     let mut waiting: Vec<Reply> = Vec::new();
     loop {
         if minutes.load(Ordering::Relaxed) > 0 || !waiting.is_empty() {
+            if let Ok(rules) = rules.lock() {
+                limits.rules = rules.clone();
+            }
             let done = runtime
                 .block_on(refresh(&mut store, unix_now(), &limits, Some(&icons)))
                 .map_err(|e| e.to_string());
@@ -880,6 +940,7 @@ mod tests {
             updated: 3,
             new_articles: 27,
             unchanged: 8,
+            muted: 0,
             failed: vec![("u".into(), "e".into())],
         };
         assert_eq!(
@@ -895,5 +956,7 @@ mod tests {
             one.to_string(),
             "1 source: 0 updated (0 new articles), 1 unchanged, 0 failed"
         );
+        let muted = Summary { muted: 2, ..one };
+        assert!(muted.to_string().ends_with("0 failed, 2 muted"), "{muted}");
     }
 }
