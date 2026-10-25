@@ -1,0 +1,2 @@
+# SOURCE synthetic, 2026-10-25: slashdot-main.xml with a second XML declaration after its first item
+covers = "a declaration naming UTF-8 inside an ISO-8859-1 feed, which panicked quick-xml 0.42 (found by fuzz/feed in CI); it's dropped and the feed reads in full"

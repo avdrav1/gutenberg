@@ -190,3 +190,17 @@ fn relative_links_resolve_against_the_feed_url() {
         Some("https://blog.example/posts/a")
     );
 }
+
+#[test]
+fn a_second_xml_declaration_is_dropped_not_a_crash() {
+    // S7.5: fuzz/feed found quick-xml panicking on this; the refresh thread
+    // went with it.
+    let whole = feed::parse(&fixture("slashdot-main.xml"), "https://example.com/feed").unwrap();
+    let doubled = feed::parse(
+        &fixture("slashdot-second-declaration.xml"),
+        "https://example.com/feed",
+    )
+    .unwrap();
+    assert_eq!(doubled.entries.len(), whole.entries.len());
+    assert_eq!(doubled.title, whole.title);
+}
