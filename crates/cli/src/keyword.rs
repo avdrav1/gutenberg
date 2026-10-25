@@ -45,7 +45,7 @@ fn add(query: &str, folder: Option<&str>) -> Result<String, String> {
             &mut store,
             source.id,
             sync::unix_now(),
-            &sync::Limits::default(),
+            &crate::limits(),
         ))
         .map_err(|e| e.to_string())?;
     // A failed search leaves the alert to try again on the next refresh.

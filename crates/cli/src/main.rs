@@ -11,7 +11,24 @@ use std::sync::{Arc, OnceLock};
 
 use gutenberg_core::config::Config;
 use gutenberg_core::ipc;
-use gutenberg_core::sync::Refresher;
+use gutenberg_core::sync::{Limits, Refresher};
+
+/// How a refresh from the command line runs: with the rules in
+/// `config.toml`, or none if it can't be read.
+fn limits() -> Limits {
+    let rules = match Config::default_path().as_deref().map(Config::load) {
+        Some(Ok(config)) => config.rules,
+        Some(Err(err)) => {
+            eprintln!("gutenberg: {err}; no rules applied");
+            Vec::new()
+        }
+        None => Vec::new(),
+    };
+    Limits {
+        rules: gutenberg_core::rules::Rules::new(&rules),
+        ..Limits::default()
+    }
+}
 
 fn main() -> std::process::ExitCode {
     crash::install();

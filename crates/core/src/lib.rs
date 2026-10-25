@@ -7,6 +7,7 @@ pub mod favicon;
 pub mod ipc;
 pub mod keyword;
 pub mod mcp;
+pub mod rules;
 pub mod secrets;
 pub mod story;
 pub mod sync;

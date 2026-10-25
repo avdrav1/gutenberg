@@ -3,6 +3,7 @@
 
 use std::process::ExitCode;
 
+use gutenberg_core::rules::Rules;
 use gutenberg_sources::feed::{self, Feed};
 use gutenberg_store::{NewSource, SourceKind, Store};
 
@@ -48,6 +49,7 @@ fn add(url: &str, folder: Option<&str>) -> Result<String, String> {
         &found.feed,
         folder,
         gutenberg_core::sync::unix_now(),
+        &crate::limits().rules,
     )
     .map_err(|e| e.to_string())?;
     Ok(message)
@@ -59,6 +61,7 @@ fn save(
     feed: &Feed,
     folder: Option<&str>,
     fetched_at: i64,
+    rules: &Rules,
 ) -> gutenberg_store::Result<String> {
     let folder_id = match folder {
         Some(name) => Some(store.folder_named(name)?.id),
@@ -72,10 +75,18 @@ fn save(
         config: "{}".to_owned(),
     })?;
     let articles = gutenberg_core::sync::articles(feed, source.id, fetched_at);
-    let added = store.insert_articles(&articles)?;
+    let sorted = rules.sort(&feed.title, folder, articles);
+    let added = store.insert_arrived(&sorted.articles, &sorted.arrivals)?;
     let noun = if added == 1 { "article" } else { "articles" };
     let place = folder.map_or(String::new(), |name| format!(" to {name}"));
-    Ok(format!("Added {}{place}: {added} {noun}", feed.title))
+    let muted = match sorted.muted {
+        0 => String::new(),
+        n => format!(", {n} muted"),
+    };
+    Ok(format!(
+        "Added {}{place}: {added} {noun}{muted}",
+        feed.title
+    ))
 }
 
 #[cfg(test)]
@@ -103,7 +114,15 @@ mod tests {
             // A feed that repeats an entry stores it once.
             entries: vec![entry("a"), entry("b"), entry("a")],
         };
-        let message = save(&mut store, "https://blog.example/feed", &feed, None, 1).unwrap();
+        let message = save(
+            &mut store,
+            "https://blog.example/feed",
+            &feed,
+            None,
+            1,
+            &Rules::default(),
+        )
+        .unwrap();
         assert_eq!(message, "Added Blog: 2 articles");
         assert_eq!(store.sources().unwrap()[0].title, "Blog");
         assert_eq!(store.list_articles(None, 10).unwrap().len(), 2);
@@ -123,6 +142,7 @@ mod tests {
             &feed("A"),
             Some("Tech"),
             1,
+            &Rules::default(),
         )
         .unwrap();
         assert_eq!(message, "Added A to Tech: 1 article");
@@ -132,11 +152,50 @@ mod tests {
             &feed("B"),
             Some("Tech"),
             1,
+            &Rules::default(),
         )
         .unwrap();
         let folders = store.folders().unwrap();
         assert_eq!(folders.len(), 1);
         let sources = store.sources().unwrap();
         assert!(sources.iter().all(|s| s.folder_id == Some(folders[0].id)));
+    }
+
+    #[test]
+    fn rules_meet_a_new_feed_s_articles() {
+        use gutenberg_core::rules::{Action, Rule};
+        let mut store = Store::open_in_memory().unwrap();
+        let feed = Feed {
+            title: "Blog".to_owned(),
+            site_url: None,
+            entries: vec![entry("keep"), entry("star me"), entry("ad")],
+        };
+        let rule = |words: &str, action| Rule {
+            words: words.into(),
+            within: Some("tech".into()),
+            action,
+        };
+        let rules = Rules::new(&[rule("star", Action::Star), rule("ad", Action::Mute)]);
+        let message = save(
+            &mut store,
+            "https://blog.example/feed",
+            &feed,
+            Some("Tech"),
+            1,
+            &rules,
+        )
+        .unwrap();
+        assert_eq!(message, "Added Blog to Tech: 2 articles, 1 muted");
+        let mut stored: Vec<_> = store
+            .list_articles(None, 10)
+            .unwrap()
+            .into_iter()
+            .map(|a| (a.title, a.starred))
+            .collect();
+        stored.sort();
+        assert_eq!(
+            stored,
+            [("keep".to_owned(), false), ("star me".to_owned(), true)]
+        );
     }
 }

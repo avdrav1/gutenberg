@@ -7,6 +7,8 @@ use std::time::Duration;
 use notify::{RecursiveMode, Watcher};
 use serde::Deserialize;
 
+use crate::rules::Rule;
+
 /// Every key is optional; a missing file is the same as an empty one.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -16,6 +18,8 @@ pub struct Config {
     pub font: Font,
     pub keys: Keys,
     pub cache: Cache,
+    /// `[[rules]]`: see [`crate::rules`].
+    pub rules: Vec<Rule>,
 }
 
 /// Article images and reader pages kept on disk, in
@@ -131,6 +135,8 @@ pub enum Error {
         Font::MAX_SIZE
     )]
     FontSize { path: PathBuf },
+    #[error("{}: a rule's match is empty", path.display())]
+    EmptyRule { path: PathBuf },
     #[error("watch {}: {source}", path.display())]
     Watch {
         path: PathBuf,
@@ -180,6 +186,11 @@ impl Config {
         }
         if !(Font::MIN_SIZE..=Font::MAX_SIZE).contains(&config.font.size) {
             return Err(Error::FontSize {
+                path: path.to_owned(),
+            });
+        }
+        if config.rules.iter().any(|rule| rule.words.trim().is_empty()) {
+            return Err(Error::EmptyRule {
                 path: path.to_owned(),
             });
         }
@@ -314,6 +325,45 @@ mod tests {
         for size in [0, 7, 33] {
             let err = parse(&format!("[font]\nsize = {size}")).unwrap_err();
             assert!(matches!(err, Error::FontSize { .. }), "{size}");
+        }
+    }
+
+    #[test]
+    fn rules_are_read_in_order() {
+        use crate::rules::{Action, Rule};
+        let config = parse(
+            "[[rules]]\nmatch = \"sponsored\"\naction = \"mute\"\n\n\
+             [[rules]]\nmatch = \"Linux 7\"\nin = \"Phoronix\"\naction = \"star\"",
+        )
+        .unwrap();
+        assert_eq!(
+            config.rules,
+            [
+                Rule {
+                    words: "sponsored".into(),
+                    within: None,
+                    action: Action::Mute,
+                },
+                Rule {
+                    words: "Linux 7".into(),
+                    within: Some("Phoronix".into()),
+                    action: Action::Star,
+                },
+            ]
+        );
+        assert!(parse("").unwrap().rules.is_empty());
+    }
+
+    #[test]
+    fn a_rule_needs_words_and_a_known_action() {
+        let err = parse("[[rules]]\nmatch = \" \"\naction = \"star\"").unwrap_err();
+        assert!(matches!(err, Error::EmptyRule { .. }));
+        for bad in [
+            "[[rules]]\nmatch = \"x\"\naction = \"delete\"",
+            "[[rules]]\nmatch = \"x\"",
+            "[[rules]]\nmatch = \"x\"\naction = \"star\"\nwhere = \"y\"",
+        ] {
+            assert!(matches!(parse(bad), Err(Error::Parse { .. })), "{bad}");
         }
     }
 

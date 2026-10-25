@@ -21,9 +21,10 @@ use rusqlite::{params, Connection, OptionalExtension};
 
 pub use migrate::LATEST as SCHEMA_VERSION;
 pub use model::{
-    ArticleKey, ArticleRow, DueSource, FetchState, Filter, Folder, NewArticle, NewSource, Source,
-    SourceKind, SourceTarget, StoryCandidate, Validators, View, ViewCounts,
+    Arrival, ArticleKey, ArticleRow, DueSource, FetchState, Filter, Folder, NewArticle, NewSource,
+    Source, SourceKind, SourceTarget, StoryCandidate, Validators, View, ViewCounts,
 };
+pub use text::plain;
 
 /// The articles a filter and view pick, as SQL over `article`: `?1` a
 /// source, `?2` a folder, `?3` the view's code. A macro, so the queries
@@ -299,8 +300,18 @@ impl Store {
     /// already stored for its source (same GUID) is left as it is, read and
     /// starred flags included.
     pub fn insert_articles(&mut self, articles: &[NewArticle]) -> Result<usize> {
+        self.insert_arrived(articles, &[])
+    }
+
+    /// [`insert_articles`](Self::insert_articles), the new ones arriving as
+    /// `arrivals` says, in the same order.
+    pub fn insert_arrived(
+        &mut self,
+        articles: &[NewArticle],
+        arrivals: &[Arrival],
+    ) -> Result<usize> {
         let tx = self.conn.transaction()?;
-        let inserted = insert_articles(&tx, articles)?;
+        let inserted = insert_articles(&tx, articles, arrivals)?;
         tx.commit()?;
         Ok(inserted)
     }
@@ -713,8 +724,22 @@ impl Store {
         validators: &Validators,
         now: i64,
     ) -> Result<usize> {
+        self.record_arrived(source_id, articles, &[], validators, now)
+    }
+
+    /// [`record_fetched`](Self::record_fetched), the articles new to the
+    /// store arriving as `arrivals` says, in the same order (one missing is
+    /// unread and unstarred). Articles already stored keep their flags.
+    pub fn record_arrived(
+        &mut self,
+        source_id: i64,
+        articles: &[NewArticle],
+        arrivals: &[Arrival],
+        validators: &Validators,
+        now: i64,
+    ) -> Result<usize> {
         let tx = self.conn.transaction()?;
-        let inserted = insert_articles(&tx, articles)?;
+        let inserted = insert_articles(&tx, articles, arrivals)?;
         tx.execute(
             "UPDATE source SET etag = ?2, last_modified = ?3, checked_at = ?4,
                     error = NULL, failures = 0, retry_at = NULL
@@ -769,17 +794,22 @@ fn renumber(tx: &rusqlite::Transaction, table: &str, ids: &[i64]) -> Result<()> 
     Ok(())
 }
 
-fn insert_articles(tx: &rusqlite::Transaction, articles: &[NewArticle]) -> Result<usize> {
+fn insert_articles(
+    tx: &rusqlite::Transaction,
+    articles: &[NewArticle],
+    arrivals: &[Arrival],
+) -> Result<usize> {
     let mut stmt = tx.prepare_cached(
         "INSERT INTO article
            (source_id, guid, url, title, author, summary_html,
-            published_at, fetched_at, sort_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+            published_at, fetched_at, sort_at, read, starred)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
          ON CONFLICT (source_id, guid) DO NOTHING",
     )?;
     let mut index = tx.prepare_cached(text::INDEX_ARTICLE)?;
     let mut inserted = 0;
-    for a in articles {
+    for (i, a) in articles.iter().enumerate() {
+        let arrival = arrivals.get(i).copied().unwrap_or_default();
         let added = stmt.execute(params![
             a.source_id,
             a.guid,
@@ -790,6 +820,8 @@ fn insert_articles(tx: &rusqlite::Transaction, articles: &[NewArticle]) -> Resul
             a.published_at,
             a.fetched_at,
             a.published_at.unwrap_or(a.fetched_at),
+            arrival.read,
+            arrival.starred,
         ])?;
         if added > 0 {
             index.execute(params![

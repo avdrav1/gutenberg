@@ -6,7 +6,7 @@ use std::process::ExitCode;
 
 use gutenberg_core::favicon::Icons;
 use gutenberg_core::ipc;
-use gutenberg_core::sync::{self, Limits};
+use gutenberg_core::sync;
 use gutenberg_store::Store;
 
 pub fn run() -> ExitCode {
@@ -50,7 +50,7 @@ fn refresh() -> Result<sync::Summary, String> {
         .block_on(sync::refresh(
             &mut store,
             sync::unix_now(),
-            &Limits::default(),
+            &crate::limits(),
             Some(&Icons::beside(&path)),
         ))
         .map_err(|e| e.to_string())

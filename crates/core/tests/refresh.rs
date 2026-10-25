@@ -1,7 +1,7 @@
 //! S2.3 acceptance: a second refresh of an unchanged feed sends
 //! `If-None-Match` and gets 304; 100 feeds finish in under 10 s. Feeds are
 //! fixtures served by local HTTP servers on 127.0.0.1; nothing leaves the
-//! machine.
+//! machine. S8.4: rules meet what a refresh brings.
 
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -9,6 +9,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use gutenberg_core::rules::{Action, Rule, Rules};
 use gutenberg_core::sync::{refresh, Limits};
 use gutenberg_store::{NewSource, SourceKind, Store};
 
@@ -326,4 +327,62 @@ fn a_refresh_asked_for_runs_even_with_background_refresh_off() {
     );
     // Asked again: answered again, with nothing new.
     assert_eq!(refresher.now().unwrap().new_articles, 0);
+}
+
+#[test]
+fn rules_star_read_and_mute_what_a_refresh_brings() {
+    // S8.4: of LWN's ten headlines, the two security update lists are
+    // muted, the two on Rust starred and the kernel release marked read.
+    let base = serve(
+        feed_reply("lwn-headlines.xml", "\"lwn-1\""),
+        Duration::ZERO,
+        Arc::new(Log::default()),
+    );
+    let mut store = Store::open_in_memory().unwrap();
+    let url = format!("{base}/headlines/rss");
+    let id = add_feed(&store, &url);
+    let rule = |words: &str, within: Option<&str>, action| Rule {
+        words: words.into(),
+        within: within.map(Into::into),
+        action,
+    };
+    let limits = Limits {
+        rules: Rules::new(&[
+            rule("Security updates", None, Action::Mute),
+            rule("rust", Some(&url), Action::Star),
+            rule("7.3 kernel has been released", None, Action::Read),
+            rule("rust", Some("Another feed"), Action::Mute),
+        ]),
+        ..Limits::default()
+    };
+    let summary = runtime()
+        .block_on(refresh(&mut store, 1_000, &limits, None))
+        .unwrap();
+    assert_eq!((summary.new_articles, summary.muted), (8, 2));
+    assert!(summary.to_string().ends_with(", 2 muted"), "{summary}");
+
+    let articles = store.list_articles(Some(id), 100).unwrap();
+    assert_eq!(articles.len(), 8);
+    assert!(!articles
+        .iter()
+        .any(|a| a.title.starts_with("Security updates")));
+    let mut starred: Vec<_> = articles
+        .iter()
+        .filter(|a| a.starred)
+        .map(|a| a.title.as_str())
+        .collect();
+    starred.sort();
+    assert_eq!(
+        starred,
+        [
+            "[$] Cross-crate forward declarations in Rust",
+            "[$] Safe self-referential data structures in kernel Rust",
+        ]
+    );
+    let read: Vec<_> = articles
+        .iter()
+        .filter(|a| a.read)
+        .map(|a| &a.title)
+        .collect();
+    assert_eq!(read, ["The 7.3 kernel has been released"]);
 }

@@ -196,6 +196,15 @@ size = 14   # 8 to 32
 
 [keys]
 hints = true   # the key bar along the bottom</pre>
+  <p>Rules star, read or mute new articles by a word or phrase in the headline or summary, in every source or one source or folder (<code>in</code>). A muted article is never stored.</p>
+  <pre class="block">[[rules]]
+match = "sponsored"
+action = "mute"   # or "star", "read"
+
+[[rules]]
+match = "Rust"
+in = "LWN.net"     # a source's title or a folder's name
+action = "star"</pre>
 
   <h2>Verify</h2>
   <p>Every release tarball has a build attestation from this repository's release workflow. With the GitHub CLI:</p>

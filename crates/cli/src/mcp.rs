@@ -105,7 +105,7 @@ fn add(options: &Options) -> Result<String, String> {
             &mut store,
             source.id,
             sync::unix_now(),
-            &sync::Limits::default(),
+            &crate::limits(),
         ))
         .map_err(|e| e.to_string())?;
     // A server that can't be reached stays, and is tried again on the next

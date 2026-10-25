@@ -1,6 +1,7 @@
-//! S2.3: what a refresh leaves on a source, and which feeds are due.
+//! S2.3: what a refresh leaves on a source, and which feeds are due. S8.4:
+//! how new articles arrive.
 
-use gutenberg_store::{NewArticle, NewSource, SourceKind, Store, Validators};
+use gutenberg_store::{Arrival, NewArticle, NewSource, SourceKind, Store, Validators};
 
 fn store_with_feed() -> (Store, i64) {
     let store = Store::open_in_memory().unwrap();
@@ -148,4 +149,56 @@ fn a_new_feed_is_unchecked_until_its_first_refresh() {
         })
         .unwrap();
     assert!(store.has_unchecked_sources().unwrap());
+}
+
+#[test]
+fn new_articles_arrive_starred_or_read_and_stored_ones_keep_their_flags() {
+    // S8.4: rules mark articles on the way in, never ones already stored.
+    let (mut store, id) = store_with_feed();
+    store
+        .record_fetched(id, &[article(id, "old")], &Validators::default(), 100)
+        .unwrap();
+    let new = store
+        .record_arrived(
+            id,
+            &[
+                article(id, "old"),
+                article(id, "starred"),
+                article(id, "read"),
+            ],
+            &[
+                Arrival {
+                    read: true,
+                    starred: true,
+                },
+                Arrival {
+                    starred: true,
+                    ..Arrival::default()
+                },
+                Arrival {
+                    read: true,
+                    ..Arrival::default()
+                },
+            ],
+            &Validators::default(),
+            200,
+        )
+        .unwrap();
+    assert_eq!(new, 2);
+    let mut flags: Vec<_> = store
+        .list_articles(Some(id), 10)
+        .unwrap()
+        .into_iter()
+        .map(|a| (a.title, a.read, a.starred))
+        .collect();
+    flags.sort();
+    assert_eq!(
+        flags,
+        [
+            ("old".to_owned(), false, false),
+            ("read".to_owned(), true, false),
+            ("starred".to_owned(), false, true),
+        ]
+    );
+    assert_eq!(store.unread_counts().unwrap()[&id], 2);
 }
