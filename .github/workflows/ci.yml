@@ -33,3 +33,35 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo build --workspace
       - run: cargo test --workspace
+
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fuzz
+      - run: cargo install cargo-fuzz --locked
+      # What earlier runs found interesting, so each run goes further.
+      - uses: actions/cache@v4
+        with:
+          path: fuzz/corpus
+          key: fuzz-corpus-${{ github.run_id }}
+          restore-keys: fuzz-corpus-
+      - name: Each parser for a minute, starting from the fixtures
+        working-directory: fuzz
+        run: |
+          fuzz() {
+            mkdir -p "corpus/$1"
+            cargo fuzz run "$1" "corpus/$1" "${@:2}" -- -max_total_time=60 -timeout=10 -rss_limit_mb=2048
+          }
+          fuzz feed ../tests/fixtures/feeds
+          fuzz opml ../tests/fixtures/opml
+          fuzz html ../tests/fixtures/summaries ../tests/fixtures/pages
+          fuzz reader ../tests/fixtures/pages/reader ../tests/fixtures/pages
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: fuzz-artifacts
+          path: fuzz/artifacts

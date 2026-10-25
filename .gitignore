@@ -3,3 +3,6 @@ target/
 docs/screenshots/
 .DS_Store
 .wrangler/
+fuzz/corpus/
+fuzz/artifacts/
+fuzz/coverage/

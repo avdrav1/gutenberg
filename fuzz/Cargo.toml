@@ -1,0 +1,49 @@
+[package]
+name = "gutenberg-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+gutenberg-sources = { path = "../crates/sources" }
+gutenberg-store = { path = "../crates/store" }
+gutenberg-ui = { path = "../crates/ui" }
+
+# Not part of the app's workspace: cargo-fuzz builds it on nightly.
+[workspace]
+members = ["."]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "feed"
+path = "fuzz_targets/feed.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "opml"
+path = "fuzz_targets/opml.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "html"
+path = "fuzz_targets/html.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "reader"
+path = "fuzz_targets/reader.rs"
+test = false
+doc = false
+bench = false

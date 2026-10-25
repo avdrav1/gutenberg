@@ -2,6 +2,13 @@
 
 #[doc(hidden)]
 pub mod bench;
+
+/// For `fuzz/`: what the search index makes of HTML.
+#[doc(hidden)]
+pub mod fuzz {
+    pub use crate::text::{match_query, plain};
+}
+
 mod migrate;
 mod model;
 mod text;

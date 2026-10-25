@@ -2175,6 +2175,19 @@ fn also_view<'a>(also: &'a [(String, Option<String>)], t: &Tokens) -> Option<Ele
     )
 }
 
+/// For `fuzz/`: the article pane's HTML parser, on a feed summary or a
+/// reader page.
+#[doc(hidden)]
+pub mod fuzz {
+    /// Parses `html` as an article at `https://example.com/news/1`, which
+    /// relative links resolve against; returns the blocks made.
+    pub fn article(html: &str) -> usize {
+        let blocks = super::article::parse(html, Some("https://example.com/news/1"));
+        super::article::image_urls(&blocks);
+        blocks.len()
+    }
+}
+
 /// For `cargo bench`: an app over N articles in an in-memory store.
 #[doc(hidden)]
 pub mod bench {
