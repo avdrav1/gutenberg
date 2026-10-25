@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.21.0 — 2026-10-25
+
 - Gutenberg keeps to one window. Opening it again, from the launcher, the bar widget or a terminal, brings the window you already have forward instead of starting a second one.
 - `gutenberg --refresh` with the window open asks the window to refresh, so the new stories appear there right away, and prints how it went. `docs/DESKTOP.md` covers both commands for scripts.
 
