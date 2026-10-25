@@ -2022,7 +2022,7 @@ dependencies = [
 
 [[package]]
 name = "gutenberg-cli"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "gutenberg-core",
  "gutenberg-sources",
@@ -2037,7 +2037,7 @@ dependencies = [
 
 [[package]]
 name = "gutenberg-core"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "directories",
  "futures",
@@ -2058,7 +2058,7 @@ dependencies = [
 
 [[package]]
 name = "gutenberg-sources"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "chrono",
  "dom_smoothie",
@@ -2082,7 +2082,7 @@ dependencies = [
 
 [[package]]
 name = "gutenberg-store"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "criterion",
  "directories",
@@ -2094,7 +2094,7 @@ dependencies = [
 
 [[package]]
 name = "gutenberg-theme"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "directories",
  "notify",
@@ -2105,7 +2105,7 @@ dependencies = [
 
 [[package]]
 name = "gutenberg-ui"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "criterion",
  "ego-tree",
