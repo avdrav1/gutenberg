@@ -1237,8 +1237,10 @@ impl App {
         };
         let keys = keyboard::listen().with((self.pending_g, mode)).filter_map(
             |((pending_g, mode), event)| {
+                // `modified_key` has Shift applied, so Shift+; is `:` and
+                // Shift+/ is `?`; `key` would hand us `;` and `/`.
                 let keyboard::Event::KeyPressed {
-                    key,
+                    modified_key: key,
                     modifiers,
                     text,
                     ..

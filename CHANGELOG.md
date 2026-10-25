@@ -6,6 +6,7 @@
 - Search finds words in an article's full page once you've opened it in the reader view (`v`), not just in the feed's summary.
 - Large photos take far less memory: Gutenberg shrinks them to fit the article pane.
 - Site icons of feeds you've deleted are cleaned up at the next refresh.
+- `:` opens the command palette and `?` shows every key again, along with the other shifted keys such as `G`, `M`, `O` and `S`, which the window had been reading as their unshifted keys.
 
 ## 0.21.0 — 2026-10-25
 
