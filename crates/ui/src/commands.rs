@@ -108,6 +108,11 @@ pub const ALL: &[Command] = &[
         keys: &["T"],
     },
     Command {
+        action: Action::EnterKey,
+        name: "MCP server's key: save it in the keyring",
+        keys: &["K"],
+    },
+    Command {
         action: Action::AddSources,
         name: "Add sources",
         keys: &["a"],
@@ -259,6 +264,7 @@ mod tests {
             | A::Search
             | A::ClearSearch
             | A::Tools
+            | A::EnterKey
             | A::View(_) => true,
         };
         let every = [
@@ -285,6 +291,7 @@ mod tests {
             A::View(View::Starred),
             A::View(View::Today),
             A::Tools,
+            A::EnterKey,
         ];
         for action in every.into_iter().filter(|a| needs_row(*a)) {
             assert!(

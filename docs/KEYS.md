@@ -17,6 +17,7 @@ The bar along the bottom of the window shows the keys for what's on screen; `hin
 | `r` | refresh selected source; `R` all | any |
 | `u` / `S` / `t` / `A` | view unread only / starred / today's (published since midnight) / all; keeps the chosen folder or feed | any |
 | `T` | the chosen MCP server's tools, to pick the one its refresh calls; again for its articles | list |
+| `K` | type the key the chosen MCP server needs (such as `JINA_API_KEY`); it's saved in your keyring | list |
 | `a` | add sources (the catalog) | any |
 | `Tab` / `Shift-Tab` | next / previous pane | any |
 | `1` `2` `3` | toggle sources / list / article pane | any |
@@ -69,6 +70,15 @@ While typing arguments (a JSON object; `{{today}}` and `{{since}}` in a string b
 | any letter | type it |
 | `Backspace` | delete the last letter |
 | `Enter` | save: the server calls this tool with these arguments from the next refresh, within a second |
+| `Esc` | stop typing without saving |
+
+While typing a server's key (after `K`; it shows as dots):
+
+| Key | Action |
+|---|---|
+| any letter | type it; pasting works too |
+| `Backspace` | delete the last letter |
+| `Enter` | save it in the system keyring; the server is reached with it within a second. An environment variable of the same name still comes first |
 | `Esc` | stop typing without saving |
 
 ## Add sources screen
