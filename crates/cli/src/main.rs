@@ -1,4 +1,5 @@
 mod add;
+mod crash;
 mod key;
 mod keyword;
 mod mcp;
@@ -13,6 +14,7 @@ use gutenberg_core::ipc;
 use gutenberg_core::sync::Refresher;
 
 fn main() -> std::process::ExitCode {
+    crash::install();
     if std::env::args().nth(1).as_deref() == Some("--version") {
         println!("gutenberg {}", env!("CARGO_PKG_VERSION"));
         return std::process::ExitCode::SUCCESS;
