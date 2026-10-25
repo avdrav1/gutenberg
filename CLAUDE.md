@@ -24,11 +24,11 @@ Cargo workspace. One crate per concern; the UI never touches the network.
 - Theme tokens come from `crates/theme`. No literal colors in `crates/ui`.
 - Keys are documented in `docs/KEYS.md`. A new action gets a key, a palette entry and a line there in the same PR.
 - A user-visible change gets a line in `CHANGELOG.md` under `Unreleased` in the same PR. Write it for a reader, not a developer.
-- Config and data paths follow XDG. The app never writes outside `$XDG_CONFIG_HOME/gutenberg`, `$XDG_DATA_HOME/gutenberg` and the window's socket, `$XDG_RUNTIME_DIR/gutenberg/socket`. Only `site/install.sh` writes elsewhere: the binary, the desktop entry and icon from `share/` in `~/.local/share`, and on Omarchy the two hooks and the bar widget in `~/.config/omarchy/plugins/gutenberg.unread`.
+- Config and data paths follow XDG. The app never writes outside `$XDG_CONFIG_HOME/gutenberg`, `$XDG_DATA_HOME/gutenberg`, `$XDG_CACHE_HOME/gutenberg` (article images and reader pages, under `[cache] megabytes`) and the window's socket, `$XDG_RUNTIME_DIR/gutenberg/socket`. Only `site/install.sh` writes elsewhere: the binary, the desktop entry and icon from `share/` in `~/.local/share`, and on Omarchy the two hooks and the bar widget in `~/.config/omarchy/plugins/gutenberg.unread`.
 
 ## Performance budgets
 
-Cold start to first paint under 250 ms (Vulkan setup is ~170 ms of it; see S3.1). 10k articles scroll at 60 fps. Search under 50 ms at 100k articles. A story that breaks a budget isn't done; `cargo bench` has a benchmark for each.
+Cold start to first paint under 250 ms (Vulkan setup is ~170 ms of it; see S3.1). 10k articles scroll at 60 fps. Search under 50 ms at 100k articles. Under 150 MB of the window's own memory (`RssAnon`; the GPU driver's libraries add about 165 MB on NVIDIA) with 10k articles, measured by `GUTENBERG_MEMORY_BENCH=<articles>`, which opens that many in turn and reports. A story that breaks a budget isn't done; `cargo bench` has a benchmark for each of the rest.
 
 ## Omarchy facts
 
