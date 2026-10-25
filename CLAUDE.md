@@ -13,7 +13,7 @@ Cargo workspace. One crate per concern; the UI never touches the network.
 | `crates/sources` | `FeedSource`, `KeywordSource`, `McpSource` |
 | `crates/theme` | Omarchy `colors.toml` → tokens, fontconfig, hook and inotify reload |
 | `crates/ui` | iced window, panes, keys, command palette |
-| `crates/cli` | the `gutenberg` binary: launches the UI, `--add <url>`, `--keyword <query>`, `--mcp <command or URL>` and `--import <file.opml>` write to the store directly, `--key <NAME>` saves an MCP server's key in the keyring, `--export` prints OPML, or `--unread`, `--refresh`, `--reload-theme` over the Unix socket |
+| `crates/cli` | the `gutenberg` binary: launches the UI, `--add <url>`, `--keyword <query>`, `--mcp <command or URL>` and `--import <file.opml>` write to the store directly, `--key <NAME>` saves an MCP server's key in the keyring, `--export` prints OPML, `--unread [--json]` reads the unread count from the store for a bar, or `--refresh`, `--reload-theme` over the Unix socket |
 
 ## Rules
 
@@ -24,7 +24,7 @@ Cargo workspace. One crate per concern; the UI never touches the network.
 - Theme tokens come from `crates/theme`. No literal colors in `crates/ui`.
 - Keys are documented in `docs/KEYS.md`. A new action gets a key, a palette entry and a line there in the same PR.
 - A user-visible change gets a line in `CHANGELOG.md` under `Unreleased` in the same PR. Write it for a reader, not a developer.
-- Config and data paths follow XDG. The app never writes outside `$XDG_CONFIG_HOME/gutenberg`, `$XDG_DATA_HOME/gutenberg` and the window's socket, `$XDG_RUNTIME_DIR/gutenberg/socket`. Only `site/install.sh` writes elsewhere: the binary, and on Omarchy the two hooks.
+- Config and data paths follow XDG. The app never writes outside `$XDG_CONFIG_HOME/gutenberg`, `$XDG_DATA_HOME/gutenberg` and the window's socket, `$XDG_RUNTIME_DIR/gutenberg/socket`. Only `site/install.sh` writes elsewhere: the binary, the desktop entry and icon from `share/` in `~/.local/share`, and on Omarchy the two hooks and the bar widget in `~/.config/omarchy/plugins/gutenberg.unread`.
 
 ## Performance budgets
 

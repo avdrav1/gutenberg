@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Gutenberg
+GenericName=News Reader
+Comment=Read feeds, keyword alerts and MCP sources in your Omarchy theme
+Exec=gutenberg
+TryExec=gutenberg
+Icon=gutenberg
+Terminal=false
+Categories=Network;News;Feed;
+Keywords=news;rss;atom;feed;reader;alerts;mcp;
+StartupWMClass=gutenberg

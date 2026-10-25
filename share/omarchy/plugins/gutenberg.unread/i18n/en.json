@@ -1,0 +1,5 @@
+{
+  "tooltip.unread": { "one": "%1 unread story in Gutenberg", "other": "%1 unread stories in Gutenberg" },
+  "tooltip.none": "Nothing unread in Gutenberg",
+  "tooltip.missing": "Gutenberg isn't installed where this widget looks"
+}
