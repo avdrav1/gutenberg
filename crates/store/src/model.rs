@@ -69,6 +69,14 @@ pub struct NewArticle {
     pub fetched_at: i64,
 }
 
+/// How a new article arrives in the store: S8.4's rules may star it or
+/// mark it read on the way in.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Arrival {
+    pub read: bool,
+    pub starred: bool,
+}
+
 /// What the article list shows. The summary is loaded on open with
 /// [`Store::summary`](crate::Store::summary).
 #[derive(Debug, Clone, PartialEq, Eq)]
