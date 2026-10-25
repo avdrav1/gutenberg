@@ -1742,7 +1742,12 @@ impl App {
             )
             .spacing(6)
             .padding(16);
-        if let Some(name) = secret {
+        // Unless the heading already says it's missing.
+        let said = |name: &str| {
+            self.source_errors.get(&id).map(String::as_str)
+                == Some(gutenberg_core::sync::missing_key(name).as_str())
+        };
+        if let Some(name) = secret.filter(|name| !said(name)) {
             column = column.push(
                 text(format!(
                     "Needs {name}: K enters it, kept in your keyring. An environment variable of that name comes first."
