@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.22.0 — 2026-10-25
+
 - If Gutenberg ever crashes, it saves a report in `~/.local/share/gutenberg/crashes/` and says so in the terminal. The report holds the version, what went wrong and where, and nothing from your feeds, so you can attach it to a bug report.
 - Articles you've opened before show their pictures and reader view at once, even offline: Gutenberg keeps them in `~/.cache/gutenberg`, up to 200 MB, letting the oldest go first. Set another limit with `megabytes` under `[cache]` in `config.toml`.
 - Search finds words in an article's full page once you've opened it in the reader view (`v`), not just in the feed's summary.
