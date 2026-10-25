@@ -226,11 +226,17 @@ pub fn parse(bytes: &[u8], feed_url: &str) -> Result<Feed, FeedError> {
     if bytes.iter().all(u8::is_ascii_whitespace) {
         return Err(FeedError::Empty);
     }
-    let parsed = feed_rs::parser::Builder::new()
-        .base_uri(Some(feed_url))
-        .build()
-        .parse(bytes)
-        .map_err(|e| FeedError::NotAFeed(one_line(&e.to_string())))?;
+    let bytes = without_late_declarations(bytes);
+    // A parser bug must cost one feed, not the refresh thread. (The crash
+    // report still gets written, so it can be reported.)
+    let parsed = std::panic::catch_unwind(|| {
+        feed_rs::parser::Builder::new()
+            .base_uri(Some(feed_url))
+            .build()
+            .parse(&bytes[..])
+    })
+    .map_err(|_| FeedError::NotAFeed("the feed parser crashed on it".into()))?
+    .map_err(|e| FeedError::NotAFeed(one_line(&e.to_string())))?;
 
     let title = parsed
         .title
@@ -253,6 +259,49 @@ pub fn parse(bytes: &[u8], feed_url: &str) -> Result<Feed, FeedError> {
         site_url,
         entries,
     })
+}
+
+/// The bytes without XML declarations but the one at the start: ill-formed, and one
+/// naming another encoding than the first panics quick-xml 0.42 (found by
+/// `fuzz/`, in a feed served twice over in one response). The rest of the
+/// feed still reads.
+fn without_late_declarations(bytes: &[u8]) -> std::borrow::Cow<'_, [u8]> {
+    const OPEN: &[u8] = b"<?xml";
+    let is_declaration = |at: usize| {
+        bytes[at..].starts_with(OPEN)
+            && bytes
+                .get(at + OPEN.len())
+                .is_some_and(|b| b.is_ascii_whitespace() || *b == b'?')
+    };
+    // The one declaration allowed: at the start, after a byte-order mark
+    // and whitespace.
+    let start = bytes.strip_prefix(b"\xEF\xBB\xBF").map_or(0, |_| 3);
+    let start = start
+        + bytes[start..]
+            .iter()
+            .take_while(|b| b.is_ascii_whitespace())
+            .count();
+    let first = (start < bytes.len() && is_declaration(start)).then_some(start);
+    let late: Vec<usize> = (0..bytes.len().saturating_sub(OPEN.len()))
+        .filter(|&at| Some(at) != first && is_declaration(at))
+        .collect();
+    if late.is_empty() {
+        return std::borrow::Cow::Borrowed(bytes);
+    }
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut from = 0;
+    for at in late {
+        if at < from {
+            continue;
+        }
+        out.extend_from_slice(&bytes[from..at]);
+        from = bytes[at..]
+            .windows(2)
+            .position(|w| w == b"?>")
+            .map_or(bytes.len(), |end| at + end + 2);
+    }
+    out.extend_from_slice(&bytes[from.min(bytes.len())..]);
+    std::borrow::Cow::Owned(out)
 }
 
 fn entry(e: &model::Entry, rss: bool) -> Entry {
@@ -407,6 +456,29 @@ fn one_line(message: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_a_declaration_at_the_start_stays() {
+        let strip = |s: &str| {
+            String::from_utf8(without_late_declarations(s.as_bytes()).into_owned()).unwrap()
+        };
+        let rss = "<?xml version=\"1.0\"?><rss></rss>";
+        assert!(matches!(
+            without_late_declarations(rss.as_bytes()),
+            std::borrow::Cow::Borrowed(_)
+        ));
+        assert_eq!(
+            strip("\u{feff} <?xml version=\"1.0\"?><rss><?xml version=\"1.0\" encoding=\"UTF-8\"?><x/></rss>"),
+            "\u{feff} <?xml version=\"1.0\"?><rss><x/></rss>"
+        );
+        // Not at the start: dropped too. A stylesheet instruction isn't one.
+        assert_eq!(
+            strip("<rss><?xml version=\"1.0\"?><?xml-stylesheet href=\"a\"?></rss>"),
+            "<rss><?xml-stylesheet href=\"a\"?></rss>"
+        );
+        // Unterminated: the rest goes with it.
+        assert_eq!(strip("<rss></rss><?xml version"), "<rss></rss>");
+    }
 
     #[test]
     fn html_titles_lose_tags_and_entities() {

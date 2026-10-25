@@ -15,6 +15,8 @@ Cargo workspace. One crate per concern; the UI never touches the network.
 | `crates/ui` | iced window, panes, keys, command palette |
 | `crates/cli` | the `gutenberg` binary: launches the UI, `--add <url>`, `--keyword <query>`, `--mcp <command or URL>` and `--import <file.opml>` write to the store directly, `--key <NAME>` saves an MCP server's key in the keyring, `--export` prints OPML, `--unread [--json]` reads the unread count from the store for a bar, or `--refresh`, `--reload-theme` over the Unix socket |
 
+`fuzz/` holds a `cargo fuzz` target for each parser (feeds, OPML, HTML, reader pages), outside the workspace: `cd fuzz && cargo +nightly fuzz run feed`. CI runs each for a minute. A new parser gets a target.
+
 ## Rules
 
 - Every story is one PR from a branch named after its ID (`s2-3-conditional-get`). Never commit to `main`.
