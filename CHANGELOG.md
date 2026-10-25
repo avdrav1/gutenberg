@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.19.0 — 2026-10-25
+
 - MCP servers that need a key, such as Jina, GitHub, Brave and Tavily, can have one now. Choose the server and press `K` to type or paste it, or run `gutenberg --key JINA_API_KEY` in a terminal. The key is kept in your system keyring (GNOME Keyring or KWallet), never in Gutenberg's files, and a server on the web gets it too. An environment variable of the same name still comes first. A server that's missing its key, or turns it down, says so under its name. For a server you add by hand, name its key with `--secret`: `gutenberg --mcp <URL> --tool <name> --secret MY_API_KEY`.
 
 ## 0.18.0 — 2026-10-24
