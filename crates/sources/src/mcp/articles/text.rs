@@ -7,9 +7,16 @@
 //! - **Markdown tables:** a header row names each column; a cell of
 //!   `key=value, key=value` pairs, as in Hugging Face's `hf_fs`, gives each
 //!   pair its own field.
+//! - **Markdown sections:** a heading with one link under it, as in Hugging
+//!   Face's `hub_repo_search`, is an article titled by the heading; the
+//!   section's other lines are its summary, and `Author:` or `Created:` in
+//!   them its author and date.
 //! - **Markdown links:** each line with a `[title](https://…)` link starts
 //!   an article; the lines under it, up to the next link or heading, are its
-//!   summary. Two links at least, so one link in a paragraph isn't a list.
+//!   summary.
+//!
+//! Sections and links need two articles at least, so one link in a
+//! paragraph isn't a list.
 
 use serde_json::{Map, Value};
 
@@ -158,8 +165,73 @@ fn pairs(cell: &str) -> Option<Vec<(String, String)>> {
     (!pairs.is_empty()).then_some(pairs)
 }
 
+/// The articles in Markdown sections, else in a list of Markdown links.
+pub(super) fn markdown(text: &str) -> Vec<Entry> {
+    let found = sections(text);
+    if found.len() >= 2 {
+        return found;
+    }
+    links(text)
+}
+
+/// The articles in sections that each hold one link under their heading.
+fn sections(text: &str) -> Vec<Entry> {
+    let mut sections: Vec<(&str, Vec<&str>)> = Vec::new();
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('#') {
+            sections.push((trimmed.trim_start_matches('#').trim(), Vec::new()));
+        } else if let Some((_, lines)) = sections.last_mut() {
+            lines.push(trimmed);
+        }
+    }
+    sections
+        .into_iter()
+        .filter_map(|(heading, lines)| {
+            let mut urls: Vec<String> = lines.iter().flat_map(|l| urls(l)).collect();
+            urls.sort();
+            urls.dedup();
+            let [url] = urls.as_slice() else {
+                return None;
+            };
+            let mut fields = Map::new();
+            fields.insert("title".into(), plain(heading).into());
+            fields.insert("url".into(), url.as_str().into());
+            fields.insert("summary".into(), "".into());
+            for line in lines.iter().filter(|l| link(l).is_none()) {
+                let line = plain(line);
+                if line.is_empty() || line == "---" {
+                    continue;
+                }
+                // `Author: x | Downloads: 9`: each labelled part can be a field.
+                for part in line.split(" | ") {
+                    let Some((label, value)) = part.split_once(": ") else {
+                        continue;
+                    };
+                    let label = label.trim().to_lowercase();
+                    if AUTHOR.contains(&label.as_str()) || DATE.contains(&label.as_str()) {
+                        fields.entry(label).or_insert(value.trim().into());
+                    }
+                }
+                append(&mut fields, "summary", &line);
+            }
+            item(&Value::Object(fields))
+        })
+        .collect()
+}
+
+/// Every link's URL in a line.
+fn urls(mut line: &str) -> Vec<String> {
+    let mut found = Vec::new();
+    while let Some((_, url, rest)) = link(line) {
+        found.push(url);
+        line = rest;
+    }
+    found
+}
+
 /// The articles in a list of Markdown links.
-pub(super) fn links(text: &str) -> Vec<Entry> {
+fn links(text: &str) -> Vec<Entry> {
     let mut found: Vec<Map<String, Value>> = Vec::new();
     // Whether lines still belong to the last link's summary.
     let mut open = false;
@@ -290,12 +362,34 @@ mod tests {
     }
 
     #[test]
+    fn sections_with_one_link_are_articles() {
+        let text = "Found 2.\n\n## Models (2)\n\n### org/one\n\n**Author:** ann | **Likes:** 1\n\n\
+                    **Created:** 19 Oct, 2026\n**Link:** [https://hf.co/org/one](https://hf.co/org/one)\n\n---\n\n\
+                    ### org/two\nSource: https://git.example/two\n[https://hf.co/org/two](https://hf.co/org/two)\n\n\
+                    ### two links\n[a](https://a.example/) [b](https://b.example/)";
+        let found = markdown(text);
+        assert_eq!(found.len(), 2);
+        assert_eq!(found[0].title, "org/one");
+        assert_eq!(found[0].url.as_deref(), Some("https://hf.co/org/one"));
+        assert_eq!(found[0].author.as_deref(), Some("ann"));
+        assert_eq!(found[0].published_at, Some(1_792_368_000));
+        assert_eq!(
+            found[0].summary_html.as_deref(),
+            Some("<p>Author: ann | Likes: 1<br>Created: 19 Oct, 2026</p>")
+        );
+        assert_eq!(
+            found[1].summary_html.as_deref(),
+            Some("<p>Source: https://git.example/two</p>")
+        );
+    }
+
+    #[test]
     fn a_list_of_links_is_articles() {
         let text = "# Results\n\n1. **[First](https://a.example/1)** - a **bold** start\n   More about it\n\n\
                     ![logo](https://img.example/x.png)\n\
                     - [Second](https://b.example/2 \"title\")\n## Elsewhere\nNot a summary\n\
                     - [First again](https://a.example/1)";
-        let found = links(text);
+        let found = markdown(text);
         assert_eq!(found.len(), 2);
         assert_eq!(found[0].title, "First");
         assert_eq!(
@@ -305,6 +399,6 @@ mod tests {
         assert_eq!(found[1].url.as_deref(), Some("https://b.example/2"));
         assert_eq!(found[1].summary_html, None);
         // One link in a paragraph isn't a list.
-        assert!(links("See [the docs](https://docs.example/) for more.").is_empty());
+        assert!(markdown("See [the docs](https://docs.example/) for more.").is_empty());
     }
 }

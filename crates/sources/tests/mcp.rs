@@ -383,3 +383,30 @@ fn a_feed_document_is_its_entries() {
     let text = serde_json::json!({"content": [{"type": "text", "text": json_feed}]});
     assert_eq!(mcp::articles::articles(&text, "fetch").unwrap(), expected);
 }
+
+#[test]
+fn markdown_sections_of_repositories_are_articles() {
+    let found = mcp::articles::articles(
+        &recorded("huggingface-hub-repo-search.json"),
+        "hub_repo_search",
+    )
+    .unwrap();
+    assert_eq!(found.len(), 10);
+    let first = &found[0];
+    assert_eq!(first.title, "Yousef1258852/arabert-summarization-news");
+    assert_eq!(
+        first.url.as_deref(),
+        Some("https://hf.co/Yousef1258852/arabert-summarization-news")
+    );
+    // **Created:** 19 Oct, 2026
+    assert_eq!(first.published_at, Some(1_792_368_000));
+    assert_eq!(first.author, None);
+    assert!(first
+        .summary_html
+        .as_deref()
+        .unwrap()
+        .starts_with("<p>Task: summarization | Downloads: 21"));
+    // The "## Datasets (5)" heading above them is no article.
+    assert_eq!(found[5].title, "vietgpt/news_summarization_vi");
+    assert_eq!(found[5].author.as_deref(), Some("vietgpt"));
+}
