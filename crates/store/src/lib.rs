@@ -339,7 +339,34 @@ impl Store {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
-    /// Articles whose title, author or summary hold every word typed (each
+    /// Adds the words of the reader page at `url`, as HTML, to the search
+    /// index of the articles linking there, after their summaries' words.
+    /// Indexing a page again replaces what it added. Returns how many
+    /// articles link there.
+    pub fn index_page(&mut self, url: &str, html: &str) -> Result<usize> {
+        let tx = self.conn.transaction()?;
+        let articles: Vec<(i64, String, Option<String>, Option<String>)> = tx
+            .prepare("SELECT id, title, author, summary_html FROM article WHERE url = ?1")?
+            .query_map([url], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+            })?
+            .collect::<rusqlite::Result<_>>()?;
+        let page = text::plain(html);
+        {
+            let mut forget = tx.prepare_cached("DELETE FROM article_fts WHERE rowid = ?1")?;
+            let mut index = tx.prepare_cached(text::INDEX_ARTICLE)?;
+            for (id, title, author, summary) in &articles {
+                let summary = summary.as_deref().map(text::plain).unwrap_or_default();
+                forget.execute([id])?;
+                index.execute(params![id, title, author, format!("{summary} {page}")])?;
+            }
+        }
+        tx.commit()?;
+        Ok(articles.len())
+    }
+
+    /// Articles whose title, author, summary or reader page (once read)
+    /// hold every word typed (each
     /// as a prefix), newest first, a story as one row. Nothing searchable
     /// typed: no results. Any input is safe; it never reaches FTS5 as
     /// syntax.

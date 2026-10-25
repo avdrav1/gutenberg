@@ -15,6 +15,28 @@ pub struct Config {
     pub refresh: Refresh,
     pub font: Font,
     pub keys: Keys,
+    pub cache: Cache,
+}
+
+/// Article images and reader pages kept on disk, in
+/// `$XDG_CACHE_HOME/gutenberg`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Cache {
+    /// Most megabytes kept; past it, what was read longest ago goes.
+    pub megabytes: u32,
+}
+
+impl Default for Cache {
+    fn default() -> Self {
+        Self { megabytes: 200 }
+    }
+}
+
+impl Cache {
+    pub fn bytes(self) -> u64 {
+        u64::from(self.megabytes) << 20
+    }
 }
 
 /// Help with the keys.
@@ -244,6 +266,15 @@ mod tests {
                 list: 9,
                 ..Layout::default()
             }
+        );
+    }
+
+    #[test]
+    fn the_cache_defaults_to_200_megabytes() {
+        assert_eq!(parse("").unwrap().cache.bytes(), 200 << 20);
+        assert_eq!(
+            parse("[cache]\nmegabytes = 50").unwrap().cache.megabytes,
+            50
         );
     }
 

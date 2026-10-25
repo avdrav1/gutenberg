@@ -16,6 +16,9 @@ notify.workspace = true
 directories.workspace = true
 thiserror.workspace = true
 secret-service.workspace = true
+image.workspace = true
+# malloc_trim, after decoding an image.
+libc = "0.2"
 
 [dev-dependencies]
 tempfile.workspace = true

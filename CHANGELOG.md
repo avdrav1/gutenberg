@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Articles you've opened before show their pictures and reader view at once, even offline: Gutenberg keeps them in `~/.cache/gutenberg`, up to 200 MB, letting the oldest go first. Set another limit with `megabytes` under `[cache]` in `config.toml`.
+- Search finds words in an article's full page once you've opened it in the reader view (`v`), not just in the feed's summary.
+- Large photos take far less memory: Gutenberg shrinks them to fit the article pane.
+- Site icons of feeds you've deleted are cleaned up at the next refresh.
+
 ## 0.21.0 — 2026-10-25
 
 - Gutenberg keeps to one window. Opening it again, from the launcher, the bar widget or a terminal, brings the window you already have forward instead of starting a second one.

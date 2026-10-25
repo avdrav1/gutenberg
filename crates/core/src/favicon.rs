@@ -26,13 +26,20 @@ impl Icons {
         Self::new(store_path.with_file_name("favicons"))
     }
 
-    /// A feed's file name without the extension. FNV-1a, so it never
-    /// changes between builds the way `DefaultHasher` may.
+    /// A feed's file name without the extension.
     pub fn key(feed_url: &str) -> String {
-        let hash = feed_url.bytes().fold(0xcbf2_9ce4_8422_2325_u64, |h, b| {
-            (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
-        });
-        format!("{hash:016x}")
+        crate::cache::key(feed_url)
+    }
+
+    /// Removes the icons, and records of none, of feeds not in
+    /// `feed_urls`: feeds deleted since.
+    pub fn prune<'a>(&self, feed_urls: impl IntoIterator<Item = &'a str>) {
+        let keep: HashSet<String> = feed_urls.into_iter().map(Self::key).collect();
+        for (key, _, path) in self.entries() {
+            if !keep.contains(&key) {
+                let _ = std::fs::remove_file(path);
+            }
+        }
     }
 
     /// Feeds whose icon, or lack of one, is already on disk.
@@ -116,5 +123,10 @@ mod tests {
         assert_eq!(found.len(), 1);
         assert_eq!(found[&a], dir.path().join(format!("favicons/{a}.png")));
         assert_eq!(std::fs::read(&found[&a]).unwrap(), b"\x89PNG");
+
+        // b's feed is deleted; its record goes, a's icon and the rest stay.
+        icons.prune(["https://a.example/feed"]);
+        assert_eq!(icons.settled(), HashSet::from([a]));
+        assert!(dir.path().join("favicons/notes.txt").exists());
     }
 }
