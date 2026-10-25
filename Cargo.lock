@@ -2043,6 +2043,8 @@ dependencies = [
  "futures",
  "gutenberg-sources",
  "gutenberg-store",
+ "image",
+ "libc",
  "notify",
  "secret-service",
  "serde",

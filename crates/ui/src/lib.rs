@@ -227,6 +227,8 @@ struct App {
     bench: Option<Bench>,
     /// Commands from the socket; `None` in tests.
     inbox: Option<Inbox>,
+    /// Articles the memory bench has left to open.
+    memory_bench: Option<usize>,
     /// The store's file, for the web worker's search indexing; `None` in
     /// tests, which then keep nothing on disk.
     store_path: Option<PathBuf>,
@@ -396,9 +398,16 @@ struct Bench {
     intervals: Vec<Duration>,
 }
 
+/// `GUTENBERG_MEMORY_BENCH=<articles>`: open that many articles in turn,
+/// every fifth in the reader view, then report memory and close. Images and
+/// pages come from the web, or the cache once fetched.
+const MEMORY_STEP: Duration = Duration::from_millis(1500);
+
 #[derive(Debug, Clone)]
 enum Message {
     Key(Action),
+    /// The memory bench's next article.
+    MemoryStep,
     Scroll(ScrollDelta),
     Click(usize),
     PollStore,
@@ -522,6 +531,9 @@ impl App {
             pending_g: false,
             bench,
             inbox: None,
+            memory_bench: std::env::var("GUTENBERG_MEMORY_BENCH")
+                .ok()
+                .and_then(|n| n.parse().ok()),
             store_path: None,
             onboarding: None,
             overlay: None,
@@ -747,6 +759,7 @@ impl App {
             }
             Message::Resized(size) => self.set_height(size.height),
             Message::Frame(at) => return self.bench_frame(at),
+            Message::MemoryStep => return self.memory_step(),
             Message::ThemeReloaded(tokens, font) => {
                 self.use_theme(tokens);
                 if let Some(font) = font {
@@ -1096,7 +1109,7 @@ impl App {
 
     fn web_answer(&mut self, answer: Arc<Answer>) -> Task<Message> {
         match Arc::unwrap_or_clone(answer) {
-            Answer::Image { url, bytes, format } => self.image_loaded(url, Some((bytes, format))),
+            Answer::Image { url, picture } => self.image_loaded(url, Some(picture)),
             Answer::ImageFailed { url } => self.image_loaded(url, None),
             Answer::Page { url, html } => {
                 self.page_loaded(&url, Ok(html));
@@ -1127,22 +1140,22 @@ impl App {
 
     /// Takes a fetched image for the open article. A raster image is
     /// decoded and uploaded first, so it appears at its size in one step.
-    fn image_loaded(
-        &mut self,
-        url: String,
-        fetched: Option<(Vec<u8>, web::Format)>,
-    ) -> Task<Message> {
+    fn image_loaded(&mut self, url: String, fetched: Option<web::Picture>) -> Task<Message> {
         // An answer for an article that's no longer open is dropped.
         let Some(slot) = self.pictures.get_mut(&url) else {
             return Task::none();
         };
         match fetched {
             None => *slot = article::Picture::Failed,
-            Some((bytes, web::Format::Svg)) => {
+            Some(web::Picture::Svg(bytes)) => {
                 *slot = article::Picture::Vector(svg::Handle::from_memory(bytes));
             }
-            Some((bytes, _)) => {
-                return image::allocate(image::Handle::from_bytes(bytes))
+            Some(web::Picture::Rgba {
+                width,
+                height,
+                pixels,
+            }) => {
+                return image::allocate(image::Handle::from_rgba(width, height, pixels))
                     .map(move |allocated| Message::ImageAllocated(url.clone(), allocated));
             }
         }
@@ -1185,6 +1198,30 @@ impl App {
             return iced::exit();
         }
         Task::none()
+    }
+
+    fn memory_step(&mut self) -> Task<Message> {
+        let Some(left) = self.memory_bench else {
+            return Task::none();
+        };
+        if left == 0 {
+            eprintln!(
+                "memory bench: {} articles in the list: {}",
+                self.rows.len(),
+                memory_report()
+            );
+            return iced::exit();
+        }
+        self.memory_bench = Some(left - 1);
+        let mut tasks = vec![self.update(Message::Key(Action::Down))];
+        tasks.push(self.update(Message::Key(Action::Open)));
+        if left % 5 == 0 {
+            tasks.push(self.update(Message::Key(Action::Reader)));
+        }
+        if left % 20 == 0 {
+            eprintln!("memory bench: {left} to go: {}", memory_report());
+        }
+        Task::batch(tasks)
     }
 
     fn subscription(&self) -> Subscription<Message> {
@@ -1262,6 +1299,9 @@ impl App {
         }
         if self.bench.is_some() {
             subscriptions.push(window::frames().map(Message::Frame));
+        }
+        if self.memory_bench.is_some() {
+            subscriptions.push(iced::time::every(MEMORY_STEP).map(|_| Message::MemoryStep));
         }
         if self.drag.is_some() {
             subscriptions.push(iced::event::listen_with(|event, _, _| match event {
@@ -2810,6 +2850,30 @@ $ uname -r</pre>
             std::fs::rename(&written, path.with_extension("png")).expect("rename the screenshot");
         }
     }
+}
+
+/// The process's own memory (heap and other anonymous pages) against all
+/// it has resident, which counts the GPU driver's libraries too.
+fn memory_report() -> String {
+    let status = std::fs::read_to_string("/proc/self/status").unwrap_or_default();
+    let field = |name: &str| {
+        status
+            .lines()
+            .find_map(|line| {
+                line.strip_prefix(name)?
+                    .trim()
+                    .strip_suffix(" kB")?
+                    .parse::<u64>()
+                    .ok()
+            })
+            .map_or("?".to_owned(), |kb| format!("{} MB", kb / 1024))
+    };
+    format!(
+        "{} own (RssAnon), {} resident (VmRSS), {} at most (VmHWM)",
+        field("RssAnon:"),
+        field("VmRSS:"),
+        field("VmHWM:")
+    )
 }
 
 /// Frame-time percentiles for the scroll bench, on stderr.

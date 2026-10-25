@@ -8,8 +8,11 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc};
 use std::time::Duration;
 
-use gutenberg_core::web::{Answer, Format, Keep, Web};
+use gutenberg_core::web::{Answer, Keep, Picture, Web};
 use gutenberg_store::{NewArticle, NewSource, SourceKind, Store};
+
+/// The fixture icon's width and height.
+const ICON: (u32, u32) = (31, 32);
 
 const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures");
 
@@ -86,15 +89,28 @@ fn every_image_request_is_answered_and_only_images_load() {
     );
     for answer in all {
         match answer {
-            Answer::Image { url, bytes, format } => loaded.push((url, bytes.len(), format)),
+            Answer::Image {
+                url,
+                picture:
+                    Picture::Rgba {
+                        width,
+                        height,
+                        pixels,
+                    },
+            } => loaded.push((url, width, height, pixels.len())),
             Answer::ImageFailed { url } => failed.push(url),
             other => panic!("{other:?}"),
         }
     }
-    let png = std::fs::metadata(format!("{FIXTURES}/icons/archlinux.png")).unwrap();
+    // Decoded for the window: 4 bytes a pixel.
     assert_eq!(
         loaded,
-        [(format!("{base}/icon.png"), png.len() as usize, Format::Png)]
+        [(
+            format!("{base}/icon.png"),
+            ICON.0,
+            ICON.1,
+            (ICON.0 * ICON.1 * 4) as usize
+        )]
     );
     failed.sort();
     assert_eq!(
@@ -182,7 +198,7 @@ fn what_was_fetched_comes_from_the_cache_next_time_and_pages_are_searched() {
             matches!(
                 &all[0],
                 Answer::Image {
-                    format: Format::Png,
+                    picture: Picture::Rgba { .. },
                     ..
                 }
             ),

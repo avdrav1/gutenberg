@@ -31,6 +31,8 @@ rmcp = { version = "3", features = ["client", "transport-child-process", "transp
 # XDG portal), which picks the built-in theme when Omarchy has none (S4.4).
 iced = { version = "0.14", default-features = false, features = ["wgpu", "tiny-skia", "crisp", "wayland", "x11", "tokio", "image", "svg", "advanced", "linux-theme-detection"] }
 serde = { version = "1", features = ["derive"] }
+# Decoding article images off the UI thread; iced brings the same version.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "ico"] }
 # A source's kind-specific settings (`source.config`), such as a keyword query.
 serde_json = "1"
 toml = "0.8"
