@@ -227,6 +227,9 @@ struct App {
     bench: Option<Bench>,
     /// Commands from the socket; `None` in tests.
     inbox: Option<Inbox>,
+    /// The store's file, for the web worker's search indexing; `None` in
+    /// tests, which then keep nothing on disk.
+    store_path: Option<PathBuf>,
     /// The Add sources screen, shown instead of the panes while open.
     onboarding: Option<onboarding::Onboarding>,
     /// The command palette or help, drawn over the panes.
@@ -452,6 +455,7 @@ impl App {
             None => Err("no data directory".to_owned()),
         };
         let mut app = Self::with_store(config, config_path, store, store_path.map(Icons::beside));
+        app.store_path = store_path.map(ToOwned::to_owned);
         app.use_theme(Tokens::omarchy());
         app
     }
@@ -518,6 +522,7 @@ impl App {
             pending_g: false,
             bench,
             inbox: None,
+            store_path: None,
             onboarding: None,
             overlay: None,
             search: None,
@@ -1250,7 +1255,10 @@ impl App {
             subscriptions.push(Subscription::run_with(inbox.clone(), window_commands));
         }
         if self.bench.is_none() {
-            subscriptions.push(Subscription::run(web_worker));
+            subscriptions.push(Subscription::run_with(
+                (self.store_path.clone(), self.config.cache),
+                web_worker,
+            ));
         }
         if self.bench.is_some() {
             subscriptions.push(window::frames().map(Message::Frame));
@@ -2906,12 +2914,23 @@ fn window_commands(inbox: &Inbox) -> impl Stream<Item = Message> + use<> {
 }
 
 /// Starts the web worker, hands the app its handle, then relays each
-/// answer.
-fn web_worker() -> impl Stream<Item = Message> {
+/// answer. With a store, the worker keeps what it fetches in the disk cache
+/// under `[cache]`'s cap; a new cap starts a new worker.
+fn web_worker(
+    (store_path, cache): &(Option<PathBuf>, config::Cache),
+) -> impl Stream<Item = Message> + use<> {
     use iced::futures::{SinkExt, StreamExt};
-    iced::stream::channel(16, async |mut output| {
+    let keep = web::Keep {
+        // Opened, and pruned to the cap, on the worker's thread.
+        cache: store_path
+            .as_ref()
+            .and_then(|_| gutenberg_core::cache::Cache::default_dir())
+            .map(|dir| (dir, cache.bytes())),
+        store: store_path.clone(),
+    };
+    iced::stream::channel(16, async move |mut output| {
         let (answer_tx, mut answers) = iced::futures::channel::mpsc::unbounded();
-        let web = match Web::spawn(move |answer| {
+        let web = match Web::spawn_keeping(keep, move |answer| {
             let _ = answer_tx.unbounded_send(answer);
         }) {
             Ok(web) => web,

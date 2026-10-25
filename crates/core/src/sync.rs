@@ -321,6 +321,11 @@ async fn refresh_some(
         }
     }
     crate::story::group_stored(store)?;
+    // Feeds deleted since leave their icons behind; they go now.
+    if let Some(icons) = icons {
+        let sources = store.sources()?;
+        icons.prune(sources.iter().filter_map(|s| s.url.as_deref()));
+    }
     Ok(summary)
 }
 

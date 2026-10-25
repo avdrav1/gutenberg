@@ -227,3 +227,21 @@ fn a_site_that_is_down_is_asked_again_next_refresh() {
     assert_eq!(paths(&site.take_log()), ["/feed.xml", "/", ARCH_ICON]);
     assert_eq!(icons.found().len(), 1);
 }
+
+#[test]
+fn a_deleted_feeds_icon_goes_at_the_next_refresh() {
+    // S7.4: S2.6 never deleted an icon.
+    let site = Site::new();
+    site.route("/", Route::Body(fixture("pages/archlinux.html")));
+    site.route(ARCH_ICON, Route::Body(fixture("icons/archlinux.png")));
+    let dir = tempfile::tempdir().unwrap();
+    let icons = Icons::new(dir.path());
+    let mut store = store_with(&site.feed_url());
+    run(&mut store, 1_000, Some(&icons));
+    assert_eq!(icons.found().len(), 1);
+
+    let id = store.sources().unwrap()[0].id;
+    store.delete_source(id).unwrap();
+    run(&mut store, 2_000, Some(&icons));
+    assert!(icons.settled().is_empty());
+}

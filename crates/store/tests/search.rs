@@ -203,3 +203,41 @@ pub fn corpus(store: &Store, n: usize) -> Vec<NewArticle> {
         })
         .collect()
 }
+
+#[test]
+fn a_reader_page_once_read_is_searched_too() {
+    // S7.4: the page's words join the summary's; indexing it again replaces
+    // them rather than adding a second copy.
+    let mut store = Store::open_in_memory().unwrap();
+    let a = feed(&store, "a");
+    let url = "https://a.example/budget";
+    let mut first = article(a, "1", "Budget passes", "<p>Lawmakers voted.</p>", 1);
+    first.url = Some(url.to_owned());
+    store
+        .insert_articles(&[first, article(a, "2", "Snow day", "<p>Closed.</p>", 2)])
+        .unwrap();
+    assert!(titles(&store, "transit").is_empty());
+
+    let page = "<article><p>Transit gets <b>$300 million</b>.</p><script>var x</script></article>";
+    assert_eq!(store.index_page(url, page).unwrap(), 1);
+    assert_eq!(titles(&store, "transit"), ["Budget passes"]);
+    // The summary's words still match, and markup never does.
+    assert_eq!(titles(&store, "lawmakers"), ["Budget passes"]);
+    assert!(titles(&store, "script").is_empty());
+
+    assert_eq!(
+        store
+            .index_page(url, "<p>Schools get a formula fix.</p>")
+            .unwrap(),
+        1
+    );
+    assert!(titles(&store, "transit").is_empty());
+    assert_eq!(titles(&store, "formula"), ["Budget passes"]);
+    // A page no article links to changes nothing.
+    assert_eq!(
+        store
+            .index_page("https://a.example/other", "<p>x</p>")
+            .unwrap(),
+        0
+    );
+}

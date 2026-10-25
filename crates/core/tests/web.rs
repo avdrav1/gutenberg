@@ -4,16 +4,25 @@
 
 use std::io::{Read, Write};
 use std::net::TcpListener;
-use std::sync::mpsc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{mpsc, Arc};
 use std::time::Duration;
 
-use gutenberg_core::web::{Answer, Format, Web};
+use gutenberg_core::web::{Answer, Format, Keep, Web};
+use gutenberg_store::{NewArticle, NewSource, SourceKind, Store};
 
 const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures");
 
 /// `/icon.png` is a PNG, `/article` a captured Phoronix page, `/page` an
 /// empty HTML page, `/huge` claims 20 MB, and anything else is a 404.
 fn serve() -> String {
+    serve_counting().0
+}
+
+/// [`serve`], counting the requests it answers.
+fn serve_counting() -> (String, Arc<AtomicUsize>) {
+    let served = Arc::new(AtomicUsize::new(0));
+    let counter = served.clone();
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let base = format!("http://{}", listener.local_addr().unwrap());
     let png = std::fs::read(format!("{FIXTURES}/icons/archlinux.png")).unwrap();
@@ -29,6 +38,7 @@ fn serve() -> String {
                     Ok(n) => request.extend_from_slice(&buf[..n]),
                 }
             }
+            counter.fetch_add(1, Ordering::SeqCst);
             let head = String::from_utf8_lossy(&request).into_owned();
             let (status, length, body): (&str, usize, Vec<u8>) =
                 match head.split_whitespace().nth(1).unwrap_or("/") {
@@ -49,7 +59,7 @@ fn serve() -> String {
             let _ = stream.write_all(&response);
         }
     });
-    base
+    (base, served)
 }
 
 fn answers(web_requests: impl FnOnce(&Web), count: usize) -> Vec<Answer> {
@@ -122,4 +132,74 @@ fn a_page_comes_back_as_its_article_or_a_reason() {
         }
         other => panic!("{other:?}"),
     }
+}
+
+#[test]
+fn what_was_fetched_comes_from_the_cache_next_time_and_pages_are_searched() {
+    // S7.4: the second image and page come off disk, and the page's words
+    // reach the article's search index.
+    let (base, served) = serve_counting();
+    let tmp = tempfile::tempdir().unwrap();
+    let store_path = tmp.path().join("gutenberg.db");
+    let mut store = Store::open(&store_path).unwrap();
+    let source = store
+        .add_source(&NewSource {
+            folder_id: None,
+            kind: SourceKind::Feed,
+            title: "Phoronix".into(),
+            url: Some(format!("{base}/feed")),
+            config: "{}".into(),
+        })
+        .unwrap();
+    store
+        .insert_articles(&[NewArticle {
+            source_id: source.id,
+            guid: "1".into(),
+            url: Some(format!("{base}/article")),
+            title: "Linux news".into(),
+            author: None,
+            summary_html: None,
+            published_at: Some(1),
+            fetched_at: 1,
+        }])
+        .unwrap();
+    assert!(store.search("workqueue", 10).unwrap().is_empty());
+
+    let keep = || Keep {
+        cache: Some((tmp.path().join("cache"), 1 << 20)),
+        store: Some(store_path.clone()),
+    };
+    let fetch_both = |keep: Keep| {
+        let (tx, rx) = mpsc::channel();
+        let web = Web::spawn_keeping(keep, move |answer| tx.send(answer).unwrap()).unwrap();
+        web.image(format!("{base}/icon.png"));
+        web.page(format!("{base}/article"));
+        let mut all: Vec<Answer> = (0..2)
+            .map(|_| rx.recv_timeout(Duration::from_secs(10)).unwrap())
+            .collect();
+        all.sort_by_key(|a| matches!(a, Answer::Page { .. }));
+        assert!(
+            matches!(
+                &all[0],
+                Answer::Image {
+                    format: Format::Png,
+                    ..
+                }
+            ),
+            "{:?}",
+            all[0]
+        );
+        assert!(
+            matches!(&all[1], Answer::Page { html, .. } if html.contains("merged today for Linux 7.4")),
+            "{:?}",
+            all[1]
+        );
+    };
+    fetch_both(keep());
+    assert_eq!(served.load(Ordering::SeqCst), 2);
+    assert_eq!(store.search("workqueue", 10).unwrap().len(), 1);
+
+    // A new worker, as at the next launch: nothing is fetched.
+    fetch_both(keep());
+    assert_eq!(served.load(Ordering::SeqCst), 2);
 }
