@@ -43,6 +43,7 @@ pub(super) const DATE: &[&str] = &[
     "updated",
     "updated_at",
     "created_at",
+    "created",
 ];
 
 /// The articles in a tool's `result`, as the server sent it. A result the
@@ -96,7 +97,7 @@ pub fn articles(result: &Value, tool: &str) -> Result<Vec<Entry>, McpError> {
         return Ok(Vec::new());
     }
     let joined = texts.join("\n\n");
-    for shape in [text::labelled, text::tables, text::links] {
+    for shape in [text::labelled, text::tables, text::markdown] {
         let found = shape(&joined);
         if !found.is_empty() {
             return Ok(found);
@@ -262,14 +263,18 @@ fn paragraphs(text: &str) -> String {
         .collect()
 }
 
-/// Unix seconds from an RFC 3339, RFC 2822 or `YYYY-MM-DD` date.
+/// Unix seconds from an RFC 3339, RFC 2822, `YYYY-MM-DD` or `19 Oct, 2026`
+/// date.
 fn date(text: &str) -> Option<i64> {
     chrono::DateTime::parse_from_rfc3339(text)
         .or_else(|_| chrono::DateTime::parse_from_rfc2822(text))
         .map(|d| d.timestamp())
         .ok()
         .or_else(|| {
-            let day = chrono::NaiveDate::parse_from_str(text.get(..10)?, "%Y-%m-%d").ok()?;
+            let day = text
+                .get(..10)
+                .and_then(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
+                .or_else(|| chrono::NaiveDate::parse_from_str(text, "%d %b, %Y").ok())?;
             Some(day.and_hms_opt(0, 0, 0)?.and_utc().timestamp())
         })
 }
