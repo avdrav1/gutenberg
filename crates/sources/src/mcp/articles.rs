@@ -1,32 +1,39 @@
-//! A tool's result as articles. S6.2 reads two shapes:
+//! A tool's result as articles, read as the first of these shapes it is:
 //!
+//! - **A feed document:** RSS, Atom or JSON Feed, in a text block or an
+//!   embedded resource. Each entry is an article.
 //! - **A list:** a JSON array of objects that each have a title and a URL,
 //!   as `structuredContent`, at any depth inside it, or in a text block
 //!   that is JSON. Each becomes an article. When every list there is
 //!   empty, there's nothing new.
+//! - **Text for a reader:** labelled records, Markdown tables, or a list of
+//!   Markdown links (`text`).
+//! - **A notice:** a short answer about a rate limit or quota, which the
+//!   server didn't mark as an error, is a failure in its words.
 //! - **Anything else:** the whole result is one article, its text the
 //!   summary. A result that hasn't changed is the same article.
-//!
-//! S6.3 adds feed documents and Markdown with links.
+
+mod text;
 
 use serde_json::Value;
 
 use super::McpError;
-use crate::feed::Entry;
+use crate::feed::{self, Entry};
 
-/// Keys a list item's fields go by, first match wins.
-const TITLE: &[&str] = &["title", "headline", "name"];
-const URL: &[&str] = &["url", "link", "href", "uri"];
-const SUMMARY: &[&str] = &[
+/// Keys a list item's fields go by, in any case; first match wins.
+pub(super) const TITLE: &[&str] = &["title", "headline", "name"];
+pub(super) const URL: &[&str] = &["url", "link", "href", "uri", "web"];
+pub(super) const SUMMARY: &[&str] = &[
     "summary",
     "description",
     "snippet",
     "abstract",
     "text",
     "content",
+    "highlights",
 ];
-const AUTHOR: &[&str] = &["author", "publisher", "source", "site"];
-const DATE: &[&str] = &[
+pub(super) const AUTHOR: &[&str] = &["author", "publisher", "source", "site"];
+pub(super) const DATE: &[&str] = &[
     "published",
     "publishedDate",
     "published_at",
@@ -36,16 +43,20 @@ const DATE: &[&str] = &[
     "updated",
     "updated_at",
     "created_at",
+    "created",
 ];
 
 /// The articles in a tool's `result`, as the server sent it. A result the
 /// tool marks as an error is a failure, with the tool's own words.
 pub fn articles(result: &Value, tool: &str) -> Result<Vec<Entry>, McpError> {
-    let texts: Vec<&str> = result
+    let blocks: Vec<&Value> = result
         .get("content")
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
+        .collect();
+    let texts: Vec<&str> = blocks
+        .iter()
         .filter(|block| block.get("type").and_then(Value::as_str) == Some("text"))
         .filter_map(|block| block.get("text").and_then(Value::as_str))
         .collect();
@@ -59,6 +70,11 @@ pub fn articles(result: &Value, tool: &str) -> Result<Vec<Entry>, McpError> {
             Some(line) => super::one_line(&format!("{tool}: {line}")),
             None => format!("{tool} reported an error"),
         }));
+    }
+    // A feed knows its own fields better than `item` guesses them, so a
+    // JSON Feed is read as one before it's read as a list.
+    if let Some(entries) = blocks.iter().find_map(|block| feed_document(block)) {
+        return Ok(entries);
     }
     let structured = result.get("structuredContent").filter(|v| !v.is_null());
     let parsed: Vec<Value> = texts
@@ -80,14 +96,60 @@ pub fn articles(result: &Value, tool: &str) -> Result<Vec<Entry>, McpError> {
     {
         return Ok(Vec::new());
     }
-    let text = if texts.iter().any(|t| !t.trim().is_empty()) {
-        texts.join("\n\n")
+    let joined = texts.join("\n\n");
+    for shape in [text::labelled, text::tables, text::markdown] {
+        let found = shape(&joined);
+        if !found.is_empty() {
+            return Ok(found);
+        }
+    }
+    if let Some(notice) = notice(&joined) {
+        return Err(McpError(super::one_line(&format!("{tool}: {notice}"))));
+    }
+    let text = if !joined.trim().is_empty() {
+        joined
     } else if let Some(value) = structured {
         serde_json::to_string_pretty(value).unwrap_or_default()
     } else {
         String::new()
     };
     Ok(one_article(&text, tool).into_iter().collect())
+}
+
+/// The entries of a content block that is a feed: a text block, or an
+/// embedded resource, holding RSS, Atom or JSON Feed. `None` for any other
+/// block; an empty feed is no articles.
+fn feed_document(block: &Value) -> Option<Vec<Entry>> {
+    let resource = block.get("resource");
+    let text = resource.unwrap_or(block).get("text")?.as_str()?.trim();
+    let json_feed = text.starts_with('{')
+        && serde_json::from_str::<Value>(text).is_ok_and(|v| {
+            v.get("version")
+                .and_then(Value::as_str)
+                .is_some_and(|v| v.contains("jsonfeed.org"))
+        });
+    if !json_feed && !text.starts_with('<') {
+        return None;
+    }
+    // Links in the feed resolve against the resource's URL, when it has one.
+    let base = resource
+        .and_then(|r| r.get("uri")?.as_str())
+        .filter(|uri| uri.starts_with("http"))
+        .unwrap_or("https://localhost/");
+    feed::parse(text.as_bytes(), base).ok().map(|f| f.entries)
+}
+
+/// Words that mark an answer as a notice about the server's limits.
+const NOTICE: &[&str] = &["rate limit", "too many requests", "quota", "usage limit"];
+
+/// The first line of a short answer about a rate limit or quota; a long
+/// one is more likely a result that mentions them.
+fn notice(text: &str) -> Option<&str> {
+    let lower = text.to_lowercase();
+    if text.len() > 600 || !NOTICE.iter().any(|word| lower.contains(word)) {
+        return None;
+    }
+    text.lines().map(str::trim).find(|l| !l.is_empty())
 }
 
 /// The articles in the first list, at any depth, whose items have titles
@@ -130,21 +192,29 @@ fn innermost_lists_empty(value: &Value) -> Option<bool> {
 }
 
 /// An article from a list item with a title and a URL.
-fn item(value: &Value) -> Option<Entry> {
+pub(super) fn item(value: &Value) -> Option<Entry> {
     let fields = value.as_object()?;
-    let text = |keys: &[&str]| {
-        keys.iter()
-            .filter_map(|k| fields.get(*k)?.as_str())
-            .map(str::trim)
-            .find(|s| !s.is_empty())
-            .map(str::to_owned)
+    // Keys in any case: table headers and labels are capitalized.
+    let values = |keys: &'static [&'static str]| {
+        keys.iter().flat_map(|k| {
+            fields
+                .iter()
+                .filter(|(name, _)| name.eq_ignore_ascii_case(k))
+                .filter_map(|(_, v)| v.as_str())
+                .map(str::trim)
+                .filter(|s| !s.is_empty() && !s.eq_ignore_ascii_case("n/a"))
+        })
     };
+    let text = |keys| values(keys).next().map(str::to_owned);
     // Titles are one line; some servers wrap theirs.
     let title = text(TITLE)?
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ");
-    let url = text(URL).filter(|u| url::Url::parse(u).is_ok())?;
+    // A web page: `hf://` and other schemes don't open in a browser.
+    let url = values(URL)
+        .find(|u| url::Url::parse(u).is_ok_and(|u| matches!(u.scheme(), "http" | "https")))?
+        .to_owned();
     Some(Entry {
         guid: url.clone(),
         url: Some(url),
@@ -193,14 +263,18 @@ fn paragraphs(text: &str) -> String {
         .collect()
 }
 
-/// Unix seconds from an RFC 3339, RFC 2822 or `YYYY-MM-DD` date.
+/// Unix seconds from an RFC 3339, RFC 2822, `YYYY-MM-DD` or `19 Oct, 2026`
+/// date.
 fn date(text: &str) -> Option<i64> {
     chrono::DateTime::parse_from_rfc3339(text)
         .or_else(|_| chrono::DateTime::parse_from_rfc2822(text))
         .map(|d| d.timestamp())
         .ok()
         .or_else(|| {
-            let day = chrono::NaiveDate::parse_from_str(text.get(..10)?, "%Y-%m-%d").ok()?;
+            let day = text
+                .get(..10)
+                .and_then(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
+                .or_else(|| chrono::NaiveDate::parse_from_str(text, "%d %b, %Y").ok())?;
             Some(day.and_hms_opt(0, 0, 0)?.and_utc().timestamp())
         })
 }
@@ -273,6 +347,25 @@ mod tests {
         assert!(articles(&json!({"content": []}), "hf_fs")
             .unwrap()
             .is_empty());
+    }
+
+    #[test]
+    fn a_notice_about_limits_is_a_failure() {
+        // Exa's keyless server, 2026-10-24, not marked as an error.
+        let said = "You've hit Exa's free MCP rate limit. To continue using without limits, \
+                    create your own Exa API key.";
+        let result = json!({"content": [{"type": "text", "text": said}]});
+        assert_eq!(
+            articles(&result, "web_search_exa").unwrap_err().to_string(),
+            format!("web_search_exa: {said}")
+        );
+        // A long answer that mentions a quota is a result.
+        let long = format!(
+            "Quota rules\n\n{}",
+            "Each country sets its own. ".repeat(40)
+        );
+        let result = json!({"content": [{"type": "text", "text": long}]});
+        assert_eq!(articles(&result, "search").unwrap().len(), 1);
     }
 
     #[test]

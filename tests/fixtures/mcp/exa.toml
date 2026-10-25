@@ -1,0 +1,4 @@
+# SOURCE https://mcp.exa.ai/mcp, recorded 2026-10-24
+url = "https://mcp.exa.ai/mcp"
+fetched = 2026-10-24
+covers = "Exa's keyless streamable HTTP server (exa-search-server 3.5.0), reached with curl: exa-web-search.json is the reply to tools/call for web_search_exa with {\"query\": \"category:news consumer technology product launch\", \"numResults\": 5}, its event-stream framing removed. No structuredContent: one text block of five records, each Title:, URL:, Published:, Author: (N/A when none) and a multi-line Highlights:, parted by --- lines (S6.3)."

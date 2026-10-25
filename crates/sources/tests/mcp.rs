@@ -289,3 +289,124 @@ fn an_empty_list_is_no_articles() {
         .unwrap()
         .is_empty());
 }
+
+/// S6.3: a recorded result, mapped without a server.
+fn recorded(fixture: &str) -> serde_json::Value {
+    let text = std::fs::read_to_string(format!("{FIXTURES}/{fixture}")).unwrap();
+    serde_json::from_str::<serde_json::Value>(&text).unwrap()["result"].take()
+}
+
+#[test]
+fn exa_records_are_articles() {
+    let found =
+        mcp::articles::articles(&recorded("exa-web-search.json"), "web_search_exa").unwrap();
+    assert_eq!(found.len(), 5);
+    let first = &found[0];
+    assert_eq!(
+        first.title,
+        "OPPO Find X10 Series Launches Globally with True-to-Life Imaging and All-Round \
+         Flagship Upgrades | OPPO Global"
+    );
+    assert_eq!(
+        first.url.as_deref(),
+        Some("https://www.oppo.com/en/newsroom/press/oppo-find-x10-series-global-launch/")
+    );
+    // 2026-10-21T00:00:00.000Z; "Author: N/A" is no author.
+    assert_eq!(first.published_at, Some(1_792_540_800));
+    assert_eq!(first.author, None);
+    let summary = first.summary_html.as_deref().unwrap();
+    assert!(summary.starts_with("<p>OPPO Find X10 Series Launches Globally"));
+    assert!(summary.ends_with("official social media channels.</p>"));
+    assert!(!summary.contains("Title:"));
+    assert_eq!(found[1].author.as_deref(), Some("DH Online"));
+    assert_eq!(found[3].author.as_deref(), Some("Amazon Staff"));
+}
+
+#[test]
+fn a_markdown_table_of_papers_is_articles() {
+    // The trending papers as Hugging Face writes them for a reader: the
+    // same result with its JSON left out.
+    let mut result = recorded("huggingface-hf-fs-trending.json");
+    result.as_object_mut().unwrap().remove("structuredContent");
+    let papers = mcp::articles::articles(&result, "hf_fs").unwrap();
+    assert_eq!(papers.len(), 10);
+    let first = &papers[0];
+    assert_eq!(
+        first.title,
+        "Harness^2: Recursive Agent Harnessing for an Open World"
+    );
+    assert_eq!(
+        first.url.as_deref(),
+        Some("https://huggingface.co/papers/2610.14224")
+    );
+    assert_eq!(first.published_at, Some(1_791_504_000));
+    assert_eq!(
+        first.summary_html.as_deref(),
+        Some(
+            "<p>Harness² improves agent execution harnesses through recursive task-level \
+             refinement and continual harness-level learning, boosting performance across \
+             benchmarks without ground-truth verifiers.</p>"
+        )
+    );
+    // The same papers as the JSON gave.
+    let json = call("huggingface-hf-fs-trending.json").unwrap();
+    let urls = |papers: &[gutenberg_sources::feed::Entry]| -> Vec<_> {
+        papers.iter().map(|p| p.url.clone()).collect()
+    };
+    assert_eq!(urls(&papers), urls(&json));
+}
+
+#[test]
+fn a_feed_document_is_its_entries() {
+    let feeds = concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/feeds");
+    let rss = std::fs::read_to_string(format!("{feeds}/rust-blog.xml")).unwrap();
+    let expected =
+        gutenberg_sources::feed::parse(rss.as_bytes(), "https://blog.rust-lang.org/feed.xml")
+            .unwrap()
+            .entries;
+    assert_eq!(expected.len(), 10);
+    // As an embedded resource,
+    let resource = serde_json::json!({"content": [{"type": "resource", "resource": {
+        "uri": "https://blog.rust-lang.org/feed.xml", "mimeType": "application/rss+xml", "text": rss
+    }}]});
+    assert_eq!(
+        mcp::articles::articles(&resource, "fetch").unwrap(),
+        expected
+    );
+    // and as a text block, JSON Feed too.
+    let text = serde_json::json!({"content": [{"type": "text", "text": rss}]});
+    assert_eq!(mcp::articles::articles(&text, "fetch").unwrap().len(), 10);
+    let json_feed = std::fs::read_to_string(format!("{feeds}/jsonfeed-org.json")).unwrap();
+    let expected = gutenberg_sources::feed::parse(json_feed.as_bytes(), "https://localhost/")
+        .unwrap()
+        .entries;
+    let text = serde_json::json!({"content": [{"type": "text", "text": json_feed}]});
+    assert_eq!(mcp::articles::articles(&text, "fetch").unwrap(), expected);
+}
+
+#[test]
+fn markdown_sections_of_repositories_are_articles() {
+    let found = mcp::articles::articles(
+        &recorded("huggingface-hub-repo-search.json"),
+        "hub_repo_search",
+    )
+    .unwrap();
+    assert_eq!(found.len(), 10);
+    let first = &found[0];
+    assert_eq!(first.title, "Yousef1258852/arabert-summarization-news");
+    assert_eq!(
+        first.url.as_deref(),
+        Some("https://hf.co/Yousef1258852/arabert-summarization-news")
+    );
+    // **Created:** 19 Oct, 2026
+    assert_eq!(first.published_at, Some(1_792_368_000));
+    assert_eq!(first.author, None);
+    assert!(first
+        .summary_html
+        .as_deref()
+        .unwrap()
+        .starts_with("<p>Task: summarization | Downloads: 21"));
+    // The "## Datasets (5)" heading above them is no article.
+    assert_eq!(found[5].title, "vietgpt/news_summarization_vi");
+    assert_eq!(found[5].author.as_deref(), Some("vietgpt"));
+}
