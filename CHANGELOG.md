@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.25.0 — 2026-10-26
+
 - The trailers and screenshots on https://gutenbergapp.com show what's new since they were made: a story from eight outlets shown once, and an MCP server's tools and articles. The tour is narrated now.
 
 ## 0.24.0 — 2026-10-26
