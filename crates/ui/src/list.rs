@@ -157,9 +157,73 @@ fn civil(days: i64) -> (i64, i64, i64) {
     (yoe + era * 400 + i64::from(m <= 2), m, d)
 }
 
+/// Why the list for a folder, a feed or every feed shows nothing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Empty {
+    /// It has articles; the view hides them.
+    Hidden,
+    /// Not fetched yet.
+    Unfetched,
+    /// Its last fetch failed, saying why.
+    Failed(String),
+    /// Fetched, and the feed itself has nothing.
+    NoArticles,
+}
+
+/// What the empty list says. `place` is a feed's title, a folder's name,
+/// or "your feeds".
+pub fn empty_message(empty: &Empty, place: &str, view: View, refreshing: bool) -> String {
+    match (empty, view) {
+        (Empty::Hidden, View::Today) => {
+            format!("Nothing from {place} since midnight. A shows everything.")
+        }
+        (Empty::Hidden, View::Unread) => {
+            format!("Everything from {place} is read. A shows everything.")
+        }
+        (Empty::Hidden, View::Starred) => {
+            format!("Nothing starred from {place}. A shows everything.")
+        }
+        (Empty::Unfetched, _) if refreshing => format!("Fetching {place}…"),
+        (Empty::Unfetched, _) => format!("Waiting for the next refresh to fetch {place}."),
+        (Empty::Failed(why), _) => format!("{place} couldn't be fetched: {why}"),
+        // The All view hides nothing.
+        (Empty::NoArticles | Empty::Hidden, _) => format!("No articles from {place} yet."),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_empty_list_says_why() {
+        let say = |empty, view, refreshing| empty_message(&empty, "The Hill", view, refreshing);
+        assert_eq!(
+            say(Empty::Hidden, View::Today, false),
+            "Nothing from The Hill since midnight. A shows everything."
+        );
+        assert_eq!(
+            say(Empty::Hidden, View::Unread, true),
+            "Everything from The Hill is read. A shows everything."
+        );
+        assert_eq!(
+            say(Empty::Hidden, View::Starred, false),
+            "Nothing starred from The Hill. A shows everything."
+        );
+        assert_eq!(say(Empty::Unfetched, View::All, true), "Fetching The Hill…");
+        assert_eq!(
+            say(Empty::Unfetched, View::Today, false),
+            "Waiting for the next refresh to fetch The Hill."
+        );
+        assert_eq!(
+            say(Empty::Failed("HTTP 503".into()), View::All, false),
+            "The Hill couldn't be fetched: HTTP 503"
+        );
+        assert_eq!(
+            say(Empty::NoArticles, View::All, false),
+            "No articles from The Hill yet."
+        );
+    }
 
     fn key(c: &str) -> Key {
         Key::Character(c.into())
