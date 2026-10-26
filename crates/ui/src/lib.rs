@@ -49,6 +49,9 @@ const SEARCH_BAR: f32 = 36.0;
 const HINT_BAR: f32 = 28.0;
 /// Site icons in the sources pane, square.
 const ICON_SIZE: f32 = 16.0;
+/// The drop target below the last source, scrolled with the rows: a drop
+/// there takes a source out of its folder.
+const UNFILED_STRIP: f32 = 32.0;
 
 /// Opens the window and blocks until it closes. When `config_path` is set,
 /// edits to that file apply while the window is open. `store_path` is the
@@ -1472,16 +1475,21 @@ impl App {
             .into_iter()
             .map(|entry| self.sidebar_row(entry));
         // The space below the rows is a drop target too: out of any folder.
-        let rest = mouse_area(Space::new().width(Length::Fill).height(Length::Fill))
-            .on_enter(Message::Over(Entry::Unfiled));
-        let rest: Element<'_, Message> = if self.drop_line_at(Entry::Unfiled) {
-            column![drop_line(t.accent), rest].into()
-        } else {
-            rest.into()
+        // Past the last row a strip of it scrolls with them, so it can be
+        // reached when they fill the pane.
+        let unfiled = |height| {
+            mouse_area(Space::new().width(Length::Fill).height(height))
+                .on_enter(Message::Over(Entry::Unfiled))
         };
-        Column::with_children(rows)
-            .push(rest)
-            .padding([8, 0])
+        let end: Element<'_, Message> = if self.drop_line_at(Entry::Unfiled) {
+            column![drop_line(t.accent), unfiled(Length::Fixed(UNFILED_STRIP))].into()
+        } else {
+            unfiled(Length::Fixed(UNFILED_STRIP)).into()
+        };
+        // More sources than fit scroll; fewer leave the pane's rest empty.
+        let rows = scrollable(Column::with_children(rows).push(end).padding([8, 0]))
+            .height(Length::Shrink);
+        column![rows, unfiled(Length::Fill)]
             .height(Length::Fill)
             .into()
     }
