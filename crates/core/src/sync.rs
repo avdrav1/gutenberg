@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 use std::fmt;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -39,6 +39,52 @@ pub struct Limits {
     pub providers: Providers,
     /// `[[rules]]` from `config.toml`.
     pub rules: Rules,
+    /// Where the refresh counts the sources it has heard back from, for
+    /// the window's progress bar.
+    pub progress: Option<Arc<Progress>>,
+}
+
+/// How far a running refresh has got: sources due and sources done. The
+/// refresh thread writes it; the window reads it, never waiting.
+#[derive(Debug, Default)]
+pub struct Progress {
+    running: AtomicBool,
+    total: AtomicUsize,
+    done: AtomicUsize,
+}
+
+impl Progress {
+    /// `(done, total)` while a refresh with something due runs.
+    pub fn get(&self) -> Option<(usize, usize)> {
+        let total = self.total.load(Ordering::Relaxed);
+        (self.running.load(Ordering::Relaxed) && total > 0)
+            .then(|| (self.done.load(Ordering::Relaxed).min(total), total))
+    }
+
+    fn start(&self, total: usize) {
+        self.done.store(0, Ordering::Relaxed);
+        self.total.store(total, Ordering::Relaxed);
+        self.running.store(true, Ordering::Relaxed);
+    }
+
+    fn one_done(&self) {
+        self.done.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn stop(&self) {
+        self.running.store(false, Ordering::Relaxed);
+    }
+}
+
+/// Stops the progress however the refresh ends, errors included.
+struct Running<'a>(Option<&'a Progress>);
+
+impl Drop for Running<'_> {
+    fn drop(&mut self) {
+        if let Some(progress) = self.0 {
+            progress.stop();
+        }
+    }
 }
 
 impl Default for Limits {
@@ -49,6 +95,7 @@ impl Default for Limits {
             spacing: Duration::from_millis(250),
             providers: Providers::default(),
             rules: Rules::default(),
+            progress: None,
         }
     }
 }
@@ -222,6 +269,11 @@ async fn refresh_some(
 ) -> Result<Summary, gutenberg_store::Error> {
     let mut due = store.sources_due(now)?;
     due.retain(|d| pick(d));
+    let progress = limits.progress.as_deref();
+    let _running = Running(progress);
+    if let Some(progress) = progress {
+        progress.start(due.len());
+    }
     let settled = icons.map(Icons::settled).unwrap_or_default();
     let mut summary = Summary {
         sources: due.len(),
@@ -239,6 +291,9 @@ async fn refresh_some(
                 failures: due.failures,
             }),
             Err(error) => {
+                if let Some(progress) = progress {
+                    progress.one_done();
+                }
                 let wait = backoff(due.failures + 1, None);
                 store.record_failure(due.source_id, &error, now + wait, now)?;
                 summary
@@ -318,6 +373,9 @@ async fn refresh_some(
     };
 
     while let Some((due, outcome)) = results.next().await {
+        if let Some(progress) = progress {
+            progress.one_done();
+        }
         match outcome {
             Outcome::NotModified => {
                 store.record_not_modified(due.source_id, now)?;
@@ -812,6 +870,8 @@ pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config)
     let minutes = Arc::new(AtomicU32::new(config.refresh.minutes));
     let rules = Arc::new(Mutex::new(Rules::new(&config.rules)));
     let (watched, watched_rules) = (minutes.clone(), rules.clone());
+    let progress = Arc::new(Progress::default());
+    let counted = progress.clone();
     let (asks, asked) = mpsc::channel();
     let spawned = std::thread::Builder::new()
         .name("refresh".into())
@@ -827,19 +887,22 @@ pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config)
                 })
                 .ok()
             });
-            if let Err(err) = run(&store_path, &minutes, &rules, &asked) {
+            if let Err(err) = run(&store_path, &minutes, &rules, counted, &asked) {
                 eprintln!("gutenberg: background refresh stopped: {err}");
             }
         });
     if let Err(err) = spawned {
         eprintln!("gutenberg: background refresh did not start: {err}");
     }
-    Refresher(asks)
+    Refresher { asks, progress }
 }
 
 /// Asks the background refresh to run now (`gutenberg --refresh` with a
 /// window open).
-pub struct Refresher(mpsc::Sender<Reply>);
+pub struct Refresher {
+    asks: mpsc::Sender<Reply>,
+    progress: Arc<Progress>,
+}
 
 /// Where a refresh asked for sends how it went.
 type Reply = mpsc::Sender<Result<Summary, String>>;
@@ -850,8 +913,12 @@ impl Refresher {
     pub fn now(&self) -> Result<Summary, String> {
         let (reply, answer) = mpsc::channel();
         let stopped = || "the background refresh stopped".to_owned();
-        self.0.send(reply).map_err(|_| stopped())?;
+        self.asks.send(reply).map_err(|_| stopped())?;
         answer.recv().map_err(|_| stopped())?
+    }
+    /// How far the refresh running now has got, for the window.
+    pub fn progress(&self) -> Arc<Progress> {
+        self.progress.clone()
     }
 }
 
@@ -859,6 +926,7 @@ fn run(
     store_path: &std::path::Path,
     minutes: &AtomicU32,
     rules: &Mutex<Rules>,
+    progress: Arc<Progress>,
     asked: &mpsc::Receiver<Reply>,
 ) -> Result<(), String> {
     let mut store = Store::open(store_path).map_err(|e| e.to_string())?;
@@ -867,7 +935,10 @@ fn run(
         .enable_all()
         .build()
         .map_err(|e| e.to_string())?;
-    let mut limits = Limits::default();
+    let mut limits = Limits {
+        progress: Some(progress),
+        ..Limits::default()
+    };
     let mut waiting: Vec<Reply> = Vec::new();
     loop {
         if minutes.load(Ordering::Relaxed) > 0 || !waiting.is_empty() {

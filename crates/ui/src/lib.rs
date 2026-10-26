@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 use gutenberg_core::catalog;
 use gutenberg_core::config::{self, Config};
 use gutenberg_core::favicon::Icons;
-use gutenberg_core::sync::unix_now;
+use gutenberg_core::sync::{unix_now, Progress};
 use gutenberg_core::web::{self, Answer, Web};
 use gutenberg_core::{ipc, keyword, mcp, secrets};
 use gutenberg_store::{ArticleRow, Filter, Folder, Source, SourceKind, Store, View, ViewCounts};
@@ -40,6 +40,10 @@ use sidebar::{Entry, Move};
 const LIST_LIMIT: u32 = 100_000;
 /// How often to look for writes from the refresh thread or a terminal.
 const STORE_POLL: Duration = Duration::from_secs(1);
+/// How often the refresh's progress is read while one runs.
+const PROGRESS_POLL: Duration = Duration::from_millis(100);
+/// Thickness of the refresh's progress bar along the top of the list.
+const PROGRESS_BAR: f32 = 3.0;
 /// Most search results kept: the newest this many matches. Enough to
 /// read through, and cheap enough to run on every key (S3.6 bench).
 const SEARCH_LIMIT: u32 = 500;
@@ -59,12 +63,14 @@ pub fn run(
     config_path: Option<PathBuf>,
     store_path: Option<PathBuf>,
     inbox: Inbox,
+    progress: Option<Arc<Progress>>,
 ) -> iced::Result {
     use_desktop_font();
     iced::application(
         move || {
             let mut app = App::new(config.clone(), config_path.clone(), store_path.as_deref());
             app.inbox = Some(inbox.clone());
+            app.progress = progress.clone();
             // The desktop's light or dark preference, for the built-in theme.
             (app, iced::system::theme().map(Message::SystemTheme))
         },
@@ -227,6 +233,10 @@ struct App {
     bench: Option<Bench>,
     /// Commands from the socket; `None` in tests.
     inbox: Option<Inbox>,
+    /// The refresh thread's progress; `None` in tests.
+    progress: Option<Arc<Progress>>,
+    /// Sources done and due in the refresh running now, as last read.
+    refreshing: Option<(usize, usize)>,
     /// Articles the memory bench has left to open.
     memory_bench: Option<usize>,
     /// The store's file, for the web worker's search indexing; `None` in
@@ -411,6 +421,8 @@ enum Message {
     Scroll(ScrollDelta),
     Click(usize),
     PollStore,
+    /// Reads the refresh's progress, while one runs.
+    PollProgress,
     Resized(Size),
     Frame(Instant),
     ConfigChanged(Config),
@@ -531,6 +543,8 @@ impl App {
             pending_g: false,
             bench,
             inbox: None,
+            progress: None,
+            refreshing: None,
             memory_bench: std::env::var("GUTENBERG_MEMORY_BENCH")
                 .ok()
                 .and_then(|n| n.parse().ok()),
@@ -748,7 +762,9 @@ impl App {
                 let top = (self.top as f32 + rows).round().max(0.0) as usize;
                 self.top = top.min(list::max_top(self.rows.len(), self.list_height()));
             }
+            Message::PollProgress => self.read_progress(),
             Message::PollStore => {
+                self.read_progress();
                 let changed = match &self.store {
                     Ok(store) => store.data_version().is_ok_and(|v| v != self.data_version),
                     Err(_) => false,
@@ -1284,6 +1300,13 @@ impl App {
         let mut subscriptions = vec![
             keys,
             iced::time::every(STORE_POLL).map(|_| Message::PollStore),
+            // Every second notices a refresh start; while it runs, the bar
+            // moves more often than that.
+            if self.refreshing.is_some() {
+                iced::time::every(PROGRESS_POLL).map(|_| Message::PollProgress)
+            } else {
+                Subscription::none()
+            },
             window::resize_events().map(|(_, size)| Message::Resized(size)),
             iced::system::theme_changes().map(Message::SystemTheme),
         ];
@@ -1363,8 +1386,15 @@ impl App {
             .into()
         });
         let (background, border_color) = (t.background, t.border);
+        let refreshing = self.refreshing.map(|(done, total)| {
+            text(format!("Refreshing {done} of {total}"))
+                .size(12)
+                .color(color(t.muted))
+        });
         container(
             Row::with_children(hints)
+                .push(self.refreshing.map(|_| Space::new().width(Length::Fill)))
+                .push(refreshing)
                 .spacing(20)
                 .align_y(Alignment::Center),
         )
@@ -1629,10 +1659,30 @@ impl App {
             .on_scroll(Message::Scroll)
             .into()
         };
-        match &self.search {
+        let list = match &self.search {
             None => list,
             Some(search) => column![self.search_bar(search), list].into(),
+        };
+        // Over the top of the list, so the rows don't move when it comes.
+        match self.refreshing {
+            Some((done, total)) => {
+                let (bar, track) = (t.accent, t.selection);
+                let progress = iced::widget::progress_bar(0.0..=total as f32, done as f32)
+                    .girth(PROGRESS_BAR)
+                    .style(move |_| iced::widget::progress_bar::Style {
+                        background: color(track).into(),
+                        bar: color(bar).into(),
+                        border: Border::default(),
+                    });
+                stack![list, progress].into()
+            }
+            None => list,
         }
+    }
+
+    /// What the refresh thread has done so far, if it's refreshing.
+    fn read_progress(&mut self) {
+        self.refreshing = self.progress.as_ref().and_then(|p| p.get());
     }
 
     /// Whether a source is an MCP server.
@@ -3863,6 +3913,17 @@ mod tests {
         let _ = app.update(Message::Press(ALL));
         let _ = app.update(Message::Release);
         assert_eq!(app.rows.len(), 3);
+    }
+
+    #[test]
+    fn a_refresh_shows_its_progress_until_it_ends() {
+        let (mut app, ..) = app_with_folders();
+        app.refreshing = Some((3, 10));
+        let _ = app.view();
+        // The refresh thread says it's done (here: there is none).
+        let _ = app.update(Message::PollProgress);
+        assert_eq!(app.refreshing, None);
+        let _ = app.view();
     }
 
     #[test]

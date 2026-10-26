@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use gutenberg_core::rules::{Action, Rule, Rules};
-use gutenberg_core::sync::{refresh, Limits};
+use gutenberg_core::sync::{refresh, Limits, Progress};
 use gutenberg_store::{NewSource, SourceKind, Store};
 
 const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/feeds");
@@ -385,4 +385,39 @@ fn rules_star_read_and_mute_what_a_refresh_brings() {
         .map(|a| &a.title)
         .collect();
     assert_eq!(read, ["The 7.3 kernel has been released"]);
+}
+
+#[test]
+fn progress_counts_sources_while_a_refresh_runs_and_clears_after() {
+    // Two feeds that take 400 ms each to answer, one host at a time.
+    let base = serve(
+        feed_reply("lwn-headlines.xml", "\"lwn-1\""),
+        Duration::from_millis(400),
+        Arc::new(Log::default()),
+    );
+    let mut store = Store::open_in_memory().unwrap();
+    add_feed(&store, &format!("{base}/a"));
+    add_feed(&store, &format!("{base}/b"));
+    let progress = Arc::new(Progress::default());
+    assert_eq!(progress.get(), None);
+    let limits = Limits {
+        per_host: 1,
+        progress: Some(progress.clone()),
+        ..Limits::default()
+    };
+    let refreshing =
+        std::thread::spawn(move || runtime().block_on(refresh(&mut store, 1_000, &limits, None)));
+    let mut seen = Vec::new();
+    while !refreshing.is_finished() {
+        if let Some(now) = progress.get() {
+            if seen.last() != Some(&now) {
+                seen.push(now);
+            }
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert_eq!(refreshing.join().unwrap().unwrap().new_articles, 20);
+    assert_eq!(seen.first(), Some(&(0, 2)));
+    assert!(seen.contains(&(1, 2)), "{seen:?}");
+    assert_eq!(progress.get(), None);
 }

@@ -119,7 +119,8 @@ fn main() -> std::process::ExitCode {
         ));
     }
     let store_path = gutenberg_store::Store::default_path().ok();
-    match gutenberg_ui::run(config, config_path, store_path, inbox) {
+    let progress = refresher.get().map(Refresher::progress);
+    match gutenberg_ui::run(config, config_path, store_path, inbox, progress) {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(err) => {
             eprintln!("gutenberg: {err}");
