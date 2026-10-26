@@ -6,6 +6,7 @@ mod mcp;
 mod opml;
 mod refresh;
 mod unread;
+mod update;
 
 use std::sync::{Arc, OnceLock};
 
@@ -80,6 +81,7 @@ fn main() -> std::process::ExitCode {
         }
         Some("--export") if std::env::args().len() == 2 => return opml::export(),
         Some("--refresh") => return refresh::run(),
+        Some("--update") if std::env::args().len() == 2 => return update::run(),
         Some("--unread") => {
             let rest: Vec<String> = std::env::args().skip(2).collect();
             return match rest.as_slice() {
@@ -119,8 +121,8 @@ fn main() -> std::process::ExitCode {
         ));
     }
     let store_path = gutenberg_store::Store::default_path().ok();
-    let progress = refresher.get().map(Refresher::progress);
-    match gutenberg_ui::run(config, config_path, store_path, inbox, progress) {
+    let status = refresher.get().map(Refresher::status);
+    match gutenberg_ui::run(config, config_path, store_path, inbox, status) {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(err) => {
             eprintln!("gutenberg: {err}");
@@ -180,7 +182,7 @@ fn focus_open_window() -> std::process::ExitCode {
 
 fn usage() -> std::process::ExitCode {
     eprintln!(
-        "usage: gutenberg [--version | --add <url> [--folder <name>] | --keyword <query> [--folder <name>] | --mcp <command or URL> [--tool <name> [--args <json>]] [--secret <NAME>] [--folder <name>] | --key <NAME> | --import <file.opml> | --export | --unread [--json] | --refresh | --reload-theme]"
+        "usage: gutenberg [--version | --add <url> [--folder <name>] | --keyword <query> [--folder <name>] | --mcp <command or URL> [--tool <name> [--args <json>]] [--secret <NAME>] [--folder <name>] | --key <NAME> | --import <file.opml> | --export | --unread [--json] | --refresh | --reload-theme | --update]"
     );
     std::process::ExitCode::from(2)
 }

@@ -20,6 +20,22 @@ pub struct Config {
     pub cache: Cache,
     /// `[[rules]]`: see [`crate::rules`].
     pub rules: Vec<Rule>,
+    pub updates: Updates,
+}
+
+/// Telling you about new releases.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Updates {
+    /// Ask GitHub once a day whether a newer Gutenberg is out, and say so
+    /// in the key bar.
+    pub check: bool,
+}
+
+impl Default for Updates {
+    fn default() -> Self {
+        Self { check: true }
+    }
 }
 
 /// Article images and reader pages kept on disk, in
@@ -299,6 +315,12 @@ mod tests {
     fn key_hints_show_unless_turned_off() {
         assert!(parse("").unwrap().keys.hints);
         assert!(!parse("[keys]\nhints = false").unwrap().keys.hints);
+    }
+
+    #[test]
+    fn release_checks_are_on_unless_turned_off() {
+        assert!(parse("").unwrap().updates.check);
+        assert!(!parse("[updates]\ncheck = false").unwrap().updates.check);
     }
 
     #[test]

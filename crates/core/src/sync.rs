@@ -24,6 +24,7 @@ use tokio::sync::Semaphore;
 use crate::config::{self, Config};
 use crate::favicon::Icons;
 use crate::rules::Rules;
+use crate::update;
 
 /// How a refresh runs: how hard it may hit the network, where keyword
 /// alerts search, and the rules new articles meet.
@@ -872,6 +873,10 @@ pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config)
     let (watched, watched_rules) = (minutes.clone(), rules.clone());
     let progress = Arc::new(Progress::default());
     let counted = progress.clone();
+    let checks = Arc::new(AtomicBool::new(config.updates.check));
+    let watched_checks = checks.clone();
+    let newer = Arc::new(Mutex::new(None));
+    let found = newer.clone();
     let (asks, asked) = mpsc::channel();
     let spawned = std::thread::Builder::new()
         .name("refresh".into())
@@ -883,25 +888,69 @@ pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config)
                         if let Ok(mut rules) = watched_rules.lock() {
                             *rules = Rules::new(&config.rules);
                         }
+                        watched_checks.store(config.updates.check, Ordering::Relaxed);
                     }
                 })
                 .ok()
             });
-            if let Err(err) = run(&store_path, &minutes, &rules, counted, &asked) {
+            let releases = Releases {
+                checks: &checks,
+                newer: &found,
+            };
+            if let Err(err) = run(&store_path, &minutes, &rules, counted, &releases, &asked) {
                 eprintln!("gutenberg: background refresh stopped: {err}");
             }
         });
     if let Err(err) = spawned {
         eprintln!("gutenberg: background refresh did not start: {err}");
     }
-    Refresher { asks, progress }
+    Refresher {
+        asks,
+        status: Status { progress, newer },
+    }
+}
+
+/// What the refresh thread tells the window, read without waiting.
+#[derive(Debug, Clone)]
+pub struct Status {
+    /// How far the refresh running now has got.
+    pub progress: Arc<Progress>,
+    /// A newer Gutenberg release than this one, once GitHub has said so.
+    pub newer: Arc<Mutex<Option<String>>>,
+}
+
+impl Status {
+    pub fn newer_release(&self) -> Option<String> {
+        self.newer.lock().ok().and_then(|newer| newer.clone())
+    }
+}
+
+/// Whether to check for releases, and where to say what was found.
+struct Releases<'a> {
+    checks: &'a AtomicBool,
+    newer: &'a Mutex<Option<String>>,
+}
+
+impl Releases<'_> {
+    /// Asks GitHub, if it's on and a day has passed since it was last asked.
+    fn check(&self, runtime: &tokio::runtime::Runtime) {
+        let found = match (self.checks.load(Ordering::Relaxed), update::cache_path()) {
+            (true, Some(cache)) => feed::client().ok().and_then(|client| {
+                runtime.block_on(update::check(&client, update::LATEST, &cache, unix_now()))
+            }),
+            _ => None,
+        };
+        if let Ok(mut newer) = self.newer.lock() {
+            *newer = found.filter(|version| update::is_newer(version, update::CURRENT));
+        }
+    }
 }
 
 /// Asks the background refresh to run now (`gutenberg --refresh` with a
 /// window open).
 pub struct Refresher {
     asks: mpsc::Sender<Reply>,
-    progress: Arc<Progress>,
+    status: Status,
 }
 
 /// Where a refresh asked for sends how it went.
@@ -916,9 +965,9 @@ impl Refresher {
         self.asks.send(reply).map_err(|_| stopped())?;
         answer.recv().map_err(|_| stopped())?
     }
-    /// How far the refresh running now has got, for the window.
-    pub fn progress(&self) -> Arc<Progress> {
-        self.progress.clone()
+    /// What the window shows of the refresh thread's work.
+    pub fn status(&self) -> Status {
+        self.status.clone()
     }
 }
 
@@ -927,6 +976,7 @@ fn run(
     minutes: &AtomicU32,
     rules: &Mutex<Rules>,
     progress: Arc<Progress>,
+    releases: &Releases<'_>,
     asked: &mpsc::Receiver<Reply>,
 ) -> Result<(), String> {
     let mut store = Store::open(store_path).map_err(|e| e.to_string())?;
@@ -952,6 +1002,7 @@ fn run(
                 let _ = reply.send(done.clone());
             }
             done?;
+            releases.check(&runtime);
         }
         // Wait out the interval, re-reading it so an edit applies now.
         let since = Instant::now();

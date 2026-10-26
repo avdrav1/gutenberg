@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `gutenberg --update` installs the newest release over the one you run, checked against the release's checksums like the install one-liner. When a newer release is out, the key bar says so; Gutenberg asks GitHub at most once a day, and `check = false` under `[updates]` in `config.toml` stops it.
+
 - The sources pane scrolls, so every folder and feed can be reached when there are more than fit the window.
 - `Tab` moves the keys to the sources pane: `j` and `k` (and `gg`, `G`) step through folders and feeds, showing each as you land on it, and `Enter` or `Tab` goes back to the list. Until now these keys were listed in help but only moved in the list.
 - While feeds refresh, a thin bar fills along the top of the article list and the key bar says how far it has got ("Refreshing 12 of 47"). Both go when the refresh is done.
