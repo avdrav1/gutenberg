@@ -206,6 +206,10 @@ match = "Rust"
 in = "LWN.net"     # a source's title or a folder's name
 action = "star"</pre>
 
+  <h2>Update</h2>
+  <pre class="block">gutenberg --update</pre>
+  <p>Installs the newest release over the one you run, checked against its <code>SHA256SUMS</code> as above. An open window says when one is out: it asks GitHub once a day (<code>check = false</code> under <code>[updates]</code> in <code>config.toml</code> turns that off).</p>
+
   <h2>Verify</h2>
   <p>Every release tarball has a build attestation from this repository's release workflow. With the GitHub CLI:</p>
   <pre class="block">gh attestation verify gutenberg-x86_64-unknown-linux-gnu.tar.gz -R avdrav1/gutenberg</pre>

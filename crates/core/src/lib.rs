@@ -11,4 +11,5 @@ pub mod rules;
 pub mod secrets;
 pub mod story;
 pub mod sync;
+pub mod update;
 pub mod web;

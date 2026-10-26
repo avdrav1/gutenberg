@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 use gutenberg_core::catalog;
 use gutenberg_core::config::{self, Config};
 use gutenberg_core::favicon::Icons;
-use gutenberg_core::sync::{unix_now, Progress};
+use gutenberg_core::sync::{unix_now, Status};
 use gutenberg_core::web::{self, Answer, Web};
 use gutenberg_core::{ipc, keyword, mcp, secrets};
 use gutenberg_store::{ArticleRow, Filter, Folder, Source, SourceKind, Store, View, ViewCounts};
@@ -71,14 +71,14 @@ pub fn run(
     config_path: Option<PathBuf>,
     store_path: Option<PathBuf>,
     inbox: Inbox,
-    progress: Option<Arc<Progress>>,
+    status: Option<Status>,
 ) -> iced::Result {
     use_desktop_font();
     iced::application(
         move || {
             let mut app = App::new(config.clone(), config_path.clone(), store_path.as_deref());
             app.inbox = Some(inbox.clone());
-            app.progress = progress.clone();
+            app.status = status.clone();
             // The desktop's light or dark preference, for the built-in theme.
             (app, iced::system::theme().map(Message::SystemTheme))
         },
@@ -241,8 +241,10 @@ struct App {
     bench: Option<Bench>,
     /// Commands from the socket; `None` in tests.
     inbox: Option<Inbox>,
-    /// The refresh thread's progress; `None` in tests.
-    progress: Option<Arc<Progress>>,
+    /// The refresh thread's progress and release check; `None` in tests.
+    status: Option<Status>,
+    /// A newer Gutenberg release, as last read.
+    newer: Option<String>,
     /// Sources done and due in the refresh running now, as last read.
     refreshing: Option<(usize, usize)>,
     /// Why the list is empty, when it is and isn't a search.
@@ -632,7 +634,8 @@ impl App {
             pane: Pane::List,
             bench,
             inbox: None,
-            progress: None,
+            status: None,
+            newer: None,
             refreshing: None,
             empty: None,
             memory_bench: std::env::var("GUTENBERG_MEMORY_BENCH")
@@ -877,6 +880,7 @@ impl App {
             Message::PollProgress => self.read_progress(),
             Message::PollStore => {
                 self.read_progress();
+                self.newer = self.status.as_ref().and_then(Status::newer_release);
                 let changed = match &self.store {
                     Ok(store) => store.data_version().is_ok_and(|v| v != self.data_version),
                     Err(_) => false,
@@ -1530,14 +1534,16 @@ impl App {
             .into()
         });
         let (background, border_color) = (t.background, t.border);
-        let refreshing = self.refreshing.map(|(done, total)| {
-            text(format!("Refreshing {done} of {total}"))
-                .size(12)
-                .color(color(t.muted))
-        });
+        let refreshing = self
+            .status_line()
+            .map(|status| text(status).size(12).color(color(t.muted)));
         container(
             Row::with_children(hints)
-                .push(self.refreshing.map(|_| Space::new().width(Length::Fill)))
+                .push(
+                    refreshing
+                        .is_some()
+                        .then(|| Space::new().width(Length::Fill)),
+                )
                 .push(refreshing)
                 .spacing(20)
                 .align_y(Alignment::Center),
@@ -1855,6 +1861,17 @@ impl App {
         }
     }
 
+    /// The right of the key bar: a refresh's progress, else a new release.
+    fn status_line(&self) -> Option<String> {
+        match (self.refreshing, &self.newer) {
+            (Some((done, total)), _) => Some(format!("Refreshing {done} of {total}")),
+            (None, Some(version)) => {
+                Some(format!("Gutenberg {version} is out · gutenberg --update"))
+            }
+            (None, None) => None,
+        }
+    }
+
     /// What the list is showing: a feed's title, a folder's name, or
     /// every feed.
     fn place_name(&self) -> String {
@@ -1875,7 +1892,7 @@ impl App {
 
     /// What the refresh thread has done so far, if it's refreshing.
     fn read_progress(&mut self) {
-        self.refreshing = self.progress.as_ref().and_then(|p| p.get());
+        self.refreshing = self.status.as_ref().and_then(|s| s.progress.get());
     }
 
     /// Whether a source is an MCP server.
@@ -4106,6 +4123,20 @@ mod tests {
         let _ = app.update(Message::Press(ALL));
         let _ = app.update(Message::Release);
         assert_eq!(app.rows.len(), 3);
+    }
+
+    #[test]
+    fn the_key_bar_names_a_new_release_unless_a_refresh_is_running() {
+        let (mut app, ..) = app_with_folders();
+        assert_eq!(app.status_line(), None);
+        app.newer = Some("0.25.0".into());
+        assert_eq!(
+            app.status_line().as_deref(),
+            Some("Gutenberg 0.25.0 is out · gutenberg --update")
+        );
+        app.refreshing = Some((1, 4));
+        assert_eq!(app.status_line().as_deref(), Some("Refreshing 1 of 4"));
+        let _ = app.view();
     }
 
     #[test]
