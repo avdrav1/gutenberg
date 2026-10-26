@@ -4,6 +4,7 @@
 
 ## 0.25.0 — 2026-10-26
 
+- A feed whose opening `<?xml …?>` line is unusually long and names an encoding other than UTF-8 now reads, instead of failing with "the feed parser crashed on it".
 - The trailers and screenshots on https://gutenbergapp.com show what's new since they were made: a story from eight outlets shown once, and an MCP server's tools and articles. The tour is narrated now.
 
 ## 0.24.0 — 2026-10-26
