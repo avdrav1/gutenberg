@@ -75,6 +75,48 @@ pub fn entries(folders: &[Folder], sources: &[Source]) -> Vec<Entry> {
     rows
 }
 
+/// Which row stands for what the list shows: the chosen folder or feed,
+/// or the view's row when every feed is shown.
+pub fn cursor(entries: &[Entry], filter: Filter, view: View) -> Option<usize> {
+    entries.iter().position(|&entry| match filter {
+        Filter::All => entry == Entry::View(view),
+        _ => entry.filter() == Some(filter) && !matches!(entry, Entry::View(_)),
+    })
+}
+
+/// The row `j`, `k`, `gg` or `G` moves to from `at`, within the rows.
+pub fn step(len: usize, at: Option<usize>, to: Step) -> Option<usize> {
+    let last = len.checked_sub(1)?;
+    Some(match (to, at) {
+        (Step::First, _) | (Step::Up, None) => 0,
+        (Step::Last, _) => last,
+        (Step::Down, None) => 0,
+        (Step::Down, Some(at)) => (at + 1).min(last),
+        (Step::Up, Some(at)) => at.saturating_sub(1),
+    })
+}
+
+/// The pane's new scroll offset to show a row `row_height` tall at
+/// `row_top` in its content, moving as little as possible from `top`;
+/// `None` when it's in view already.
+pub fn scroll_to_show(top: f32, height: f32, row_top: f32, row_height: f32) -> Option<f32> {
+    if row_top < top {
+        Some(row_top)
+    } else if row_top + row_height > top + height {
+        Some(row_top + row_height - height)
+    } else {
+        None
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Step {
+    Down,
+    Up,
+    First,
+    Last,
+}
+
 /// The number beside a row: a feed's unread articles, a folder's feeds'
 /// sum, unread everywhere for "All articles" and "Unread", and how many
 /// articles are starred or came today for those views.
@@ -200,6 +242,43 @@ mod tests {
             5
         );
         assert_eq!(VIEWS.map(|v| count(Entry::View(v))), [12, 12, 2, 6]);
+    }
+
+    #[test]
+    fn the_cursor_is_the_chosen_folder_or_feed_else_the_view() {
+        let rows = entries(&[folder(10)], &[source(1, Some(10)), source(2, None)]);
+        let at = |filter, view| cursor(&rows, filter, view).map(|i| rows[i]);
+        assert_eq!(at(Filter::All, View::Today), Some(Entry::View(View::Today)));
+        assert_eq!(
+            at(Filter::Folder(10), View::Unread),
+            Some(Entry::Folder(10))
+        );
+        assert_eq!(
+            at(Filter::Source(2), View::All),
+            Some(Entry::Source {
+                id: 2,
+                filed: false
+            })
+        );
+        assert_eq!(at(Filter::Source(9), View::All), None);
+    }
+
+    #[test]
+    fn steps_stay_within_the_rows() {
+        assert_eq!(step(5, Some(2), Step::Down), Some(3));
+        assert_eq!(step(5, Some(4), Step::Down), Some(4));
+        assert_eq!(step(5, Some(0), Step::Up), Some(0));
+        assert_eq!(step(5, Some(3), Step::First), Some(0));
+        assert_eq!(step(5, Some(1), Step::Last), Some(4));
+        assert_eq!(step(5, None, Step::Down), Some(0));
+        assert_eq!(step(0, None, Step::Down), None);
+    }
+
+    #[test]
+    fn the_pane_scrolls_only_as_far_as_the_row() {
+        assert_eq!(scroll_to_show(0.0, 300.0, 100.0, 30.0), None);
+        assert_eq!(scroll_to_show(0.0, 300.0, 290.0, 30.0), Some(20.0));
+        assert_eq!(scroll_to_show(200.0, 300.0, 150.0, 30.0), Some(150.0));
     }
 
     #[test]
