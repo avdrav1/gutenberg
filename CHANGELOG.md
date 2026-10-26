@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The trailers and screenshots on https://gutenbergapp.com show what's new since they were made: a story from eight outlets shown once, and an MCP server's tools and articles. The tour is narrated now.
+
 ## 0.24.0 — 2026-10-26
 
 - `gutenberg --update` installs the newest release over the one you run, checked against the release's checksums like the install one-liner. When a newer release is out, the key bar says so; Gutenberg asks GitHub at most once a day, and `check = false` under `[updates]` in `config.toml` stops it.

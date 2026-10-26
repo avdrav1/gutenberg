@@ -127,7 +127,7 @@ impl Reel {
     }
 }
 
-/// About 15 seconds, silent and captionless: the site's hero, on a loop.
+/// About 20 seconds, silent and captionless: the site's hero, on a loop.
 fn short(theme: &dyn Fn(&str) -> Tokens, reel: &mut Reel) {
     let mut demo = Demo::new(theme("tokyo-night"), FRAME);
     reel.frame(&mut demo, 1.6, "");
@@ -141,6 +141,14 @@ fn short(theme: &dyn Fn(&str) -> Tokens, reel: &mut Reel) {
     reel.frame(&mut demo, 0.8, "");
     demo.reader();
     reel.frame(&mut demo, 2.2, "");
+    demo.open_story();
+    reel.frame(&mut demo, 1.6, "");
+    demo.server();
+    demo.open();
+    reel.frame(&mut demo, 1.0, "");
+    demo.tools();
+    reel.frame(&mut demo, 1.4, "");
+    demo.everything();
     demo.search();
     reel.frame(&mut demo, 0.3, "");
     reel.typing(&mut demo, "heat", Demo::search_type, "");
@@ -161,7 +169,7 @@ fn short(theme: &dyn Fn(&str) -> Tokens, reel: &mut Reel) {
     reel.frame(&mut demo, 0.8, "");
 }
 
-/// About a minute, with a caption per feature.
+/// About seventy seconds, with a caption per feature.
 fn long(theme: &dyn Fn(&str) -> Tokens, reel: &mut Reel) {
     let dark = theme("tokyo-night");
 
@@ -211,6 +219,13 @@ fn long(theme: &dyn Fn(&str) -> Tokens, reel: &mut Reel) {
     demo.everything();
     demo.all();
 
+    demo.open_story();
+    reel.frame(
+        &mut demo,
+        3.0,
+        "Eight outlets, one story: the list shows it once",
+    );
+
     demo.open_feature();
     reel.frame(&mut demo, 1.6, "Feeds send a summary");
     demo.reader();
@@ -219,6 +234,31 @@ fn long(theme: &dyn Fn(&str) -> Tokens, reel: &mut Reel) {
         3.2,
         "v fetches the whole story, without the clutter",
     );
+
+    let caption = "MCP servers are sources too: pick a tool, read its answers";
+    demo.server();
+    demo.open();
+    reel.frame(&mut demo, 1.8, caption);
+    demo.tools();
+    reel.frame(&mut demo, 1.4, caption);
+    demo.down();
+    reel.frame(&mut demo, 0.5, caption);
+    demo.open();
+    reel.frame(&mut demo, 0.8, caption);
+    for _ in 0..r#"speech to text","repo_types":["model"],"limit":20}"#.len() {
+        demo.arguments_back();
+    }
+    reel.frame(&mut demo, 0.3, caption);
+    reel.typing(
+        &mut demo,
+        r#"text to speech","repo_types":["model"],"limit":20}"#,
+        Demo::arguments_type,
+        caption,
+    );
+    reel.frame(&mut demo, 1.4, caption);
+    demo.arguments_close();
+    demo.everything();
+    demo.open_feature();
 
     let caption = "/ searches every article you have, as you type";
     demo.search();
