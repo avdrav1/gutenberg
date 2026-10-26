@@ -245,6 +245,8 @@ struct App {
     progress: Option<Arc<Progress>>,
     /// Sources done and due in the refresh running now, as last read.
     refreshing: Option<(usize, usize)>,
+    /// Why the list is empty, when it is and isn't a search.
+    empty: Option<list::Empty>,
     /// Articles the memory bench has left to open.
     memory_bench: Option<usize>,
     /// The store's file, for the web worker's search indexing; `None` in
@@ -337,6 +339,26 @@ struct ArgumentEditor {
     text: String,
     /// Why the last Enter didn't save it.
     error: Option<String>,
+}
+
+/// Why the list for `filter` shows nothing: its view hides what it has,
+/// or there's nothing yet, and why.
+fn why_empty(store: &Store, filter: Filter) -> gutenberg_store::Result<list::Empty> {
+    if !store.list_articles_in(filter, View::All, 1)?.is_empty() {
+        return Ok(list::Empty::Hidden);
+    }
+    Ok(match filter {
+        Filter::Source(id) => {
+            let state = store.fetch_state(id)?;
+            match (state.error, state.checked_at) {
+                (Some(error), _) => list::Empty::Failed(error),
+                (None, None) => list::Empty::Unfetched,
+                (None, Some(_)) => list::Empty::NoArticles,
+            }
+        }
+        _ if store.has_unchecked_sources()? => list::Empty::Unfetched,
+        _ => list::Empty::NoArticles,
+    })
 }
 
 /// Scrolls the sources pane just enough to show the cursor's row: finds
@@ -612,6 +634,7 @@ impl App {
             inbox: None,
             progress: None,
             refreshing: None,
+            empty: None,
             memory_bench: std::env::var("GUTENBERG_MEMORY_BENCH")
                 .ok()
                 .and_then(|n| n.parse().ok()),
@@ -708,6 +731,11 @@ impl App {
         })();
         match read {
             Ok((rows, sources, folders, unread, view_counts, errors)) => {
+                self.empty = if rows.is_empty() && self.search.is_none() {
+                    why_empty(store, self.filter).ok()
+                } else {
+                    None
+                };
                 self.source_errors = errors;
                 self.rows = rows;
                 self.source_titles = sources.iter().map(|s| (s.id, s.title.clone())).collect();
@@ -1782,7 +1810,15 @@ impl App {
                 None if self.sources.is_empty() => {
                     "No feeds yet. Press a to pick some, or run gutenberg --add <url>"
                 }
-                None => "Fetching your feeds…",
+                None => match &self.empty {
+                    Some(empty) => &list::empty_message(
+                        empty,
+                        &self.place_name(),
+                        self.view,
+                        self.refreshing.is_some(),
+                    ),
+                    None => "Fetching your feeds…",
+                },
             };
             note(message.to_owned(), t.muted)
         } else {
@@ -1816,6 +1852,24 @@ impl App {
                 stack![list, progress].into()
             }
             None => list,
+        }
+    }
+
+    /// What the list is showing: a feed's title, a folder's name, or
+    /// every feed.
+    fn place_name(&self) -> String {
+        match self.filter {
+            Filter::All => "your feeds".to_owned(),
+            Filter::Folder(id) => self
+                .folders
+                .iter()
+                .find(|f| f.id == id)
+                .map_or_else(|| "this folder".to_owned(), |f| f.name.clone()),
+            Filter::Source(id) => self
+                .source_titles
+                .get(&id)
+                .cloned()
+                .unwrap_or_else(|| "this feed".to_owned()),
         }
     }
 
@@ -4115,6 +4169,56 @@ mod tests {
         app.config.layout.sources = 0;
         let _ = app.update(Message::Key(Action::NextPane));
         assert_eq!(app.pane, Pane::List);
+    }
+
+    #[test]
+    fn an_empty_list_knows_why() {
+        let (mut app, _, _, b) = app_with_folders();
+        let choose = |app: &mut App, entry| {
+            let _ = app.update(Message::Press(entry));
+            let _ = app.update(Message::Release);
+        };
+        // b's one article is from 1970: the Today view hides it.
+        choose(
+            &mut app,
+            Entry::Source {
+                id: b,
+                filed: false,
+            },
+        );
+        let _ = app.update(Message::Key(Action::View(View::Today)));
+        assert!(app.rows.is_empty());
+        assert_eq!(app.empty, Some(list::Empty::Hidden));
+        assert_eq!(app.place_name(), "b");
+        let _ = app.update(Message::Key(Action::View(View::All)));
+        assert_eq!((app.rows.len(), app.empty.clone()), (1, None));
+
+        // A feed added just now waits for the refresh; one that failed says why.
+        let store = app.store.as_ref().unwrap();
+        let c = store
+            .add_source(&NewSource {
+                folder_id: None,
+                kind: SourceKind::Feed,
+                title: "c".into(),
+                url: Some("https://c.example/feed".into()),
+                config: "{}".into(),
+            })
+            .unwrap()
+            .id;
+        app.reload();
+        choose(
+            &mut app,
+            Entry::Source {
+                id: c,
+                filed: false,
+            },
+        );
+        assert_eq!(app.empty, Some(list::Empty::Unfetched));
+        let store = app.store.as_ref().unwrap();
+        store.record_failure(c, "HTTP 503", 999, 1).unwrap();
+        app.reload();
+        assert_eq!(app.empty, Some(list::Empty::Failed("HTTP 503".into())));
+        let _ = app.view();
     }
 
     #[test]

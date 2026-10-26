@@ -5,6 +5,7 @@
 - The sources pane scrolls, so every folder and feed can be reached when there are more than fit the window.
 - `Tab` moves the keys to the sources pane: `j` and `k` (and `gg`, `G`) step through folders and feeds, showing each as you land on it, and `Enter` or `Tab` goes back to the list. Until now these keys were listed in help but only moved in the list.
 - While feeds refresh, a thin bar fills along the top of the article list and the key bar says how far it has got ("Refreshing 12 of 47"). Both go when the refresh is done.
+- An empty article list says why: nothing since midnight in the Today view, everything read in Unread, a feed not fetched yet or one that failed (with the reason). It used to say "Fetching your feeds…" whatever the cause.
 
 ## 0.23.0 — 2026-10-25
 
