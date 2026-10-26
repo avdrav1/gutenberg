@@ -2740,6 +2740,61 @@ pub mod shots {
         ),
     ];
 
+    /// The alert's first story as seven more outlets headlined it.
+    const RETOLD: [(&str, &str); 7] = [
+        (
+            "Cold-climate heat pumps pass first real winter test",
+            "Valley Courier",
+        ),
+        (
+            "Heat pumps pass their first real winter test in the cold",
+            "Ridge Tribune",
+        ),
+        (
+            "Cold-climate heat pumps pass a real winter test, study finds",
+            "The Plainsman",
+        ),
+        (
+            "Heat pumps pass first winter test in cold climates",
+            "Lakeside Post",
+        ),
+        (
+            "Cold-climate heat pumps pass first real test of winter",
+            "Northern Wire",
+        ),
+        (
+            "First real winter test: cold-climate heat pumps pass",
+            "Coastal Daily",
+        ),
+        (
+            "Cold-climate heat pumps pass their winter test",
+            "Prairie Herald",
+        ),
+    ];
+
+    /// An MCP server already reached, its papers tool picked.
+    const MCP_SERVER: &str = r#"{"url":"https://huggingface.co/mcp","tool":"paper_search",
+        "arguments":"{\"query\":\"small language models\",\"results_limit\":20}",
+        "called":"2026-10-26","tools":[
+        {"name":"paper_search","description":"Find machine learning research papers on Hugging Face"},
+        {"name":"hub_repo_search","description":"Search Hugging Face repositories: models, datasets and Spaces","example":"{\"query\":\"speech to text\",\"repo_types\":[\"model\"],\"limit\":20}"},
+        {"name":"space_search","description":"Find Spaces, the apps people build with models"},
+        {"name":"hf_doc_search","description":"Search the documentation of Hugging Face's libraries"}]}"#;
+
+    /// What the MCP server's tool answered, oldest of the sample.
+    const PAPERS: [(&str, f32); 3] = [
+        ("Small language models that know when to stop", 24.0),
+        ("Distilling a reasoning model into 1B parameters", 26.0),
+        ("A benchmark for models that run on a laptop", 28.0),
+    ];
+
+    const PAPER: &str = r#"<p><strong>Abstract.</strong> Small models answer quickly but rarely
+        know when they've said enough. We train a 1B model to <em>stop early</em> when its
+        answer is settled, cutting output by a third with no loss on four benchmarks.</p>
+        <h2>Results</h2>
+        <ul><li>34% fewer tokens on average.</li><li>Accuracy within 0.2 points of the full model.</li>
+        <li>Runs on a laptop CPU at 40 tokens a second.</li></ul>"#;
+
     /// The story the reader-view scenes open: what `v` fetches.
     pub const FEATURE: usize = 0;
 
@@ -2808,6 +2863,9 @@ $ uname -r</pre>
             "Tiling Weekly" => {
                 r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="#c2415d"/><path d="M3 3h4v10H3zM9 3h4v4H9zM9 9h4v4H9z" fill="#ffeef2"/></svg>"##
             }
+            "Hugging Face" => {
+                r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="#e0a526"/><circle cx="8" cy="8" r="5" fill="#fff3d6"/><circle cx="6.2" cy="7" r="0.9" fill="#3a2a00"/><circle cx="9.8" cy="7" r="0.9" fill="#3a2a00"/><path d="M5.6 9.4q2.4 2 4.8 0" stroke="#3a2a00" stroke-width="1" fill="none"/></svg>"##
+            }
             _ => return None,
         })
     }
@@ -2840,6 +2898,8 @@ $ uname -r</pre>
         size: (f32, f32),
         icons: HashMap<i64, Icon>,
         url: String,
+        /// The MCP server among the sources.
+        server: Option<i64>,
     }
 
     impl Demo {
@@ -2902,7 +2962,54 @@ $ uname -r</pre>
                     fetched_at: now,
                 });
             }
+            // The alert's first story, as other outlets ran it: one row.
+            let (_, alert) = sources
+                .iter()
+                .find(|(s, _)| s.starts_with('"'))
+                .copied()
+                .expect("the keyword alert");
+            for (i, &(title, publisher)) in RETOLD.iter().enumerate() {
+                articles.push(NewArticle {
+                    source_id: alert,
+                    guid: format!("retold-{i}"),
+                    url: Some(format!("https://retold.example/{i}")),
+                    title: title.into(),
+                    author: Some(publisher.into()),
+                    summary_html: Some(STORY.into()),
+                    published_at: Some(now - ((1.5 + i as f32 * 0.4) * 3_600.0) as i64),
+                    fetched_at: now,
+                });
+            }
+            let server = store
+                .add_source(&NewSource {
+                    folder_id: None,
+                    kind: SourceKind::Mcp,
+                    title: "Hugging Face".into(),
+                    url: None,
+                    config: MCP_SERVER.into(),
+                })
+                .expect("MCP server")
+                .id;
+            if let Some(svg) = icon_for("Hugging Face") {
+                icons.insert(
+                    server,
+                    Icon::Vector(svg::Handle::from_memory(svg.as_bytes())),
+                );
+            }
+            for (i, &(title, hours)) in PAPERS.iter().enumerate() {
+                articles.push(NewArticle {
+                    source_id: server,
+                    guid: format!("paper-{i}"),
+                    url: Some(format!("https://huggingface.co/papers/{i}")),
+                    title: title.into(),
+                    author: Some("Hugging Face Papers".into()),
+                    summary_html: Some(PAPER.into()),
+                    published_at: Some(now - (hours * 3_600.0) as i64),
+                    fetched_at: now,
+                });
+            }
             store.insert_articles(&articles).expect("articles");
+            gutenberg_core::story::group_stored(&mut store).expect("stories");
 
             let mut app = App::with_store(Config::default(), None, Ok(store), None);
             app.tokens = tokens;
@@ -2921,6 +3028,7 @@ $ uname -r</pre>
                 size,
                 icons,
                 url: feature_url,
+                server: Some(server),
             }
         }
 
@@ -2935,6 +3043,7 @@ $ uname -r</pre>
                 size,
                 icons: HashMap::new(),
                 url: String::new(),
+                server: None,
             }
         }
 
@@ -3005,6 +3114,48 @@ $ uname -r</pre>
                 self.app.select(i);
                 self.app.open(i);
             }
+        }
+
+        /// Selects and opens the story the alert and seven more outlets
+        /// carry.
+        pub fn open_story(&mut self) {
+            if let Some(i) = self.app.rows.iter().position(|r| r.story_size > 1) {
+                self.app.select(i);
+                self.app.open(i);
+            }
+        }
+
+        /// Picks the MCP server in the sources pane.
+        pub fn server(&mut self) {
+            if let Some(id) = self.server {
+                self.app.choose(Entry::Source { id, filed: false });
+            }
+        }
+
+        /// `T`: the server's tools, or its articles again.
+        pub fn tools(&mut self) {
+            self.key(Action::Tools);
+        }
+
+        /// A key typed into a tool's arguments.
+        pub fn arguments_type(&mut self, c: char) {
+            let _ = self
+                .app
+                .update(Message::ToolArguments(palette::Input::Type(c.to_string())));
+        }
+
+        /// `Backspace` in a tool's arguments.
+        pub fn arguments_back(&mut self) {
+            let _ = self
+                .app
+                .update(Message::ToolArguments(palette::Input::Backspace));
+        }
+
+        /// `Esc` in a tool's arguments.
+        pub fn arguments_close(&mut self) {
+            let _ = self
+                .app
+                .update(Message::ToolArguments(palette::Input::Close));
         }
 
         /// `v`: the page arrives at once, its figure with it.

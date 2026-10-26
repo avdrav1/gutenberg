@@ -1,0 +1,14 @@
+{
+  "name": "gutenberg-voiceover",
+  "private": true,
+  "type": "module",
+  "description": "The tour's voiceover (docs/VOICEOVER.md), spoken by Kokoro-82M on this machine",
+  "devDependencies": {
+    "kokoro-js": "1.2.1"
+  },
+  "overrides": {
+    "@huggingface/transformers": "3.8.1",
+    "sharp": "0.34.5",
+    "onnxruntime-node": "1.21.0"
+  }
+}

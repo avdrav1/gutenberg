@@ -6,3 +6,5 @@ docs/screenshots/
 fuzz/corpus/
 fuzz/artifacts/
 fuzz/coverage/
+scripts/voice/node_modules/
+scripts/voice/.voice/

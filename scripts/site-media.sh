@@ -8,7 +8,11 @@
 #
 # The music is "Beautiful" by avdrav (https://youtu.be/6Uzl3LIiVmo), any
 # format ffmpeg reads; it isn't in the repository. Without it the trailers
-# are silent.
+# are silent but for the voiceover.
+#
+# The long trailer is narrated from docs/VOICEOVER.md by Kokoro-82M, run on
+# this machine (scripts/voice/), once its packages are installed:
+# `(cd scripts/voice && npm ci)`. The model downloads on the first run.
 set -euo pipefail
 
 music=${1:-}
@@ -116,6 +120,32 @@ if [[ -n $music ]]; then
     mv "$here/trailer.mp4" "$work/long.mp4"
     score "$work/long.mp4" "$here/trailer.mp4" "-ss $skip" \
         "adelay=$delay:all=1,apad,atrim=0:$total,afade=out:st=$(awk "BEGIN { print $total - 2.5 }"):d=2.5"
+fi
+
+# The voiceover: each line where its caption comes up, the music ducked
+# under it.
+voice=$root/scripts/voice
+if [[ -d $voice/node_modules ]]; then
+    awk -v OFS='\t' '{
+        c = $1 == "title.png" ? "Title card" : $1 == "end.png" ? "Install card" : $3
+        for (i = 4; i <= NF; i++) c = c " " $i
+        if (c != prev) print s, c
+        prev = c; s += $2
+    }' "$work/long-all.txt" > "$work/cues.txt"
+    node "$voice/voice.mjs" "$root/docs/VOICEOVER.md" "$work/cues.txt" "$total" "$work/voice.wav"
+    mv "$here/trailer.mp4" "$work/scored.mp4"
+    if [[ -n $music ]]; then
+        mix="[1:a]aformat=sample_rates=48000:channel_layouts=stereo,asplit[k][v];"
+        mix+="[0:a][k]sidechaincompress=threshold=0.02:ratio=8:attack=15:release=400[m];"
+        mix+="[m][v]amix=inputs=2:normalize=0:duration=first[a]"
+    else
+        mix="[1:a]aformat=sample_rates=48000:channel_layouts=stereo[a]"
+    fi
+    ffmpeg -loglevel error -y -i "$work/scored.mp4" -i "$work/voice.wav" \
+        -filter_complex "$mix" -map 0:v -map '[a]' -c:v copy -c:a aac -b:a 160k \
+        -movflags +faststart "$here/trailer.mp4"
+else
+    echo "No voiceover: run (cd scripts/voice && npm ci) for one." >&2
 fi
 
 du -h "$here"/*.mp4 "$here"/*.webp | sort -k2
