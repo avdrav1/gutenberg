@@ -113,6 +113,16 @@ pub const ALL: &[Command] = &[
         keys: &["K"],
     },
     Command {
+        action: Action::NextPane,
+        name: "Next pane: the sources or the list",
+        keys: &["Tab"],
+    },
+    Command {
+        action: Action::PrevPane,
+        name: "Previous pane",
+        keys: &["Shift-Tab"],
+    },
+    Command {
         action: Action::AddSources,
         name: "Add sources",
         keys: &["a"],
@@ -222,6 +232,7 @@ mod tests {
             "↑" => Some(Key::Named(Named::ArrowUp)),
             "Enter" => Some(Key::Named(Named::Enter)),
             "Esc" => Some(Key::Named(Named::Escape)),
+            "Tab" | "Shift-Tab" => Some(Key::Named(Named::Tab)),
             _ => None,
         };
         for command in ALL {
@@ -235,7 +246,12 @@ mod tests {
                     list::action_for(&g, Modifiers::empty(), true)
                 } else {
                     let key = named(keys).unwrap_or_else(|| Key::Character((*keys).into()));
-                    list::action_for(&key, Modifiers::empty(), false)
+                    let modifiers = if keys.starts_with("Shift-") {
+                        Modifiers::SHIFT
+                    } else {
+                        Modifiers::empty()
+                    };
+                    list::action_for(&key, modifiers, false)
                 };
                 assert_eq!(action, Some(command.action), "{keys} for {}", command.name);
             }
@@ -265,6 +281,8 @@ mod tests {
             | A::ClearSearch
             | A::Tools
             | A::EnterKey
+            | A::NextPane
+            | A::PrevPane
             | A::View(_) => true,
         };
         let every = [
@@ -292,6 +310,8 @@ mod tests {
             A::View(View::Today),
             A::Tools,
             A::EnterKey,
+            A::NextPane,
+            A::PrevPane,
         ];
         for action in every.into_iter().filter(|a| needs_row(*a)) {
             assert!(

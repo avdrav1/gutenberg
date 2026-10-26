@@ -47,6 +47,9 @@ pub enum Action {
     Tools,
     /// Types the key the chosen MCP server needs, to save in the keyring.
     EnterKey,
+    /// Moves the keys to the other pane: the sources or the list.
+    NextPane,
+    PrevPane,
 }
 
 /// `pending_g` is whether the last key was a lone `g`.
@@ -80,6 +83,8 @@ pub fn action_for(key: &Key, modifiers: Modifiers, pending_g: bool) -> Option<Ac
         Key::Character("t") => Some(Action::View(View::Today)),
         Key::Character("T") => Some(Action::Tools),
         Key::Character("K") => Some(Action::EnterKey),
+        Key::Named(Named::Tab) if modifiers.shift() => Some(Action::PrevPane),
+        Key::Named(Named::Tab) => Some(Action::NextPane),
         _ => None,
     }
 }
