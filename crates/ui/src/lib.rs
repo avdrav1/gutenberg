@@ -21,6 +21,7 @@ use gutenberg_core::web::{self, Answer, Web};
 use gutenberg_core::{ipc, keyword, mcp, secrets};
 use gutenberg_store::{ArticleRow, Filter, Folder, Source, SourceKind, Store, View, ViewCounts};
 use gutenberg_theme::{Rgb, Scheme, Tokens};
+use iced::advanced::widget::{self, operation, Operation};
 use iced::futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use iced::futures::Stream;
 use iced::keyboard;
@@ -30,11 +31,12 @@ use iced::widget::{
     text, Column, Row, Space,
 };
 use iced::{
-    border, font, window, Alignment, Border, Color, Element, Font, Length, Size, Subscription, Task,
+    border, font, window, Alignment, Border, Color, Element, Font, Length, Rectangle, Size,
+    Subscription, Task, Vector,
 };
 
 use list::Action;
-use sidebar::{Entry, Move};
+use sidebar::{Entry, Move, Step};
 
 /// Most articles kept in the list; the PRD plans for 100k.
 const LIST_LIMIT: u32 = 100_000;
@@ -53,6 +55,12 @@ const SEARCH_BAR: f32 = 36.0;
 const HINT_BAR: f32 = 28.0;
 /// Site icons in the sources pane, square.
 const ICON_SIZE: f32 = 16.0;
+/// The drop target below the last source, scrolled with the rows: a drop
+/// there takes a source out of its folder.
+const UNFILED_STRIP: f32 = 32.0;
+/// The sources pane's scrollable, and the row the keys are on in it.
+const SOURCES_SCROLL: &str = "sources";
+const SOURCES_CURSOR: &str = "sources-cursor";
 
 /// Opens the window and blocks until it closes. When `config_path` is set,
 /// edits to that file apply while the window is open. `store_path` is the
@@ -248,6 +256,14 @@ struct App {
     overlay: Option<Overlay>,
     /// A search in place of the chosen folder or feed's list.
     search: Option<Search>,
+    /// Where `j`, `k` and Enter work: the sources pane or the list.
+    pane: Pane,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Pane {
+    Sources,
+    List,
 }
 
 /// What `/` started.
@@ -321,6 +337,56 @@ struct ArgumentEditor {
     text: String,
     /// Why the last Enter didn't save it.
     error: Option<String>,
+}
+
+/// Scrolls the sources pane just enough to show the cursor's row: finds
+/// the pane and the row, then scrolls.
+#[derive(Default)]
+struct ShowCursor {
+    /// The pane's bounds, its content's, and how far it's scrolled.
+    pane: Option<(Rectangle, Rectangle, Vector)>,
+    row: Option<Rectangle>,
+}
+
+impl Operation for ShowCursor {
+    fn traverse(&mut self, operate: &mut dyn FnMut(&mut dyn Operation)) {
+        operate(self);
+    }
+
+    fn container(&mut self, id: Option<&widget::Id>, bounds: Rectangle) {
+        if id == Some(&widget::Id::new(SOURCES_CURSOR)) {
+            self.row = Some(bounds);
+        }
+    }
+
+    fn scrollable(
+        &mut self,
+        id: Option<&widget::Id>,
+        bounds: Rectangle,
+        content_bounds: Rectangle,
+        translation: Vector,
+        _state: &mut dyn operation::Scrollable,
+    ) {
+        if id == Some(&widget::Id::new(SOURCES_SCROLL)) {
+            self.pane = Some((bounds, content_bounds, translation));
+        }
+    }
+
+    fn finish(&self) -> operation::Outcome<()> {
+        let (Some((pane, content, scrolled)), Some(row)) = (self.pane, self.row) else {
+            return operation::Outcome::None;
+        };
+        match sidebar::scroll_to_show(scrolled.y, pane.height, row.y - content.y, row.height) {
+            Some(y) => operation::Outcome::Chain(Box::new(operation::scrollable::scroll_to(
+                widget::Id::new(SOURCES_SCROLL),
+                operation::scrollable::AbsoluteOffset {
+                    x: None,
+                    y: Some(y),
+                },
+            ))),
+            None => operation::Outcome::None,
+        }
+    }
 }
 
 /// A press on a sources-pane row and where the pointer is now.
@@ -541,6 +607,7 @@ impl App {
             web: None,
             pictures: HashMap::new(),
             pending_g: false,
+            pane: Pane::List,
             bench,
             inbox: None,
             progress: None,
@@ -675,6 +742,21 @@ impl App {
         if !matches!(message, Message::Key(Action::PendingG)) {
             self.pending_g = false;
         }
+        if let Message::Key(action) = message {
+            match (self.pane, action) {
+                (Pane::Sources, Action::Down) => return self.step_sources(Step::Down),
+                (Pane::Sources, Action::Up) => return self.step_sources(Step::Up),
+                (Pane::Sources, Action::First) => return self.step_sources(Step::First),
+                (Pane::Sources, Action::Last) => return self.step_sources(Step::Last),
+                (Pane::Sources, Action::Open) => {
+                    self.pane = Pane::List;
+                    return Task::none();
+                }
+                // These work in the list pane, so the keys go there.
+                (_, Action::Search | Action::Tools | Action::EnterKey) => self.pane = Pane::List,
+                _ => {}
+            }
+        }
         // While a server's tools are shown, moving and Enter work on them.
         if let (Some(id), Message::Key(action)) = (self.chosen_mcp(), &message) {
             if self.tools_key(id, *action) {
@@ -688,6 +770,7 @@ impl App {
             Message::KeyEntry(input) => return self.type_key(input),
             Message::KeySaved(id, saved) => self.key_saved(id, saved),
             Message::Key(Action::Quit) => return iced::exit(),
+            Message::Key(Action::NextPane | Action::PrevPane) => return self.switch_pane(),
             Message::Key(Action::AddSources) => self.open_onboarding(),
             Message::Key(Action::Reader) => self.toggle_reader(),
             Message::Key(Action::Palette) => {
@@ -751,6 +834,7 @@ impl App {
             Message::Key(Action::Last) => self.select(usize::MAX),
             Message::Key(Action::Open) => self.open(self.selected),
             Message::Click(i) => {
+                self.pane = Pane::List;
                 self.select(i);
                 self.open(i);
             }
@@ -873,6 +957,37 @@ impl App {
         }
     }
 
+    /// With two panes there's one other: Tab and Shift-Tab both go there.
+    /// Nothing happens while the sources pane is hidden.
+    fn switch_pane(&mut self) -> Task<Message> {
+        if self.config.layout.sources == 0 || self.store.is_err() {
+            return Task::none();
+        }
+        self.pane = match self.pane {
+            Pane::Sources => Pane::List,
+            Pane::List => Pane::Sources,
+        };
+        self.show_sources_cursor()
+    }
+
+    /// Chooses the next, previous, first or last row of the sources pane,
+    /// as a click on it would, and scrolls the pane to show it.
+    fn step_sources(&mut self, to: Step) -> Task<Message> {
+        let rows = sidebar::entries(&self.folders, &self.sources);
+        let at = sidebar::cursor(&rows, self.filter, self.view);
+        if let Some(next) = sidebar::step(rows.len(), at, to) {
+            self.choose(rows[next]);
+        }
+        self.show_sources_cursor()
+    }
+
+    fn show_sources_cursor(&self) -> Task<Message> {
+        if self.pane != Pane::Sources {
+            return Task::none();
+        }
+        iced::advanced::widget::operate(ShowCursor::default()).discard()
+    }
+
     /// Re-reads the list and puts the selection at its top.
     fn show_from_top(&mut self) {
         self.selected = 0;
@@ -928,6 +1043,7 @@ impl App {
         use hints::Screen;
         match (&self.search, &self.opened) {
             (Some(search), _) if search.editing => Screen::Searching,
+            _ if self.pane == Pane::Sources && !self.sources.is_empty() => Screen::Sources,
             (Some(_), _) => Screen::Results,
             _ if self.tools.editor.is_some() => Screen::Arguments,
             _ if self.tools.key.is_some() => Screen::Key,
@@ -1498,20 +1614,29 @@ impl App {
         if self.store.is_err() {
             return Space::new().into();
         }
-        let rows = sidebar::entries(&self.folders, &self.sources)
+        let entries = sidebar::entries(&self.folders, &self.sources);
+        let cursor = sidebar::cursor(&entries, self.filter, self.view);
+        let rows = entries
             .into_iter()
-            .map(|entry| self.sidebar_row(entry));
+            .enumerate()
+            .map(|(i, entry)| self.sidebar_row(entry, cursor == Some(i)));
         // The space below the rows is a drop target too: out of any folder.
-        let rest = mouse_area(Space::new().width(Length::Fill).height(Length::Fill))
-            .on_enter(Message::Over(Entry::Unfiled));
-        let rest: Element<'_, Message> = if self.drop_line_at(Entry::Unfiled) {
-            column![drop_line(t.accent), rest].into()
-        } else {
-            rest.into()
+        // Past the last row a strip of it scrolls with them, so it can be
+        // reached when they fill the pane.
+        let unfiled = |height| {
+            mouse_area(Space::new().width(Length::Fill).height(height))
+                .on_enter(Message::Over(Entry::Unfiled))
         };
-        Column::with_children(rows)
-            .push(rest)
-            .padding([8, 0])
+        let end: Element<'_, Message> = if self.drop_line_at(Entry::Unfiled) {
+            column![drop_line(t.accent), unfiled(Length::Fixed(UNFILED_STRIP))].into()
+        } else {
+            unfiled(Length::Fixed(UNFILED_STRIP)).into()
+        };
+        // More sources than fit scroll; fewer leave the pane's rest empty.
+        let rows = scrollable(Column::with_children(rows).push(end).padding([8, 0]))
+            .id(SOURCES_SCROLL)
+            .height(Length::Shrink);
+        column![rows, unfiled(Length::Fill)]
             .height(Length::Fill)
             .into()
     }
@@ -1523,7 +1648,9 @@ impl App {
         })
     }
 
-    fn sidebar_row(&self, entry: Entry) -> Element<'_, Message> {
+    /// `at_cursor` for the row that stands for what the list shows; with
+    /// the keys in the sources pane, its name takes the accent.
+    fn sidebar_row(&self, entry: Entry, at_cursor: bool) -> Element<'_, Message> {
         let t = &self.tokens;
         let (name, bold, indent) = match entry {
             Entry::View(view) => (sidebar::view_name(view).to_owned(), true, 12),
@@ -1553,9 +1680,16 @@ impl App {
         } else {
             font::Weight::Normal
         };
+        let focused = at_cursor && self.pane == Pane::Sources;
         let label = text(name)
             .size(14)
-            .color(color(if dragged { t.muted } else { t.foreground }))
+            .color(color(if dragged {
+                t.muted
+            } else if focused {
+                t.accent
+            } else {
+                t.foreground
+            }))
             .font(Font {
                 weight,
                 ..Font::DEFAULT
@@ -1612,6 +1746,11 @@ impl App {
             None => line.into(),
         };
         let row = container(line)
+            .id(if at_cursor {
+                SOURCES_CURSOR
+            } else {
+                "sources-row"
+            })
             .padding(iced::Padding::from([6, 12]).left(indent as f32))
             .width(Length::Fill)
             .clip(true)
@@ -3924,6 +4063,58 @@ mod tests {
         let _ = app.update(Message::PollProgress);
         assert_eq!(app.refreshing, None);
         let _ = app.view();
+    }
+
+    #[test]
+    fn tab_gives_the_keys_to_the_sources_pane_where_they_choose_rows() {
+        let (mut app, tech, a, b) = app_with_folders();
+        let key = |app: &mut App, action| {
+            let _ = app.update(Message::Key(action));
+        };
+        key(&mut app, Action::NextPane);
+        assert_eq!(app.screen(), hints::Screen::Sources);
+
+        // Each row is chosen as the keys land on it, as a click would.
+        key(&mut app, Action::Last);
+        assert_eq!((app.filter, app.rows.len()), (Filter::Source(b), 1));
+        key(&mut app, Action::Up);
+        assert_eq!((app.filter, app.rows.len()), (Filter::Source(a), 2));
+        key(&mut app, Action::Up);
+        assert_eq!(app.filter, Filter::Folder(tech));
+        key(&mut app, Action::Up);
+        assert_eq!((app.filter, app.view), (Filter::All, View::Today));
+        key(&mut app, Action::PendingG);
+        key(&mut app, Action::First);
+        assert_eq!((app.filter, app.view), (Filter::All, View::All));
+        key(&mut app, Action::Down);
+        assert_eq!(app.view, View::Unread);
+        key(&mut app, Action::Up);
+        assert_eq!(app.rows.len(), 3);
+
+        // Enter hands the keys to the list, where j moves the selection.
+        key(&mut app, Action::Open);
+        assert_eq!(app.pane, Pane::List);
+        assert!(app.opened.is_none());
+        key(&mut app, Action::Down);
+        assert_eq!((app.selected, app.filter), (1, Filter::All));
+
+        // Shift-Tab goes back; a click in the list takes the keys again.
+        key(&mut app, Action::PrevPane);
+        assert_eq!(app.pane, Pane::Sources);
+        let _ = app.update(Message::Click(0));
+        assert_eq!(app.pane, Pane::List);
+        // A search types in the list, wherever the keys were.
+        key(&mut app, Action::NextPane);
+        key(&mut app, Action::Search);
+        assert_eq!(app.pane, Pane::List);
+    }
+
+    #[test]
+    fn tab_does_nothing_while_the_sources_pane_is_hidden() {
+        let (mut app, ..) = app_with_folders();
+        app.config.layout.sources = 0;
+        let _ = app.update(Message::Key(Action::NextPane));
+        assert_eq!(app.pane, Pane::List);
     }
 
     #[test]

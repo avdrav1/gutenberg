@@ -14,6 +14,8 @@ pub enum Screen {
     Empty,
     /// The list, nothing open.
     List,
+    /// The keys are in the sources pane.
+    Sources,
     /// An article open, as the feed sent it.
     Summary,
     /// An article open as its full page.
@@ -53,6 +55,15 @@ pub fn for_screen(screen: Screen) -> Vec<Hint> {
             moves,
             key(Action::Open, "open"),
             key(Action::Search, "search"),
+            key(Action::View(View::Unread), "unread"),
+            key(Action::AddSources, "add sources"),
+            key(Action::Palette, "commands"),
+            key(Action::Help, "keys"),
+        ],
+        Screen::Sources => vec![
+            moves,
+            key(Action::Open, "articles"),
+            key(Action::NextPane, "list"),
             key(Action::View(View::Unread), "unread"),
             key(Action::AddSources, "add sources"),
             key(Action::Palette, "commands"),
@@ -139,9 +150,10 @@ fn key(action: Action, label: &'static str) -> Hint {
 mod tests {
     use super::*;
 
-    const EVERY: [Screen; 9] = [
+    const EVERY: [Screen; 10] = [
         Screen::Empty,
         Screen::List,
+        Screen::Sources,
         Screen::Summary,
         Screen::Reader,
         Screen::Searching,
