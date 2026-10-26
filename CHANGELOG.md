@@ -3,6 +3,7 @@
 ## Unreleased
 
 - The sources pane scrolls, so every folder and feed can be reached when there are more than fit the window.
+- `Tab` moves the keys to the sources pane: `j` and `k` (and `gg`, `G`) step through folders and feeds, showing each as you land on it, and `Enter` or `Tab` goes back to the list. Until now these keys were listed in help but only moved in the list.
 
 ## 0.23.0 — 2026-10-25
 

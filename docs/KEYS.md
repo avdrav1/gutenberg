@@ -4,9 +4,9 @@ The bar along the bottom of the window shows the keys for what's on screen; `hin
 
 | Key | Action | Pane |
 |---|---|---|
-| `j` / `k` | next / previous item | list, sources |
-| `gg` / `G` | first / last | list |
-| `o` / `Enter` | open article (a story's row opens its newest article and marks the whole story read) | list |
+| `j` / `k` | next / previous item; in the sources pane each folder or feed is chosen as you land on it, and the pane scrolls to keep it in view | list, sources |
+| `gg` / `G` | first / last | list, sources |
+| `o` / `Enter` | open article (a story's row opens its newest article and marks the whole story read); in the sources pane, back to the list | list, sources |
 | `v` | reader view: the full article from its page, or back to the feed's summary | list, article |
 | `O` | open the selected article in the browser | list, article |
 | `m` | mark the selected article unread, or read again (a story: every article in it) | list |
@@ -19,7 +19,7 @@ The bar along the bottom of the window shows the keys for what's on screen; `hin
 | `T` | the chosen MCP server's tools, to pick the one its refresh calls; again for its articles | list |
 | `K` | type the key the chosen MCP server needs (such as `JINA_API_KEY`); it's saved in your keyring | list |
 | `a` | add sources (the catalog) | any |
-| `Tab` / `Shift-Tab` | next / previous pane | any |
+| `Tab` / `Shift-Tab` | the keys go to the sources pane or back to the list; the chosen row's name takes the accent while the sources pane has them | any |
 | `1` `2` `3` | toggle sources / list / article pane | any |
 | `:` | command palette: find any action by name | any |
 | `?` | help: every action and its keys | any |
