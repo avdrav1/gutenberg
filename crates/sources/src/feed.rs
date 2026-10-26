@@ -227,6 +227,7 @@ pub fn parse(bytes: &[u8], feed_url: &str) -> Result<Feed, FeedError> {
         return Err(FeedError::Empty);
     }
     let bytes = without_late_declarations(bytes);
+    let bytes = short_declaration(&bytes);
     // A parser bug must cost one feed, not the refresh thread. (The crash
     // report still gets written, so it can be reported.)
     let parsed = std::panic::catch_unwind(|| {
@@ -301,6 +302,54 @@ fn without_late_declarations(bytes: &[u8]) -> std::borrow::Cow<'_, [u8]> {
             .map_or(bytes.len(), |end| at + end + 2);
     }
     out.extend_from_slice(&bytes[from.min(bytes.len())..]);
+    std::borrow::Cow::Owned(out)
+}
+
+/// The bytes with a declaration that ends past quick-xml's first 64 bytes
+/// written short, keeping its encoding: quick-xml 0.42 panics when a
+/// declaration naming another encoding than UTF-8 ends any later (found by
+/// `fuzz/`, padded out with junk before its `?>`).
+fn short_declaration(bytes: &[u8]) -> std::borrow::Cow<'_, [u8]> {
+    const ROOM: usize = 64;
+    let start = bytes.strip_prefix(b"\xEF\xBB\xBF").map_or(0, |_| 3);
+    let at = start
+        + bytes[start..]
+            .iter()
+            .take_while(|b| b.is_ascii_whitespace())
+            .count();
+    let Some(end) = bytes[at..]
+        .starts_with(b"<?xml")
+        .then(|| bytes[at..].windows(2).position(|w| w == b"?>"))
+        .flatten()
+        .map(|end| at + end + 2)
+    else {
+        return std::borrow::Cow::Borrowed(bytes);
+    };
+    if end <= ROOM {
+        return std::borrow::Cow::Borrowed(bytes);
+    }
+    let declaration = &bytes[at..end];
+    // `encoding`, then `=` and a quoted label, spaces allowed between.
+    let encoding = declaration
+        .windows(8)
+        .position(|w| w == b"encoding")
+        .and_then(|i| {
+            let rest = declaration[i + 8..].trim_ascii_start().strip_prefix(b"=")?;
+            let rest = rest.trim_ascii_start();
+            let quote = *rest.first().filter(|q| matches!(q, b'"' | b'\''))?;
+            let label = &rest[1..];
+            label.iter().position(|&b| b == quote).map(|n| &label[..n])
+        })
+        .filter(|label| label.iter().all(|b| b.is_ascii_graphic()));
+    let mut out = bytes[..start].to_vec();
+    out.extend_from_slice(b"<?xml version=\"1.0\"");
+    if let Some(label) = encoding.filter(|l| start + 35 + l.len() <= ROOM) {
+        out.extend_from_slice(b" encoding=\"");
+        out.extend_from_slice(label);
+        out.push(b'"');
+    }
+    out.extend_from_slice(b"?>");
+    out.extend_from_slice(&bytes[end..]);
     std::borrow::Cow::Owned(out)
 }
 
@@ -478,6 +527,46 @@ mod tests {
         );
         // Unterminated: the rest goes with it.
         assert_eq!(strip("<rss></rss><?xml version"), "<rss></rss>");
+    }
+
+    #[test]
+    fn a_long_declaration_is_written_short_with_its_encoding() {
+        let short =
+            |s: &str| String::from_utf8(short_declaration(s.as_bytes()).into_owned()).unwrap();
+        let fits = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><rss/>";
+        assert!(matches!(
+            short_declaration(fits.as_bytes()),
+            std::borrow::Cow::Borrowed(_)
+        ));
+        let padded = format!(
+            "\u{feff}  <?xml version=\"1.0\" encoding = 'ISO-8859-1'{}?>\n<rss/>",
+            "B".repeat(70)
+        );
+        assert_eq!(
+            short(&padded),
+            "\u{feff}<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<rss/>"
+        );
+        // No encoding, or none that fits: UTF-8, as XML assumes.
+        let bare = format!("<?xml version=\"1.0\"{}?><rss/>", " ".repeat(70));
+        assert_eq!(short(&bare), "<?xml version=\"1.0\"?><rss/>");
+    }
+
+    #[test]
+    fn a_feed_whose_declaration_ends_late_still_reads() {
+        // The fuzzer's input, cut down: Latin-1 named, then junk to byte 111.
+        let mut feed = format!(
+            "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"{}?>\n",
+            "B".repeat(70)
+        )
+        .into_bytes();
+        feed.extend_from_slice(
+            b"<rss version=\"2.0\"><channel><title>Caf\xe9</title>\
+              <item><title>Cr\xe8me</title><link>https://example.com/1</link></item>\
+              </channel></rss>",
+        );
+        let parsed = parse(&feed, "https://example.com/feed.xml").unwrap();
+        assert_eq!(parsed.title, "Café");
+        assert_eq!(parsed.entries[0].title, "Crème");
     }
 
     #[test]
