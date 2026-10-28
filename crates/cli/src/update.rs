@@ -57,12 +57,33 @@ fn update_to_latest() -> Result<(), String> {
     Ok(())
 }
 
-/// Where this binary is, so the new one replaces it.
+/// Where this binary is, so the new one replaces it. Inside a `Gutenberg.app`
+/// the installer would swap the executable alone, leaving the bundle's
+/// `Info.plist` saying the old version, so that asks for the whole bundle.
 fn install_dir() -> Result<PathBuf, String> {
-    let exe = std::env::current_exe().and_then(std::fs::canonicalize);
-    exe.ok()
-        .and_then(|exe| exe.parent().map(Path::to_owned))
+    let exe = std::env::current_exe()
+        .and_then(std::fs::canonicalize)
+        .map_err(|_| "couldn't tell where gutenberg is installed".to_owned())?;
+    if cfg!(target_os = "macos") {
+        if let Some(bundle) = app_bundle(&exe) {
+            return Err(format!(
+                "this is {}; download the new Gutenberg.app from the release page and replace it",
+                bundle.display()
+            ));
+        }
+    }
+    exe.parent()
+        .map(Path::to_owned)
         .ok_or_else(|| "couldn't tell where gutenberg is installed".to_owned())
+}
+
+/// The `.app` an executable at `<bundle>/Contents/MacOS/<name>` is in.
+fn app_bundle(exe: &Path) -> Option<PathBuf> {
+    let bundle = exe.parent()?.parent()?.parent()?;
+    let in_bundle = exe.parent()?.file_name()? == "MacOS"
+        && exe.parent()?.parent()?.file_name()? == "Contents"
+        && bundle.extension()? == "app";
+    in_bundle.then(|| bundle.to_owned())
 }
 
 /// `sh` reading the installer on stdin, for `version`, into `dir`.
@@ -99,5 +120,24 @@ mod tests {
         )));
         // A test build's tarball location never leaks into an update.
         assert!(env.contains(&("GUTENBERG_BASE_URL".as_ref(), None)));
+    }
+
+    #[test]
+    fn only_an_executable_inside_an_app_bundle_names_one() {
+        assert_eq!(
+            app_bundle(Path::new(
+                "/Applications/Gutenberg.app/Contents/MacOS/gutenberg"
+            )),
+            Some(PathBuf::from("/Applications/Gutenberg.app"))
+        );
+        for bare in [
+            "/home/me/.local/bin/gutenberg",
+            "/Users/me/.local/bin/gutenberg",
+            "/Applications/Gutenberg.app/Contents/Resources/gutenberg",
+            "/Applications/Gutenberg/Contents/MacOS/gutenberg",
+            "gutenberg",
+        ] {
+            assert_eq!(app_bundle(Path::new(bare)), None, "{bare}");
+        }
     }
 }
