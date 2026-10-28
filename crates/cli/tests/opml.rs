@@ -1,7 +1,7 @@
 //! S2.5 acceptance: a Feedly export goes through `gutenberg --import` and
 //! comes back out of `gutenberg --export` without losing a feed or folder.
-//! Linux only: `XDG_DATA_HOME` points the store at a temp dir there.
-#![cfg(target_os = "linux")]
+//! The store goes to a temp dir: through `XDG_DATA_HOME` on Linux, and on
+//! macOS through `HOME`, which `directories` reads for `~/Library`.
 
 use std::collections::HashSet;
 use std::path::Path;
@@ -14,10 +14,22 @@ const FEEDLY: &str = concat!(
     "/../../tests/fixtures/opml/feedly.opml"
 );
 
+/// Where the child finds its store, and where that store lands.
+const DATA_HOME: &str = if cfg!(target_os = "macos") {
+    "HOME"
+} else {
+    "XDG_DATA_HOME"
+};
+const STORE: &str = if cfg!(target_os = "macos") {
+    "Library/Application Support/gutenberg/gutenberg.db"
+} else {
+    "gutenberg/gutenberg.db"
+};
+
 fn gutenberg(data_home: &Path, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_gutenberg"))
         .args(args)
-        .env("XDG_DATA_HOME", data_home)
+        .env(DATA_HOME, data_home)
         .output()
         .unwrap()
 }
@@ -93,7 +105,7 @@ fn importing_again_adds_nothing() {
         import(data.path(), FEEDLY),
         "Imported 0 feeds in 6 folders; 20 already added\n"
     );
-    let store = gutenberg_store::Store::open(&data.path().join("gutenberg/gutenberg.db")).unwrap();
+    let store = gutenberg_store::Store::open(&data.path().join(STORE)).unwrap();
     assert_eq!(store.sources().unwrap().len(), 20);
     assert_eq!(store.folders().unwrap().len(), 6);
 }
