@@ -2115,6 +2115,7 @@ dependencies = [
  "gutenberg-theme",
  "iced",
  "iced_test",
+ "libc",
  "scraper",
  "tempfile",
  "url",

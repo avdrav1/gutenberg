@@ -3310,6 +3310,7 @@ $ uname -r</pre>
 
 /// The process's own memory (heap and other anonymous pages) against all
 /// it has resident, which counts the GPU driver's libraries too.
+#[cfg(target_os = "linux")]
 fn memory_report() -> String {
     let status = std::fs::read_to_string("/proc/self/status").unwrap_or_default();
     let field = |name: &str| {
@@ -3329,6 +3330,44 @@ fn memory_report() -> String {
         field("RssAnon:"),
         field("VmRSS:"),
         field("VmHWM:")
+    )
+}
+
+/// What the process has resident now and at its peak. macOS doesn't set
+/// the process's own pages apart from its libraries', so there is no "own"
+/// figure here.
+#[cfg(target_os = "macos")]
+fn memory_report() -> String {
+    use std::ffi::{c_int, c_void};
+    let mb = |bytes: Option<u64>| {
+        bytes.map_or("?".to_owned(), |bytes| {
+            format!("{} MB", bytes / (1024 * 1024))
+        })
+    };
+    // SAFETY: each call fills a plain struct of integers on the stack and is
+    // given that struct's size; on failure it writes nothing and says so.
+    let resident = unsafe {
+        let mut info: libc::proc_taskinfo = std::mem::zeroed();
+        let size = std::mem::size_of::<libc::proc_taskinfo>() as c_int;
+        let written = libc::proc_pidinfo(
+            std::process::id() as c_int,
+            libc::PROC_PIDTASKINFO,
+            0,
+            std::ptr::from_mut(&mut info).cast::<c_void>(),
+            size,
+        );
+        (written == size).then_some(info.pti_resident_size)
+    };
+    // `ru_maxrss` is in bytes on macOS (kilobytes on Linux).
+    let peak = unsafe {
+        let mut usage: libc::rusage = std::mem::zeroed();
+        (libc::getrusage(libc::RUSAGE_SELF, &mut usage) == 0)
+            .then(|| u64::try_from(usage.ru_maxrss).unwrap_or(0))
+    };
+    format!(
+        "{} resident, {} at most (own memory isn't separable on macOS)",
+        mb(resident),
+        mb(peak)
     )
 }
 

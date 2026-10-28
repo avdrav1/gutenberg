@@ -30,7 +30,7 @@ Cargo workspace. One crate per concern; the UI never touches the network.
 
 ## Performance budgets
 
-Cold start to first paint under 250 ms (Vulkan setup is ~170 ms of it; see S3.1). 10k articles scroll at 60 fps. Search under 50 ms at 100k articles. Under 150 MB of the window's own memory (`RssAnon`; the GPU driver's libraries add about 165 MB on NVIDIA) with 10k articles, measured by `GUTENBERG_MEMORY_BENCH=<articles>`, which opens that many in turn and reports. A story that breaks a budget isn't done; `cargo bench` has a benchmark for each of the rest.
+Cold start to first paint under 250 ms (Vulkan setup is ~170 ms of it; see S3.1). 10k articles scroll at 60 fps. Search under 50 ms at 100k articles. Under 150 MB of the window's own memory (`RssAnon`; the GPU driver's libraries add about 165 MB on NVIDIA) with 10k articles, measured by `GUTENBERG_MEMORY_BENCH=<articles>`, which opens that many in turn and reports. The own-memory figure is Linux's; macOS reports resident and peak only. A story that breaks a budget isn't done; `cargo bench` has a benchmark for each of the rest.
 
 ## Omarchy facts
 
