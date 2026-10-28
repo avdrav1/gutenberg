@@ -140,14 +140,32 @@ const KEYCHAIN_SERVICE: &str = "gutenberg";
 #[cfg(target_os = "macos")]
 const ERR_SEC_ITEM_NOT_FOUND: i32 = -25300;
 
-/// `errSecUserCanceled`: the keychain asked and the user said no.
+/// `errSecUserCanceled`: the keychain asked for its password and the user
+/// cancelled.
 #[cfg(target_os = "macos")]
 const ERR_SEC_USER_CANCELED: i32 = -128;
+
+/// `errSecAuthFailed`: the user chose Deny when the keychain asked whether
+/// this binary may read the item. The framework's own text for it talks of
+/// a wrong password, which the user never typed.
+#[cfg(target_os = "macos")]
+const ERR_SEC_AUTH_FAILED: i32 = -25293;
+
+/// `errSecInteractionNotAllowed`: the keychain needed to ask and had no
+/// session to ask in, as from `gutenberg --refresh` over ssh.
+#[cfg(target_os = "macos")]
+const ERR_SEC_INTERACTION_NOT_ALLOWED: i32 = -25308;
 
 #[cfg(target_os = "macos")]
 fn keyring_error(e: security_framework::base::Error) -> String {
     match e.code() {
         ERR_SEC_USER_CANCELED => "the keychain stayed locked".into(),
+        ERR_SEC_AUTH_FAILED => {
+            "the keychain refused this build; choose Always Allow when it asks".into()
+        }
+        ERR_SEC_INTERACTION_NOT_ALLOWED => {
+            "the keychain can only ask in a logged-in session; run this from the desktop".into()
+        }
         _ => format!("the keychain: {e}"),
     }
 }

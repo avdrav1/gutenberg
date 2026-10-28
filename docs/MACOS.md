@@ -21,7 +21,7 @@ The app and the binary are signed ad hoc (`codesign -s -`): there is no Apple De
 
 The script never removes the quarantine flag on your behalf.
 
-Each `--update` replaces the executable with one whose ad-hoc signature has no stable identity, so the keychain asks once more before it hands over MCP keys to the new build.
+Each `--update` replaces the executable with one whose ad-hoc signature has no stable identity, so the keychain asks once more before it hands over MCP keys to the new build. Choose Always Allow; Deny leaves the server without its key until the next refresh asks again.
 
 ## Where things are
 

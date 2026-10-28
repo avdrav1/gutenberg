@@ -26,6 +26,10 @@ env:
 jobs:
   build:
     strategy:
+      # A Mac leg that fails (a brew flake, a runner label gone) must not
+      # cancel the Linux legs: they finish and upload, and the run shows
+      # which target broke.
+      fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
@@ -98,6 +102,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
+          pattern: gutenberg-*-linux-gnu
           path: dist
           merge-multiple: true
       - name: Install with install.sh
