@@ -5,15 +5,18 @@
 #
 # Downloads the release tarball for this machine from GitHub Releases,
 # checks it against the release's SHA256SUMS, and installs the binary to
-# ~/.local/bin, with a desktop entry and an icon in ~/.local/share so app
-# launchers list it. On Omarchy it also adds a theme-set and a font-set
+# ~/.local/bin. On Linux it adds a desktop entry and an icon in ~/.local/share
+# so app launchers list it; on Omarchy it also adds a theme-set and a font-set
 # hook, so an open window follows `omarchy theme set` and `omarchy font set`,
 # and a bar widget with the unread count (not placed on the bar; add it with
-# `omarchy bar`). Nothing else on the system is touched.
+# `omarchy bar`). On macOS it puts Gutenberg.app in ~/Applications, checked
+# the same way. Nothing else on the system is touched.
 #
 # Environment:
 #   GUTENBERG_VERSION      a release such as 0.1.0 (default: latest)
 #   GUTENBERG_INSTALL_DIR  where the binary goes (default: ~/.local/bin)
+#   GUTENBERG_APP_DIR      macOS: where Gutenberg.app goes (default:
+#                          ~/Applications; empty for no app)
 #   GUTENBERG_BASE_URL     where the tarballs are (for testing a build)
 
 set -eu
@@ -27,12 +30,26 @@ fail() { printf 'gutenberg install: %s\n' "$*" >&2; exit 1; }
 # can't execute half of it.
 main() {
     os=$(uname -s)
-    [ "$os" = "Linux" ] || fail "Linux only for now (this is $os)"
-
-    case $(uname -m) in
-        x86_64 | amd64) target="x86_64-unknown-linux-gnu" ;;
-        aarch64 | arm64) target="aarch64-unknown-linux-gnu" ;;
-        *) fail "no build for $(uname -m); x86_64 and aarch64 are supported" ;;
+    case $os in
+        Linux)
+            case $(uname -m) in
+                x86_64 | amd64) target="x86_64-unknown-linux-gnu" ;;
+                aarch64 | arm64) target="aarch64-unknown-linux-gnu" ;;
+                *) fail "no build for $(uname -m); x86_64 and aarch64 are supported" ;;
+            esac
+            ;;
+        Darwin)
+            arch=$(uname -m)
+            # A terminal running under Rosetta says x86_64 on an Apple
+            # silicon Mac; the native build is the one to install.
+            [ "$(sysctl -n sysctl.proc_translated 2>/dev/null)" = 1 ] && arch=arm64
+            case $arch in
+                arm64) target="aarch64-apple-darwin" ;;
+                x86_64) target="x86_64-apple-darwin" ;;
+                *) fail "no build for $arch; Apple silicon and Intel Macs are supported" ;;
+            esac
+            ;;
+        *) fail "Linux and macOS only for now (this is $os)" ;;
     esac
 
     if [ -n "${GUTENBERG_BASE_URL:-}" ]; then
@@ -78,9 +95,14 @@ main() {
 
     version=$("$dir/gutenberg" --version 2>/dev/null || true)
     say "Installed ${version:-gutenberg} to $dir/gutenberg"
-    install_desktop "$dir/gutenberg" "$tmp/gutenberg/share"
-    install_hooks "$dir/gutenberg"
-    install_bar_widget "$dir/gutenberg" "$tmp/gutenberg/share"
+    case $os in
+        Linux)
+            install_desktop "$dir/gutenberg" "$tmp/gutenberg/share"
+            install_hooks "$dir/gutenberg"
+            install_bar_widget "$dir/gutenberg" "$tmp/gutenberg/share"
+            ;;
+        Darwin) install_app "$base" "$target" "$tmp" ;;
+    esac
     case ":$PATH:" in
         *":$dir:"*) ;;
         *) say "Add $dir to your PATH to run it as 'gutenberg'." ;;
@@ -103,6 +125,37 @@ install_desktop() {
         update-desktop-database -q "$data/applications" 2>/dev/null || true
     fi
     say "Added Gutenberg to your app launcher ($data/applications/gutenberg.desktop)"
+}
+
+# Gutenberg.app in ~/Applications, so Launchpad, Spotlight and the Dock
+# have it. The zip is checked against SHA256SUMS like the tarball; a release
+# without one (before 0.26.0) installs the binary alone. The app is signed
+# ad hoc, not notarized: this download carries no quarantine flag, so it
+# opens as it is, and nothing here touches com.apple.quarantine.
+install_app() {
+    app_dir="${GUTENBERG_APP_DIR-$HOME/Applications}"
+    [ -n "$app_dir" ] || return 0
+    zip="Gutenberg-$2.zip"
+    expected=$(awk -v f="$zip" '$2 == f || $2 == "*" f { print $1 }' "$3/SHA256SUMS")
+    [ -n "$expected" ] || return 0
+    need ditto
+    say "Downloading $zip"
+    fetch "$1/$zip" "$3/$zip" || fail "could not download $1/$zip"
+    actual=$(sha256 "$3/$zip")
+    [ "$expected" = "$actual" ] || fail "checksum mismatch for $zip (expected $expected, got $actual)"
+    say "Checksum OK"
+    # Unpacked beside its final place and renamed in, as for the binary; an
+    # open Gutenberg.app keeps running on its old bundle until it quits.
+    staging="$app_dir/.Gutenberg.app.new"
+    rm -rf "$staging"
+    mkdir -p "$staging"
+    ditto -x -k "$3/$zip" "$staging"
+    [ -x "$staging/Gutenberg.app/Contents/MacOS/gutenberg" ] || fail "$zip has no Gutenberg.app"
+    rm -rf "$app_dir/Gutenberg.app"
+    mv "$staging/Gutenberg.app" "$app_dir/Gutenberg.app"
+    rmdir "$staging"
+    say "Installed Gutenberg.app to $app_dir"
+    say "It isn't notarized. This copy opens as it is; one downloaded with a browser is held until you allow it in System Settings > Privacy & Security (Open Anyway)."
 }
 
 # The Omarchy bar widget, in the shell's plugin directory; the shell picks it

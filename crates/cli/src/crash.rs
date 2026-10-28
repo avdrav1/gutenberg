@@ -59,6 +59,7 @@ fn report(info: &PanicHookInfo<'_>, backtrace: &Backtrace) -> String {
 }
 
 /// The distribution's name, from `os-release`.
+#[cfg(target_os = "linux")]
 fn system() -> String {
     std::fs::read_to_string("/etc/os-release")
         .ok()
@@ -72,6 +73,24 @@ fn system() -> String {
             })
         })
         .unwrap_or_else(|| std::env::consts::OS.to_owned())
+}
+
+/// `macOS 15.1`, from `sw_vers`. Nothing here may panic: this runs inside
+/// the panic hook.
+#[cfg(target_os = "macos")]
+fn system() -> String {
+    std::process::Command::new("sw_vers")
+        .arg("-productVersion")
+        .output()
+        .ok()
+        .filter(|out| out.status.success())
+        .map(|out| format!("macOS {}", String::from_utf8_lossy(&out.stdout).trim()))
+        .unwrap_or_else(|| std::env::consts::OS.to_owned())
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn system() -> String {
+    std::env::consts::OS.to_owned()
 }
 
 fn unix_now() -> u64 {

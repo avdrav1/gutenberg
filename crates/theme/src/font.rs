@@ -1,9 +1,17 @@
 //! The desktop's font. Omarchy's `omarchy-font-set` writes a `monospace`
 //! alias into fontconfig, and every app on the desktop resolves that alias;
-//! so does this.
+//! so does this. macOS has no fontconfig, so there the window keeps the
+//! system's fonts.
 
 use std::path::PathBuf;
+#[cfg(target_os = "linux")]
 use std::process::{Command, Stdio};
+
+/// The monospace family on macOS, where there is no alias to follow: Menlo
+/// ships with every macOS and is the Terminal's default. Body text stays in
+/// iced's default sans-serif, which cosmic-text resolves to the system UI
+/// font (`.SF NS`) there.
+pub const MACOS_MONOSPACE: &str = "Menlo";
 
 /// What fontconfig gives for `monospace`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,6 +24,7 @@ pub struct Face {
 }
 
 /// `None` without fontconfig or when it names nothing.
+#[cfg(target_os = "linux")]
 pub fn monospace() -> Option<Face> {
     let output = Command::new("fc-match")
         .args(["--format=%{family[0]}\n%{file}", "monospace"])
@@ -29,7 +38,16 @@ pub fn monospace() -> Option<Face> {
     face(&output.stdout)
 }
 
+/// Always `None`: macOS has no fontconfig alias to follow, and a stock Mac
+/// has no `fc-match` to ask, so nothing is spawned. The window uses iced's
+/// default sans-serif for text and [`MACOS_MONOSPACE`] for code.
+#[cfg(target_os = "macos")]
+pub fn monospace() -> Option<Face> {
+    None
+}
+
 /// The family and file in `fc-match`'s output, one per line, trimmed.
+#[cfg(any(target_os = "linux", test))]
 fn face(output: &[u8]) -> Option<Face> {
     let text = std::str::from_utf8(output).ok()?;
     let mut lines = text.lines().map(str::trim);

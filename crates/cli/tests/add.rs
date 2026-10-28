@@ -1,7 +1,7 @@
 //! `gutenberg --add` end to end. The feed is served from a fixture by a
 //! one-shot HTTP server on 127.0.0.1, so nothing leaves the machine.
-//! Linux only: `XDG_DATA_HOME` points the store at a temp dir there.
-#![cfg(target_os = "linux")]
+//! The store goes to a temp dir: through `XDG_DATA_HOME` on Linux, and on
+//! macOS through `HOME`, which `directories` reads for `~/Library`.
 
 use std::io::{Read, Write};
 use std::net::TcpListener;
@@ -73,10 +73,22 @@ fn fixture(path: &str) -> Vec<u8> {
     std::fs::read(format!("{FIXTURES}/../{path}")).unwrap()
 }
 
+/// Where the child finds its store, and where that store lands.
+const DATA_HOME: &str = if cfg!(target_os = "macos") {
+    "HOME"
+} else {
+    "XDG_DATA_HOME"
+};
+const STORE: &str = if cfg!(target_os = "macos") {
+    "Library/Application Support/gutenberg/gutenberg.db"
+} else {
+    "gutenberg/gutenberg.db"
+};
+
 fn gutenberg(data_home: &std::path::Path, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_gutenberg"))
         .args(args)
-        .env("XDG_DATA_HOME", data_home)
+        .env(DATA_HOME, data_home)
         .output()
         .unwrap()
 }
@@ -98,7 +110,7 @@ fn adds_a_feed_and_its_articles_once() {
         "Added Arch Linux: Recent news updates: 10 articles"
     );
 
-    let store = gutenberg_store::Store::open(&data.path().join("gutenberg/gutenberg.db")).unwrap();
+    let store = gutenberg_store::Store::open(&data.path().join(STORE)).unwrap();
     assert_eq!(
         store.sources().unwrap()[0].url.as_deref(),
         Some(url.as_str())
@@ -168,7 +180,7 @@ fn a_site_address_finds_the_feed_its_page_links_to() {
         text(&out.stdout),
         format!("Found {feed}\nAdded Arch Linux: Recent news updates: 10 articles\n")
     );
-    let store = gutenberg_store::Store::open(&data.path().join("gutenberg/gutenberg.db")).unwrap();
+    let store = gutenberg_store::Store::open(&data.path().join(STORE)).unwrap();
     assert_eq!(
         store.sources().unwrap()[0].url.as_deref(),
         Some(feed.as_str())

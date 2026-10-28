@@ -242,14 +242,41 @@ fn a_server_that_never_answers_times_out_and_is_ended() {
     assert!(started.elapsed() < Duration::from_secs(10));
     // Ending the server ended what it started too.
     let pid = std::fs::read_to_string(&pidfile).unwrap();
-    let proc = format!("/proc/{}", pid.trim());
+    let pid = pid.trim();
     let gone = (0..50).any(|_| {
         std::thread::sleep(Duration::from_millis(20));
-        !std::path::Path::new(&proc).exists()
-            || std::fs::read_to_string(format!("{proc}/stat"))
-                .is_ok_and(|stat| stat.split_whitespace().nth(2) == Some("Z"))
+        process_is_gone(pid)
     });
-    assert!(gone, "{proc} is still running");
+    assert!(gone, "pid {pid} is still running");
+}
+
+/// Whether the process is gone or a zombie waiting to be reaped.
+#[cfg(target_os = "linux")]
+fn process_is_gone(pid: &str) -> bool {
+    let proc = format!("/proc/{pid}");
+    !std::path::Path::new(&proc).exists()
+        || std::fs::read_to_string(format!("{proc}/stat"))
+            .is_ok_and(|stat| stat.split_whitespace().nth(2) == Some("Z"))
+}
+
+/// Without `/proc`, signal 0 tells whether the pid exists, and `ps` whether
+/// what exists is a zombie.
+#[cfg(not(target_os = "linux"))]
+fn process_is_gone(pid: &str) -> bool {
+    use nix::sys::signal::kill;
+    use nix::unistd::Pid;
+    let raw: i32 = pid.parse().unwrap();
+    if kill(Pid::from_raw(raw), None) == Err(nix::errno::Errno::ESRCH) {
+        return true;
+    }
+    std::process::Command::new("ps")
+        .args(["-o", "stat=", "-p", pid])
+        .output()
+        .is_ok_and(|out| {
+            let stat = String::from_utf8_lossy(&out.stdout);
+            let stat = stat.trim();
+            stat.is_empty() || stat.starts_with('Z')
+        })
 }
 
 /// S6.2: a tool's recorded results, called over stdio.

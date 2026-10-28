@@ -187,13 +187,18 @@ fn usage() -> std::process::ExitCode {
     std::process::ExitCode::from(2)
 }
 
-/// `gutenberg --reload-theme`: the open window reads the Omarchy theme and
-/// the desktop font again. Omarchy's `theme-set` and `font-set` hooks run
-/// it. With no window open there's nothing to reload, which isn't a
-/// failure.
+/// `gutenberg --reload-theme`: the open window reads the desktop theme and
+/// font again; on Omarchy the `theme-set` and `font-set` hooks run it. With
+/// no window open there's nothing to reload, which isn't a failure.
 fn reload_theme() -> std::process::ExitCode {
+    // Where the socket's directory comes from on this OS (see `ipc`).
+    const RUNTIME_DIR: &str = if cfg!(target_os = "macos") {
+        "$TMPDIR"
+    } else {
+        "$XDG_RUNTIME_DIR"
+    };
     let Some(path) = ipc::socket_path() else {
-        eprintln!("gutenberg: no runtime directory ($XDG_RUNTIME_DIR) for the socket");
+        eprintln!("gutenberg: no runtime directory ({RUNTIME_DIR}) for the socket");
         return std::process::ExitCode::FAILURE;
     };
     match ipc::send(&path, ipc::Command::ReloadTheme) {

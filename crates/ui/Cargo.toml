@@ -14,6 +14,10 @@ scraper.workspace = true
 url.workspace = true
 iced_test = { version = "0.14", optional = true }
 
+# The memory bench's resident and peak figures, which /proc gives on Linux.
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"
+
 [features]
 # Headless screenshots of the window: examples/theme_shots.rs per theme,
 # examples/site_media.rs for the site's screenshots and trailer frames.

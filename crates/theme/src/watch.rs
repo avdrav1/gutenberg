@@ -33,6 +33,7 @@ pub struct WatchHandle {
 ///
 /// Directories that don't exist are skipped: one created later, such as
 /// the first `fonts.conf`, is only seen through the hooks.
+#[cfg(target_os = "linux")]
 pub fn watched() -> Vec<Watched> {
     let Some(dirs) = directories::BaseDirs::new() else {
         return Vec::new();
@@ -54,6 +55,14 @@ pub fn watched() -> Vec<Watched> {
             names: &[],
         },
     ]
+}
+
+/// Nothing: macOS has neither Omarchy nor fontconfig, so there is no
+/// directory whose change would mean a new theme or font. The system's
+/// light or dark switch reaches the window through iced instead.
+#[cfg(target_os = "macos")]
+pub fn watched() -> Vec<Watched> {
+    Vec::new()
 }
 
 /// Calls `on_change` on a background thread after each settled change in
@@ -124,7 +133,10 @@ mod tests {
     #[test]
     fn a_theme_swap_calls_back_once_within_a_second() {
         let tmp = tempfile::tempdir().unwrap();
-        let current = tmp.path().join("omarchy/current");
+        // Events name the real path: on macOS the temp dir is under
+        // `/var`, a symlink to `/private/var`, and FSEvents reports the
+        // latter. On Linux `/tmp` is no symlink and this changes nothing.
+        let current = tmp.path().canonicalize().unwrap().join("omarchy/current");
         std::fs::create_dir_all(current.join("theme")).unwrap();
         let (count, on_change) = counter();
         let names: &'static [&'static str] = &["theme", "theme.name"];
@@ -136,6 +148,14 @@ mod tests {
             on_change,
         )
         .unwrap();
+        // FSEvents hands a new stream events from just before it started,
+        // here the creation of `theme`, which counts as a reload; inotify
+        // reports nothing from before the watch. Let those pass first.
+        #[cfg(target_os = "macos")]
+        {
+            std::thread::sleep(DEBOUNCE * 3);
+            *count.lock().unwrap() = 0;
+        }
 
         // An unrelated file in the same directory is ignored.
         std::fs::write(current.join("theme.generation"), "1").unwrap();

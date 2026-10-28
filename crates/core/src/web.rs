@@ -252,7 +252,8 @@ fn picture(bytes: Vec<u8>, format: Format) -> Option<Picture> {
 /// Decoding a large photo takes tens of megabytes for a moment. glibc
 /// keeps memory freed on this thread for later, which held the window at
 /// 155 MB after 20 articles with photos (S7.4); returned, it stays near
-/// 115 MB.
+/// 115 MB. Other allocators (macOS's malloc among them) return free pages
+/// on their own, so this does nothing there.
 fn give_back_freed_memory() {
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
     // SAFETY: malloc_trim has no preconditions; it only releases free pages.

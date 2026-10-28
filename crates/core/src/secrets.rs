@@ -1,15 +1,19 @@
 //! Keys for MCP servers, by name (`JINA_API_KEY`): from the environment,
-//! else from the system keyring over the Secret Service API (GNOME Keyring,
-//! KWallet). The store and `config.toml` only ever hold the name.
+//! else from the system keyring. On Linux that's the Secret Service API
+//! (GNOME Keyring, KWallet); on macOS, the login keychain. The store and
+//! `config.toml` only ever hold the name.
 //!
 //! Keyring items carry the attributes `application=gutenberg` and
 //! `key=<name>`, so `secret-tool lookup application gutenberg key <name>`
-//! finds one too.
+//! finds one too. Keychain items are generic passwords with service
+//! `gutenberg` and account `<name>`, so
+//! `security find-generic-password -s gutenberg -a <name> -w` finds one.
 
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
 use futures::future::BoxFuture;
+#[cfg(target_os = "linux")]
 use secret_service::{EncryptionType, SecretService};
 
 /// Where keys are kept.
@@ -59,13 +63,16 @@ pub async fn save(name: &str, value: &str) -> Result<(), String> {
     keyring().set(name, value).await
 }
 
-/// The Secret Service on the session bus.
+/// The system keyring: the Secret Service on the session bus on Linux, the
+/// login keychain on macOS.
 struct System;
 
+#[cfg(target_os = "linux")]
 fn attributes(name: &str) -> HashMap<&str, &str> {
     HashMap::from([("application", "gutenberg"), ("key", name)])
 }
 
+#[cfg(target_os = "linux")]
 fn keyring_error(e: secret_service::Error) -> String {
     match e {
         secret_service::Error::Unavailable => "no keyring is running".into(),
@@ -75,6 +82,7 @@ fn keyring_error(e: secret_service::Error) -> String {
     }
 }
 
+#[cfg(target_os = "linux")]
 impl Keyring for System {
     fn get<'a>(&'a self, name: &'a str) -> BoxFuture<'a, Result<Option<String>, String>> {
         Box::pin(async move {
@@ -120,6 +128,87 @@ impl Keyring for System {
                 .await
                 .map(|_| ())
                 .map_err(keyring_error)
+        })
+    }
+}
+
+/// The keychain item's service; the account is the key's name.
+#[cfg(target_os = "macos")]
+const KEYCHAIN_SERVICE: &str = "gutenberg";
+
+/// `errSecItemNotFound`: no item has that service and account.
+#[cfg(target_os = "macos")]
+const ERR_SEC_ITEM_NOT_FOUND: i32 = -25300;
+
+/// `errSecUserCanceled`: the keychain asked for its password and the user
+/// cancelled.
+#[cfg(target_os = "macos")]
+const ERR_SEC_USER_CANCELED: i32 = -128;
+
+/// `errSecAuthFailed`: the user chose Deny when the keychain asked whether
+/// this binary may read the item. The framework's own text for it talks of
+/// a wrong password, which the user never typed.
+#[cfg(target_os = "macos")]
+const ERR_SEC_AUTH_FAILED: i32 = -25293;
+
+/// `errSecInteractionNotAllowed`: the keychain needed to ask and had no
+/// session to ask in, as from `gutenberg --refresh` over ssh.
+#[cfg(target_os = "macos")]
+const ERR_SEC_INTERACTION_NOT_ALLOWED: i32 = -25308;
+
+#[cfg(target_os = "macos")]
+fn keyring_error(e: security_framework::base::Error) -> String {
+    match e.code() {
+        ERR_SEC_USER_CANCELED => "the keychain stayed locked".into(),
+        ERR_SEC_AUTH_FAILED => {
+            "the keychain refused this build; choose Always Allow when it asks".into()
+        }
+        ERR_SEC_INTERACTION_NOT_ALLOWED => {
+            "the keychain can only ask in a logged-in session; run this from the desktop".into()
+        }
+        _ => format!("the keychain: {e}"),
+    }
+}
+
+// The Security framework's calls block and may show a dialog: the keychain
+// asks before a binary it hasn't seen reads an item, and an ad-hoc signed
+// build is a new binary after every update. So they run on the blocking
+// pool, off the async threads.
+#[cfg(target_os = "macos")]
+impl Keyring for System {
+    fn get<'a>(&'a self, name: &'a str) -> BoxFuture<'a, Result<Option<String>, String>> {
+        Box::pin(async move {
+            let account = name.to_owned();
+            let found = tokio::task::spawn_blocking(move || {
+                security_framework::passwords::get_generic_password(KEYCHAIN_SERVICE, &account)
+            })
+            .await
+            .map_err(|e| format!("the keychain: {e}"))?;
+            match found {
+                Ok(secret) => String::from_utf8(secret)
+                    .map(Some)
+                    .map_err(|_| format!("{name} in the keychain isn't text")),
+                Err(e) if e.code() == ERR_SEC_ITEM_NOT_FOUND => Ok(None),
+                Err(e) => Err(keyring_error(e)),
+            }
+        })
+    }
+
+    fn set<'a>(&'a self, name: &'a str, value: &'a str) -> BoxFuture<'a, Result<(), String>> {
+        Box::pin(async move {
+            let account = name.to_owned();
+            let secret = value.as_bytes().to_vec();
+            // Creates the item, or replaces the password of the one there.
+            tokio::task::spawn_blocking(move || {
+                security_framework::passwords::set_generic_password(
+                    KEYCHAIN_SERVICE,
+                    &account,
+                    &secret,
+                )
+            })
+            .await
+            .map_err(|e| format!("the keychain: {e}"))?
+            .map_err(keyring_error)
         })
     }
 }
