@@ -148,6 +148,14 @@ mod tests {
             on_change,
         )
         .unwrap();
+        // FSEvents hands a new stream events from just before it started,
+        // here the creation of `theme`, which counts as a reload; inotify
+        // reports nothing from before the watch. Let those pass first.
+        #[cfg(target_os = "macos")]
+        {
+            std::thread::sleep(DEBOUNCE * 3);
+            *count.lock().unwrap() = 0;
+        }
 
         // An unrelated file in the same directory is ignored.
         std::fs::write(current.join("theme.generation"), "1").unwrap();
