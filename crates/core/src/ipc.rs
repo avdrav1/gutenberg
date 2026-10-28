@@ -1,4 +1,4 @@
-//! The window's Unix socket: scripts and Omarchy hooks reach a running
+//! The window's Unix socket: scripts and desktop hooks reach a running
 //! window through it (`gutenberg --reload-theme`). One line in, one line
 //! out: `ok`, `ok <detail>`, `error <why>` or `unknown`.
 //!
@@ -73,10 +73,20 @@ pub enum Error {
 
 /// `$XDG_RUNTIME_DIR/gutenberg/socket`: per user and per login, removed at
 /// logout. `None` without a runtime directory.
+#[cfg(target_os = "linux")]
 pub fn socket_path() -> Option<PathBuf> {
     directories::BaseDirs::new()?
         .runtime_dir()
         .map(|dir| dir.join("gutenberg/socket"))
+}
+
+/// `$TMPDIR/gutenberg/socket`: macOS has no runtime directory, and `$TMPDIR`
+/// is the per-user `/var/folders/…/T/`, mode 0700 and cleared at reboot.
+/// It's about 50 bytes long, well under a socket path's 104. `/tmp` if
+/// `TMPDIR` is unset, which launchd never leaves it.
+#[cfg(target_os = "macos")]
+pub fn socket_path() -> Option<PathBuf> {
+    Some(std::env::temp_dir().join("gutenberg/socket"))
 }
 
 /// Keeps the socket open until dropped, then removes its file.
