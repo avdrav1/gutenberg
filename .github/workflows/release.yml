@@ -1,11 +1,12 @@
 name: Release
 
-# A v* tag builds both targets, publishes a GitHub release with
-# SHA256SUMS and build attestations, and deploys site/ to the Cloudflare
-# Worker behind gutenbergapp.com and to GitHub Pages (the old avdrav1.github.io address).
-# A pull request that touches any of this runs the same build, an
-# install.sh test against the fresh tarballs and a launch of the window on
-# stock Ubuntu under Xvfb, and publishes nothing.
+# A v* tag builds the two Linux and two macOS targets, publishes a GitHub
+# release with SHA256SUMS and build attestations, and deploys site/ to the
+# Cloudflare Worker behind gutenbergapp.com and to GitHub Pages (the old
+# avdrav1.github.io address). A pull request that touches any of this runs
+# the same build, an install.sh test against the fresh tarballs on Ubuntu
+# and on macOS, and a launch of the window on stock Ubuntu under Xvfb, and
+# publishes nothing.
 
 on:
   push:
@@ -13,6 +14,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/release.yml
+      - .github/macos/**
       - site/**
       - Cargo.toml
       - Cargo.lock
@@ -30,6 +32,13 @@ jobs:
             runner: ubuntu-22.04
           - target: aarch64-unknown-linux-gnu
             runner: ubuntu-22.04-arm
+          # Each Mac builds for itself, so no cross-compiling. If GitHub
+          # retires the Intel label, drop this target rather than hold a
+          # release on it.
+          - target: aarch64-apple-darwin
+            runner: macos-14
+          - target: x86_64-apple-darwin
+            runner: macos-15-intel
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -51,6 +60,7 @@ jobs:
       - name: Build
         run: cargo auditable build --release --locked -p gutenberg-cli
       - name: Package
+        if: runner.os == 'Linux'
         run: |
           mkdir -p dist/gutenberg
           cp target/release/gutenberg dist/gutenberg/
@@ -60,10 +70,24 @@ jobs:
           cp -r share dist/gutenberg/
           dist/gutenberg/gutenberg --version
           tar -C dist -czf "gutenberg-${{ matrix.target }}.tar.gz" gutenberg
+      # The tarball with the bare binary (no share/: nothing in it applies
+      # to a Mac) and Gutenberg.app, zipped, both signed ad hoc. The icon is
+      # rendered from share/'s SVG, which needs librsvg.
+      - name: Package for macOS
+        if: runner.os == 'macOS'
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_INSTALL_CLEANUP: 1
+        run: |
+          brew install librsvg
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          bash .github/macos/bundle.sh target/release/gutenberg "${{ matrix.target }}" "$version"
       - uses: actions/upload-artifact@v4
         with:
           name: gutenberg-${{ matrix.target }}
-          path: gutenberg-${{ matrix.target }}.tar.gz
+          path: |
+            gutenberg-${{ matrix.target }}.tar.gz
+            Gutenberg-${{ matrix.target }}.zip
           if-no-files-found: error
 
   # install.sh against the tarballs just built, served from localhost.
@@ -128,6 +152,70 @@ jobs:
           fi
           test ! -e "$RUNNER_TEMP/bin2/gutenberg"
 
+  # The same on a Mac: the binary to a directory, Gutenberg.app to
+  # ~/Applications, and nothing of the Linux desktop.
+  install-test-macos:
+    needs: build
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: gutenberg-*-apple-darwin
+          path: dist
+          merge-multiple: true
+      - name: Install with install.sh
+        run: |
+          (cd dist && shasum -a 256 gutenberg-*.tar.gz Gutenberg-*.zip > SHA256SUMS && cat SHA256SUMS)
+          (cd dist && python3 -m http.server 8000 --bind 127.0.0.1 </dev/null >/dev/null 2>&1 &)
+          sleep 1
+          GUTENBERG_BASE_URL=http://127.0.0.1:8000 GUTENBERG_INSTALL_DIR="$RUNNER_TEMP/bin" sh site/install.sh
+          "$RUNNER_TEMP/bin/gutenberg" --version
+          app="$HOME/Applications/Gutenberg.app"
+          "$app/Contents/MacOS/gutenberg" --version
+          # The bundle arrived whole, with its signature.
+          codesign --verify --strict --verbose=2 "$app"
+          plutil -lint "$app/Contents/Info.plist"
+          test -s "$app/Contents/Resources/gutenberg.icns"
+          test ! -e "$HOME/Applications/.Gutenberg.app.new"
+          # Nothing of the Linux desktop: no entry, no hooks, no widget.
+          test ! -e "$HOME/.local/share/applications/gutenberg.desktop"
+          test ! -e "$HOME/.config/omarchy"
+          # No store yet: nothing unread, and no store made to say so.
+          test "$("$RUNNER_TEMP/bin/gutenberg" --unread)" = 0
+          test ! -e "$HOME/Library/Application Support/gutenberg/gutenberg.db"
+      - name: An empty GUTENBERG_APP_DIR installs the binary alone
+        run: |
+          home="$RUNNER_TEMP/no-app-home"
+          mkdir -p "$home"
+          (cd dist && python3 -m http.server 8002 --bind 127.0.0.1 </dev/null >/dev/null 2>&1 &)
+          sleep 1
+          HOME="$home" GUTENBERG_APP_DIR= GUTENBERG_BASE_URL=http://127.0.0.1:8002 GUTENBERG_INSTALL_DIR="$RUNNER_TEMP/bin3" sh site/install.sh
+          "$RUNNER_TEMP/bin3/gutenberg" --version
+          test ! -e "$home/Applications"
+      - name: A tampered tarball or app is refused
+        run: |
+          printf 'tampered' >> dist/gutenberg-aarch64-apple-darwin.tar.gz
+          (cd dist && python3 -m http.server 8001 --bind 127.0.0.1 </dev/null >/dev/null 2>&1 &)
+          sleep 1
+          if GUTENBERG_BASE_URL=http://127.0.0.1:8001 GUTENBERG_INSTALL_DIR="$RUNNER_TEMP/bin2" sh site/install.sh; then
+            echo "::error::install.sh accepted a tarball that does not match SHA256SUMS"
+            exit 1
+          fi
+          test ! -e "$RUNNER_TEMP/bin2/gutenberg"
+          # SHA256SUMS agreeing with the tarball again and the zip tampered
+          # instead: the binary installs, the app is refused.
+          (cd dist && shasum -a 256 gutenberg-aarch64-apple-darwin.tar.gz Gutenberg-aarch64-apple-darwin.zip > SHA256SUMS)
+          printf 'tampered' >> dist/Gutenberg-aarch64-apple-darwin.zip
+          home="$RUNNER_TEMP/tampered-home"
+          mkdir -p "$home"
+          if HOME="$home" GUTENBERG_BASE_URL=http://127.0.0.1:8001 GUTENBERG_INSTALL_DIR="$RUNNER_TEMP/bin4" sh site/install.sh; then
+            echo "::error::install.sh accepted a Gutenberg.app that does not match SHA256SUMS"
+            exit 1
+          fi
+          test -x "$RUNNER_TEMP/bin4/gutenberg"
+          test ! -e "$home/Applications/Gutenberg.app"
+
   launch-test:
     needs: build
     runs-on: ubuntu-24.04
@@ -163,7 +251,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build, install-test, launch-test]
+    needs: [build, install-test, install-test-macos, launch-test]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -176,10 +264,12 @@ jobs:
           path: dist
           merge-multiple: true
       - name: Checksums
-        run: cd dist && sha256sum gutenberg-*.tar.gz > SHA256SUMS && cat SHA256SUMS
+        run: cd dist && sha256sum gutenberg-*.tar.gz Gutenberg-*.zip > SHA256SUMS && cat SHA256SUMS
       - uses: actions/attest-build-provenance@v2
         with:
-          subject-path: dist/gutenberg-*.tar.gz
+          subject-path: |
+            dist/gutenberg-*.tar.gz
+            dist/Gutenberg-*.zip
       - name: Release notes from CHANGELOG.md
         run: |
           version="${GITHUB_REF_NAME#v}"
@@ -197,7 +287,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/gutenberg-*.tar.gz dist/SHA256SUMS \
+          gh release create "$GITHUB_REF_NAME" dist/gutenberg-*.tar.gz dist/Gutenberg-*.zip dist/SHA256SUMS \
             --title "Gutenberg ${GITHUB_REF_NAME#v}" --notes-file notes.md --verify-tag
 
   pages:

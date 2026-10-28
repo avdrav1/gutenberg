@@ -22,6 +22,20 @@ jobs:
       - run: cargo build --workspace
       - run: cargo test --workspace
 
+  # Apple silicon; the Intel build is checked at release time only.
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo build --workspace
+      - run: cargo test --workspace
+
   arch:
     runs-on: ubuntu-latest
     container: archlinux:base-devel

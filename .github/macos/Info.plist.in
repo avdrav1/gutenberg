@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Gutenberg.app's Info.plist; bundle.sh fills @VERSION@ from Cargo.toml. -->
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Gutenberg</string>
+	<key>CFBundleExecutable</key>
+	<string>gutenberg</string>
+	<key>CFBundleIconFile</key>
+	<string>gutenberg</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.gutenbergapp.gutenberg</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Gutenberg</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>@VERSION@</string>
+	<key>CFBundleVersion</key>
+	<string>@VERSION@</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.news</string>
+	<!-- Rust's aarch64-apple-darwin target starts at 11.0, and wgpu's Metal
+	     backend wants 10.13 or later; 11.0 covers both builds. -->
+	<key>LSMinimumSystemVersion</key>
+	<string>11.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>MIT licensed</string>
+</dict>
+</plist>
