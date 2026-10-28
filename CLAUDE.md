@@ -1,6 +1,6 @@
 # Gutenberg: working notes for coding agents
 
-Native Linux news reader for Omarchy, in Rust. Read `docs/PRD.md` for what we're building and `docs/BACKLOG.md` for what's next. Skills in `.claude/skills/` cover the repeatable jobs: `/next-story`, `/ship-it`, `/theme-check`, `/feed-fixture`.
+Native Linux news reader for Omarchy, in Rust; it also builds for macOS (`docs/MACOS.md`), with every difference behind `cfg(target_os)` so Linux stays as it is. Read `docs/PRD.md` for what we're building and `docs/BACKLOG.md` for what's next. Skills in `.claude/skills/` cover the repeatable jobs: `/next-story`, `/ship-it`, `/theme-check`, `/feed-fixture`.
 
 ## Layout
 
@@ -8,10 +8,10 @@ Cargo workspace. One crate per concern; the UI never touches the network.
 
 | Crate | Owns |
 |---|---|
-| `crates/core` | sync engine, `Source` trait, dedupe and story grouping |
+| `crates/core` | sync engine, `Source` trait, dedupe and story grouping, MCP keys in Secret Service (the login keychain on macOS) |
 | `crates/store` | SQLite schema, migrations, FTS5 queries |
 | `crates/sources` | `FeedSource`, `KeywordSource`, `McpSource` |
-| `crates/theme` | Omarchy `colors.toml` → tokens, fontconfig, hook and inotify reload |
+| `crates/theme` | Omarchy `colors.toml` → tokens, fontconfig, hook and inotify reload; none of it on macOS, where the built-in theme follows the system appearance and code is Menlo |
 | `crates/ui` | iced window, panes, keys, command palette |
 | `crates/cli` | the `gutenberg` binary: launches the UI, `--add <url>`, `--keyword <query>`, `--mcp <command or URL>` and `--import <file.opml>` write to the store directly, `--key <NAME>` saves an MCP server's key in the keyring, `--export` prints OPML, `--unread [--json]` reads the unread count from the store for a bar, or `--refresh`, `--reload-theme` over the Unix socket, and `--update` installs the newest release over itself by running the `site/install.sh` built into it |
 
@@ -26,7 +26,7 @@ Cargo workspace. One crate per concern; the UI never touches the network.
 - Theme tokens come from `crates/theme`. No literal colors in `crates/ui`.
 - Keys are documented in `docs/KEYS.md`. A new action gets a key, a palette entry and a line there in the same PR.
 - A user-visible change gets a line in `CHANGELOG.md` under `Unreleased` in the same PR. Write it for a reader, not a developer.
-- Config and data paths follow XDG. The app never writes outside `$XDG_CONFIG_HOME/gutenberg`, `$XDG_DATA_HOME/gutenberg`, `$XDG_CACHE_HOME/gutenberg` (article images and reader pages, under `[cache] megabytes`) and the window's socket, `$XDG_RUNTIME_DIR/gutenberg/socket`. Only `site/install.sh` writes elsewhere: the binary, the desktop entry and icon from `share/` in `~/.local/share`, and on Omarchy the two hooks and the bar widget in `~/.config/omarchy/plugins/gutenberg.unread`.
+- Config and data paths follow XDG. The app never writes outside `$XDG_CONFIG_HOME/gutenberg`, `$XDG_DATA_HOME/gutenberg`, `$XDG_CACHE_HOME/gutenberg` (article images and reader pages, under `[cache] megabytes`) and the window's socket, `$XDG_RUNTIME_DIR/gutenberg/socket` (on macOS, through `directories`: `~/Library/Application Support/gutenberg`, `~/Library/Caches/gutenberg` and `$TMPDIR/gutenberg/socket`). Only `site/install.sh` writes elsewhere: the binary, the desktop entry and icon from `share/` in `~/.local/share`, and on Omarchy the two hooks and the bar widget in `~/.config/omarchy/plugins/gutenberg.unread`; on macOS the binary and `~/Applications/Gutenberg.app`.
 
 ## Performance budgets
 

@@ -1,6 +1,6 @@
 # Gutenberg on the desktop
 
-`install.sh` adds Gutenberg to the app launcher and, on Omarchy, a bar widget with the unread count. Nothing goes on the bar by itself.
+`install.sh` adds Gutenberg to the app launcher and, on Omarchy, a bar widget with the unread count. Nothing goes on the bar by itself. On a Mac it installs `Gutenberg.app` instead; [MACOS.md](MACOS.md) has the paths and the first-open step there.
 
 ## App launcher
 
