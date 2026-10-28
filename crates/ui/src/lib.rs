@@ -90,8 +90,10 @@ pub fn run(
     .theme(App::theme)
     .scale_factor(App::scale_factor)
     .window(window::Settings {
-        // Hyprland draws the borders; no client-side decorations.
-        decorations: false,
+        // Hyprland draws the borders; no client-side decorations. macOS
+        // has nothing else to move, close or zoom a window with, so there
+        // it keeps its title bar.
+        decorations: cfg!(target_os = "macos"),
         #[cfg(target_os = "linux")]
         platform_specific: window::settings::PlatformSpecific {
             // Hyprland matches window rules on this class.
@@ -152,8 +154,18 @@ pub fn inbox() -> (Outbox, Inbox) {
 /// monospace families, so plain, bold, italic and code text all use it.
 /// Without fontconfig, or for a family no font file provides, iced's own
 /// choices stay; then this returns `false`.
+#[cfg(not(target_os = "macos"))]
 fn use_desktop_font() -> bool {
     gutenberg_theme::font::monospace().is_some_and(|face| set_font(&face.family, None))
+}
+
+/// macOS has no desktop font to follow. Text stays in iced's default
+/// sans-serif, which cosmic-text resolves to the system font, and only code
+/// is pinned to Menlo. `false` if no font file has it, which no Mac lacks.
+#[cfg(target_os = "macos")]
+fn use_desktop_font() -> bool {
+    let family = gutenberg_theme::font::MACOS_MONOSPACE;
+    with_installed(family, None, |db| db.set_monospace_family(family))
 }
 
 /// Points iced's sans-serif and monospace families at `family`, after
@@ -162,6 +174,20 @@ fn use_desktop_font() -> bool {
 /// text already on screen changes too; it also brings in a font installed
 /// after the window opened.
 fn set_font(family: &str, file: Option<Vec<u8>>) -> bool {
+    with_installed(family, file, |db| {
+        db.set_sans_serif_family(family);
+        db.set_monospace_family(family);
+    })
+}
+
+/// Runs `set` on the font database if some font file provides `family`,
+/// after loading `file` if given. Without the family, iced's own choices
+/// stay and this returns `false`.
+fn with_installed(
+    family: &str,
+    file: Option<Vec<u8>>,
+    set: impl FnOnce(&mut iced::advanced::graphics::text::cosmic_text::fontdb::Database),
+) -> bool {
     let mut fonts = iced::advanced::graphics::text::font_system()
         .write()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -177,8 +203,7 @@ fn set_font(family: &str, file: Option<Vec<u8>>) -> bool {
         eprintln!("gutenberg: font {family:?}: no font file has it; using the default font");
         return false;
     }
-    db.set_sans_serif_family(family);
-    db.set_monospace_family(family);
+    set(db);
     true
 }
 
@@ -902,11 +927,16 @@ impl App {
             // Wayland has no "raise": the window asks for activation, which
             // Hyprland grants with `misc:focus_on_activate`, Omarchy's
             // default, switching to the window's workspace.
+            #[cfg(not(target_os = "macos"))]
             Message::Focus => {
                 return window::latest().and_then(|id| {
                     window::request_user_attention(id, Some(window::UserAttention::Informational))
                 });
             }
+            // On macOS asking for attention only bounces the Dock icon;
+            // taking focus activates the app and makes the window key.
+            #[cfg(target_os = "macos")]
+            Message::Focus => return window::latest().and_then(window::gain_focus),
             Message::SystemTheme(mode) => {
                 self.scheme = match mode {
                     iced::theme::Mode::Light => Scheme::Light,
@@ -3444,11 +3474,16 @@ fn web_worker(
     })
 }
 
-/// Opens `url` in the default browser. `xdg-open` runs detached; a thread
-/// reaps it so the window never waits on it.
+/// Opens `url` in the default browser. `xdg-open` (`open` on macOS) runs
+/// detached; a thread reaps it so the window never waits on it.
 fn open_in_browser(url: &str) {
     use std::process::{Command, Stdio};
-    let spawned = Command::new("xdg-open")
+    const OPENER: &str = if cfg!(target_os = "macos") {
+        "open"
+    } else {
+        "xdg-open"
+    };
+    let spawned = Command::new(OPENER)
         .arg(url)
         .stdin(Stdio::null())
         .stdout(Stdio::null())

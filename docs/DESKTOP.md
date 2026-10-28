@@ -8,18 +8,18 @@
 
 ## One window
 
-Gutenberg keeps to one window. Launching it again, from the launcher, the bar widget or a terminal, brings the open window forward, switching to its workspace, and the new launch exits. On Hyprland this needs `misc:focus_on_activate`, which Omarchy turns on; elsewhere the window may only be marked as wanting attention.
+Gutenberg keeps to one window. Launching it again, from the launcher, the bar widget or a terminal, brings the open window forward, switching to its workspace, and the new launch exits. On Hyprland this needs `misc:focus_on_activate`, which Omarchy turns on; elsewhere the window may only be marked as wanting attention. On macOS the window comes forward itself.
 
 ## From scripts
 
-The open window listens on `$XDG_RUNTIME_DIR/gutenberg/socket`:
+The open window listens on `$XDG_RUNTIME_DIR/gutenberg/socket` (`$TMPDIR/gutenberg/socket` on macOS):
 
 ```sh
 gutenberg --refresh        # 12 sources: 2 updated (5 new articles), 10 unchanged, 0 failed
 gutenberg --reload-theme   # read the Omarchy theme and font again
 ```
 
-`--refresh` refreshes every source that's due and waits for it. With the window open, the window does it, and what failed shows under each source's name; with no window, the command does it and prints each failure. `--reload-theme` with no window open says so and exits 0. Omarchy's theme and font hooks run it.
+`--refresh` refreshes every source that's due and waits for it. With the window open, the window does it, and what failed shows under each source's name; with no window, the command does it and prints each failure. `--reload-theme` with no window open says so and exits 0. Omarchy's theme and font hooks run it; on macOS the window follows the system's light or dark appearance by itself and the command has nothing more to reload.
 
 The socket takes one command per line and answers with one line: `reload-theme`, `refresh` or `focus`, then `ok`, `ok <summary>`, `error <why>` or `unknown`.
 
