@@ -5,7 +5,7 @@ members = ["crates/core", "crates/store", "crates/sources", "crates/theme", "cra
 exclude = ["fuzz"]
 
 [workspace.package]
-version = "0.25.0"
+version = "0.26.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/avdrav1/gutenberg"

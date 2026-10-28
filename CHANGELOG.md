@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.26.0 — 2026-10-28
+
 - Gutenberg runs on macOS, on Apple silicon and Intel Macs. The same one-liner installs it, putting the binary in `~/.local/bin` and Gutenberg.app in `~/Applications`; the releases page has Gutenberg.app to download too. Text is in the system font with Menlo for code, the window follows the system's light or dark appearance, links open in your default browser, and MCP keys go in your login keychain. Settings and saved articles live in `~/Library/Application Support/gutenberg`. The app isn't notarized: the installer's copy opens as it is, while a copy downloaded with a browser opens only after Open Anyway in System Settings › Privacy & Security. `docs/MACOS.md` has the details, and what's missing still: a native menu bar, for one.
 
 ## 0.25.0 — 2026-10-26
