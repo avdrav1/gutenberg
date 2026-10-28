@@ -196,7 +196,9 @@ impl Tokens {
 
     /// The current Omarchy theme's tokens: the first `colors.toml` of
     /// [`theme_paths`] that exists. `None` without one, and for one that
-    /// can't be read, with a line on stderr.
+    /// can't be read, with a line on stderr. On macOS there is never an
+    /// Omarchy theme, so this is `None` and, as on a stock Ubuntu, the
+    /// built-in theme for the system's light or dark appearance applies.
     pub fn omarchy() -> Option<Self> {
         let path = theme_paths().into_iter().find(|p| p.exists())?;
         let read = std::fs::read_to_string(&path)
