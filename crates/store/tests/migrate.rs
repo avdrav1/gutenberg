@@ -185,10 +185,12 @@ fn a_version_3_file_upgrades_with_its_articles_ungrouped() {
             .unwrap();
     }
     {
-        // Back to the file 0.15.0 left: schema 3, no story column.
+        // Back to the file 0.15.0 left: schema 3, no story column and no
+        // setting table.
         let raw = Connection::open(&path).unwrap();
         raw.execute_batch(
-            "DROP INDEX article_by_story;
+            "DROP TABLE setting;
+             DROP INDEX article_by_story;
              DROP INDEX article_ungrouped;
              ALTER TABLE article DROP COLUMN story_id;
              PRAGMA user_version = 3;",
@@ -203,4 +205,29 @@ fn a_version_3_file_upgrades_with_its_articles_ungrouped() {
     assert_eq!(rows.len(), 2);
     assert!(rows.iter().all(|r| r.story_size == 1 && r.story_id == r.id));
     assert_eq!(store.story_candidates(0).unwrap().len(), 2);
+}
+
+/// S11.1: a file from 0.26.0 (schema 4) gains the setting table and keeps
+/// its articles and stories.
+#[test]
+fn a_version_4_file_upgrades_and_can_hold_settings() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("gutenberg.db");
+    {
+        let mut store = Store::open(&path).unwrap();
+        let source = store.add_source(&feed("https://a.example/feed")).unwrap();
+        store.insert_articles(&[article(source.id, "a")]).unwrap();
+    }
+    {
+        // Back to the file 0.26.0 left: schema 4, no setting table.
+        let raw = Connection::open(&path).unwrap();
+        raw.execute_batch("DROP TABLE setting; PRAGMA user_version = 4;")
+            .unwrap();
+    }
+    let store = Store::open(&path).unwrap();
+    assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
+    assert_eq!(store.list_articles(None, 10).unwrap().len(), 1);
+    assert_eq!(store.setting("layout.widths").unwrap(), None);
+    store.set_setting("layout.widths", "0.2,0.3,0.5").unwrap();
+    assert!(store.setting("layout.widths").unwrap().is_some());
 }

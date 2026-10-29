@@ -138,6 +138,21 @@ pub const ALL: &[Command] = &[
         keys: &["?"],
     },
     Command {
+        action: Action::NarrowPane,
+        name: "Narrow this pane",
+        keys: &["<"],
+    },
+    Command {
+        action: Action::WidenPane,
+        name: "Widen this pane",
+        keys: &[">"],
+    },
+    Command {
+        action: Action::ResetPanes,
+        name: "Reset pane sizes",
+        keys: &["="],
+    },
+    Command {
         action: Action::Quit,
         name: "Quit",
         keys: &["q"],
@@ -283,6 +298,9 @@ mod tests {
             | A::EnterKey
             | A::NextPane
             | A::PrevPane
+            | A::NarrowPane
+            | A::WidenPane
+            | A::ResetPanes
             | A::View(_) => true,
         };
         let every = [
@@ -312,6 +330,9 @@ mod tests {
             A::EnterKey,
             A::NextPane,
             A::PrevPane,
+            A::NarrowPane,
+            A::WidenPane,
+            A::ResetPanes,
         ];
         for action in every.into_iter().filter(|a| needs_row(*a)) {
             assert!(
