@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.27.0 — 2026-10-29
+
 - Drag the line between two panes to change their widths, or press `<` and `>` to do it from the keyboard; `=` puts them back to what `config.toml` says. The widths come back at the next launch.
 
 ## 0.26.0 — 2026-10-28
