@@ -97,13 +97,14 @@ impl Default for Font {
     }
 }
 
-/// Relative pane widths. 0 hides a pane.
+/// Relative pane widths, 0 hiding a pane, and how the panes are arranged.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Layout {
     pub sources: u16,
     pub list: u16,
     pub article: u16,
+    pub arrangement: Arrangement,
 }
 
 impl Default for Layout {
@@ -112,8 +113,24 @@ impl Default for Layout {
             sources: 2,
             list: 4,
             article: 6,
+            arrangement: Arrangement::Columns,
         }
     }
+}
+
+/// Where the panes sit, as mail clients offer it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum Arrangement {
+    /// Sources, list and article side by side.
+    #[default]
+    Columns,
+    /// Sources on the left; the list above the article on the right.
+    Classic,
+    /// The list above the article, no sources: for a short, wide tile.
+    Wide,
+    /// The article alone: for a narrow tile.
+    Reading,
 }
 
 /// Background refresh.
@@ -294,6 +311,22 @@ mod tests {
                 ..Layout::default()
             }
         );
+    }
+
+    #[test]
+    fn the_arrangement_is_a_name_and_columns_by_default() {
+        assert_eq!(parse("").unwrap().layout.arrangement, Arrangement::Columns);
+        for (name, arrangement) in [
+            ("columns", Arrangement::Columns),
+            ("classic", Arrangement::Classic),
+            ("wide", Arrangement::Wide),
+            ("reading", Arrangement::Reading),
+        ] {
+            let text = format!("[layout]\narrangement = \"{name}\"");
+            assert_eq!(parse(&text).unwrap().layout.arrangement, arrangement);
+        }
+        let err = parse("[layout]\narrangement = \"stacked\"").unwrap_err();
+        assert!(matches!(err, Error::Parse { .. }), "{err}");
     }
 
     #[test]

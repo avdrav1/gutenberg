@@ -1,6 +1,7 @@
 //! The article list: which rows are on screen, and what keys do. Pure, so
 //! it can be tested without a window.
 
+use gutenberg_core::config::Arrangement;
 use gutenberg_store::View;
 use iced::keyboard::{Key, Modifiers};
 
@@ -55,6 +56,10 @@ pub enum Action {
     NarrowPane,
     WidenPane,
     ResetPanes,
+    /// The next arrangement of the panes, round again at the end, or a
+    /// named one.
+    NextLayout,
+    Layout(Arrangement),
 }
 
 /// `pending_g` is whether the last key was a lone `g`.
@@ -91,6 +96,7 @@ pub fn action_for(key: &Key, modifiers: Modifiers, pending_g: bool) -> Option<Ac
         Key::Character("<") => Some(Action::NarrowPane),
         Key::Character(">") => Some(Action::WidenPane),
         Key::Character("=") => Some(Action::ResetPanes),
+        Key::Character("L") => Some(Action::NextLayout),
         Key::Named(Named::Tab) if modifiers.shift() => Some(Action::PrevPane),
         Key::Named(Named::Tab) => Some(Action::NextPane),
         _ => None,

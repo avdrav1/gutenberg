@@ -15,7 +15,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use gutenberg_core::catalog;
-use gutenberg_core::config::{self, Config};
+use gutenberg_core::config::{self, Arrangement, Config};
 use gutenberg_core::favicon::Icons;
 use gutenberg_core::sync::{unix_now, Status};
 use gutenberg_core::web::{self, Answer, Web};
@@ -38,6 +38,7 @@ use iced::{
 };
 
 use list::Action;
+use panes::Arrange;
 use sidebar::{Entry, Move, Step};
 
 /// Most articles kept in the list; the PRD plans for 100k.
@@ -211,6 +212,29 @@ fn with_installed(
 
 /// Text sizes in the code are for a 14 px font; `[font] size` scales the
 /// whole window from there, so rows and padding grow with the text.
+/// `arrangement`'s place in `panes::ARRANGEMENTS`, and in `App::sizes`.
+fn slot(arrangement: Arrangement) -> usize {
+    panes::ARRANGEMENTS
+        .iter()
+        .position(|a| *a == arrangement)
+        .unwrap_or(0)
+}
+
+/// A store setting, or `None` with a line on stderr when the store can't
+/// be read.
+fn read_setting(store: &Result<Store, String>, key: &str) -> Option<String> {
+    match store {
+        Ok(store) => match store.setting(key) {
+            Ok(setting) => setting,
+            Err(e) => {
+                eprintln!("gutenberg: reading {key}: {e}");
+                None
+            }
+        },
+        Err(_) => None,
+    }
+}
+
 fn scale_factor(config: &Config) -> f32 {
     f32::from(config.font.size) / f32::from(config::Font::DEFAULT_SIZE)
 }
@@ -260,15 +284,23 @@ struct App {
     height: f32,
     /// Width of the window, for the narrowest a pane may be dragged to.
     width: f32,
-    /// Each pane's share of the window.
-    widths: panes::Widths,
-    /// Whether `widths` came from the store (a drag or a key), so a config
+    /// Where the panes sit.
+    arrangement: Arrangement,
+    /// Whether `arrangement` came from the store (`L` or the palette), so a
+    /// config change keeps it; else it follows `[layout]`.
+    arrangement_stored: bool,
+    /// The arrangement before reading, which `Esc` goes back to.
+    before_reading: Option<Arrangement>,
+    /// Each arrangement's divider positions, in `panes::ARRANGEMENTS` order.
+    sizes: [panes::Sizes; 4],
+    /// Which of `sizes` came from the store (a drag or a key), so a config
     /// change keeps them; else they follow `[layout]`.
-    widths_stored: bool,
-    /// The panes as `pane_grid` draws them, built from `widths`.
+    sizes_stored: [bool; 4],
+    /// The panes as `pane_grid` draws them, built from the arrangement and
+    /// its sizes.
     grid: pane_grid::State<panes::Id>,
-    /// The grid's dividers, from the left.
-    dividers: Vec<pane_grid::Split>,
+    /// The grid's dividers, each with what moving it changes.
+    dividers: Vec<(pane_grid::Split, panes::Divider)>,
     opened: Option<Opened>,
     /// Fetches the open article's images and reader page; set once its
     /// worker starts.
@@ -641,8 +673,9 @@ impl App {
                 last: None,
                 intervals: Vec::with_capacity(frames),
             });
-        let widths = panes::Widths::from_layout(config.layout);
-        let (grid, dividers) = panes::grid(&widths);
+        let arrangement = config.layout.arrangement;
+        let sizes = panes::Sizes::from_layout(config.layout);
+        let (grid, dividers) = panes::grid(arrangement, &sizes);
         let mut app = Self {
             tokens: Tokens::fallback(Scheme::Dark),
             omarchy: false,
@@ -670,8 +703,11 @@ impl App {
             top: 0,
             height: 768.0,
             width: 1280.0,
-            widths,
-            widths_stored: false,
+            arrangement,
+            arrangement_stored: false,
+            before_reading: None,
+            sizes: [sizes; 4],
+            sizes_stored: [false; 4],
             grid,
             dividers,
             opened: None,
@@ -693,7 +729,7 @@ impl App {
             overlay: None,
             search: None,
         };
-        app.load_widths();
+        app.load_layout();
         app.reload();
         // First run: nothing to read yet, so start by picking sources.
         if app.store.is_ok() && app.sources.is_empty() && app.bench.is_none() {
@@ -860,20 +896,28 @@ impl App {
                 } else {
                     -panes::STEP
                 };
-                if self.widths.nudge(pane, step, self.width) {
+                let (arrangement, width, height) =
+                    (self.arrangement, self.width, self.panes_height());
+                if self
+                    .sizes_mut()
+                    .nudge(arrangement, pane, step, width, height)
+                {
                     self.rebuild_grid();
-                    self.save_widths();
+                    self.save_sizes();
                 }
             }
             Message::Key(Action::ResetPanes) => {
-                if let Ok(store) = &self.store {
-                    if let Err(e) = store.unset_setting(panes::SETTING) {
-                        eprintln!("gutenberg: forgetting pane widths: {e}");
+                if let (Ok(store), Some(setting)) = (&self.store, self.arrangement.sizes_setting())
+                {
+                    if let Err(e) = store.unset_setting(setting) {
+                        eprintln!("gutenberg: forgetting pane sizes: {e}");
                     }
                 }
-                self.widths_stored = false;
+                self.sizes_stored[slot(self.arrangement)] = false;
                 self.apply_layout();
             }
+            Message::Key(Action::NextLayout) => self.set_arrangement(self.arrangement.next()),
+            Message::Key(Action::Layout(arrangement)) => self.set_arrangement(arrangement),
             Message::Key(Action::AddSources) => self.open_onboarding(),
             Message::Key(Action::Reader) => self.toggle_reader(),
             Message::Key(Action::Palette) => {
@@ -898,7 +942,14 @@ impl App {
                     self.show_from_top();
                 }
             },
-            Message::Key(Action::ClearSearch) => self.clear_search(),
+            Message::Key(Action::ClearSearch) => {
+                // Reading is left the way a search is: Esc brings the list back.
+                if self.arrangement == Arrangement::Reading {
+                    self.set_arrangement(self.before_reading.unwrap_or(Arrangement::Columns));
+                } else {
+                    self.clear_search();
+                }
+            }
             Message::Key(Action::View(view)) => self.show_view(view),
             Message::Search(input) => self.search_input(input),
             Message::Key(Action::CopyLink) => {
@@ -1005,10 +1056,11 @@ impl App {
                 self.set_height(height);
             }
             Message::DividerDragged(event) => {
-                if let Some(divider) = self.dividers.iter().position(|d| *d == event.split) {
-                    let ratio = self.widths.resize(divider, event.ratio, self.width);
+                if let Some(&(_, divider)) = self.dividers.iter().find(|d| d.0 == event.split) {
+                    let (width, height) = (self.width, self.panes_height());
+                    let ratio = self.sizes_mut().resize(divider, event.ratio, width, height);
                     self.grid.resize(event.split, ratio);
-                    self.save_widths();
+                    self.save_sizes();
                 }
             }
             Message::Press(entry) => {
@@ -1080,7 +1132,7 @@ impl App {
     /// With two panes there's one other: Tab and Shift-Tab both go there.
     /// Nothing happens while the sources pane is hidden.
     fn switch_pane(&mut self) -> Task<Message> {
-        if self.config.layout.sources == 0 || self.store.is_err() {
+        if !self.sources_shown() || self.store.is_err() {
             return Task::none();
         }
         self.pane = match self.pane {
@@ -1177,51 +1229,109 @@ impl App {
 
     /// The window is `height` logical pixels tall: keeps the selected row
     /// in view and the list from scrolling past its end.
-    /// Reads the pane widths a drag or a key left in the store; `[layout]`
-    /// applies until there are any.
-    fn load_widths(&mut self) {
-        let stored = match &self.store {
-            Ok(store) => match store.setting(panes::SETTING) {
-                Ok(setting) => setting.and_then(|s| panes::Widths::from_setting(&s)),
-                Err(e) => {
-                    eprintln!("gutenberg: reading pane widths: {e}");
-                    None
-                }
-            },
-            Err(_) => None,
-        };
-        if let Some(widths) = stored {
-            self.widths = widths;
-            self.widths_stored = true;
+    /// Reads the arrangement, and each arrangement's sizes, that `L`, a
+    /// drag or a key left in the store; `[layout]` applies until there are
+    /// any.
+    fn load_layout(&mut self) {
+        if let Some(arrangement) = read_setting(&self.store, panes::ARRANGEMENT_SETTING)
+            .and_then(|s| Arrangement::from_name(&s))
+        {
+            self.arrangement = arrangement;
+            self.arrangement_stored = true;
+        }
+        for arrangement in panes::ARRANGEMENTS {
+            let Some(key) = arrangement.sizes_setting() else {
+                continue;
+            };
+            if let Some(sizes) =
+                read_setting(&self.store, key).and_then(|s| panes::Sizes::from_setting(&s))
+            {
+                self.sizes[slot(arrangement)] = sizes;
+                self.sizes_stored[slot(arrangement)] = true;
+            }
         }
         self.apply_layout();
     }
 
-    /// Lets `[layout]` choose which panes show and, with nothing stored, how
-    /// wide, then rebuilds the grid.
+    /// Lets `[layout]` choose the arrangement and which panes show, and with
+    /// nothing stored how big, then rebuilds the grid.
     fn apply_layout(&mut self) {
         let layout = self.config.layout;
-        self.widths = if self.widths_stored {
-            self.widths.shown(layout)
-        } else {
-            panes::Widths::from_layout(layout)
-        };
+        if !self.arrangement_stored {
+            self.arrangement = layout.arrangement;
+        }
+        for arrangement in panes::ARRANGEMENTS {
+            let i = slot(arrangement);
+            self.sizes[i] = if self.sizes_stored[i] {
+                self.sizes[i].shown(layout)
+            } else {
+                panes::Sizes::from_layout(layout)
+            };
+        }
+        self.leave_hidden_pane();
         self.rebuild_grid();
     }
 
+    /// Switches to `arrangement`, keeping it for the next launch, and where
+    /// reading started from, so `Esc` can go back.
+    fn set_arrangement(&mut self, arrangement: Arrangement) {
+        if arrangement == Arrangement::Reading && self.arrangement != Arrangement::Reading {
+            self.before_reading = Some(self.arrangement);
+        }
+        self.arrangement = arrangement;
+        self.arrangement_stored = true;
+        if let Ok(store) = &self.store {
+            if let Err(e) = store.set_setting(panes::ARRANGEMENT_SETTING, arrangement.name()) {
+                eprintln!("gutenberg: saving the layout: {e}");
+            }
+        }
+        self.leave_hidden_pane();
+        self.rebuild_grid();
+    }
+
+    /// The keys can't stay in a sources pane that isn't showing.
+    fn leave_hidden_pane(&mut self) {
+        if self.pane == Pane::Sources && !self.sources_shown() {
+            self.pane = Pane::List;
+        }
+    }
+
+    fn sources_shown(&self) -> bool {
+        panes::visible(self.arrangement, self.sizes()).contains(&panes::Id::Sources)
+    }
+
+    /// The current arrangement's divider positions.
+    fn sizes(&self) -> &panes::Sizes {
+        &self.sizes[slot(self.arrangement)]
+    }
+
+    fn sizes_mut(&mut self) -> &mut panes::Sizes {
+        &mut self.sizes[slot(self.arrangement)]
+    }
+
     fn rebuild_grid(&mut self) {
-        let (grid, dividers) = panes::grid(&self.widths);
+        let (grid, dividers) = panes::grid(self.arrangement, self.sizes());
         self.grid = grid;
         self.dividers = dividers;
     }
 
-    /// Keeps the widths for the next launch.
-    fn save_widths(&mut self) {
-        self.widths_stored = true;
-        if let Ok(store) = &self.store {
-            if let Err(e) = store.set_setting(panes::SETTING, &self.widths.to_setting()) {
-                eprintln!("gutenberg: saving pane widths: {e}");
+    /// Keeps the arrangement's sizes for the next launch.
+    fn save_sizes(&mut self) {
+        let i = slot(self.arrangement);
+        self.sizes_stored[i] = true;
+        if let (Ok(store), Some(key)) = (&self.store, self.arrangement.sizes_setting()) {
+            if let Err(e) = store.set_setting(key, &self.sizes[i].to_setting()) {
+                eprintln!("gutenberg: saving pane sizes: {e}");
             }
+        }
+    }
+
+    /// The height the panes get: the window's, less the key bar.
+    fn panes_height(&self) -> f32 {
+        if self.config.keys.hints {
+            self.height - HINT_BAR
+        } else {
+            self.height
         }
     }
 
@@ -2667,7 +2777,15 @@ pub mod shots {
     /// Writes `path` (iced_test adds `-tiny-skia.png`): the window at `size`
     /// in `tokens`, with an article open, read and starred rows, and a
     /// folder chosen in the sources pane.
-    pub fn render(tokens: Tokens, size: (f32, f32), path: &std::path::Path) {
+    pub use crate::panes::{Arrange, ARRANGEMENTS};
+    pub use gutenberg_core::config::Arrangement;
+
+    pub fn render(
+        tokens: Tokens,
+        size: (f32, f32),
+        arrangement: Arrangement,
+        path: &std::path::Path,
+    ) {
         let mut store = Store::open_in_memory().expect("in-memory store");
         let news = store.folder_named("News").expect("folder").id;
         let feeds = [
@@ -2706,6 +2824,8 @@ pub mod shots {
         let mut app = App::with_store(Config::default(), None, Ok(store), None);
         app.set_tokens(tokens);
         app.height = size.1;
+        app.width = size.0;
+        app.set_arrangement(arrangement);
         app.select(4);
         let _ = app.update(Message::Key(Action::Star));
         app.open(3);
@@ -3791,15 +3911,22 @@ mod tests {
         let mut app = app_with(1);
         app.width = 1200.0;
         assert_eq!(app.dividers.len(), 2);
-        let split = app.dividers[0];
+        let split = app.dividers[0].0;
         let _ = app.update(Message::DividerDragged(pane_grid::ResizeEvent {
             split,
             ratio: 0.3,
         }));
-        assert!(near(app.widths.sources, 0.3), "{:?}", app.widths);
-        assert!(near(app.widths.list / app.widths.article, 2.0 / 3.0));
+        assert!(
+            near(app.sizes().widths.sources, 0.3),
+            "{:?}",
+            app.sizes().widths
+        );
+        assert!(near(
+            app.sizes().widths.list / app.sizes().widths.article,
+            2.0 / 3.0
+        ));
         let stored = app.store.as_ref().unwrap().setting(panes::SETTING).unwrap();
-        assert_eq!(stored.as_deref(), Some(app.widths.to_setting().as_str()));
+        assert_eq!(stored.as_deref(), Some(app.sizes().to_setting().as_str()));
         // The grid moved with it, without being rebuilt mid-drag.
         assert_eq!(app.grid.layout().splits().count(), 2);
     }
@@ -3809,15 +3936,19 @@ mod tests {
         let store = Store::open_in_memory().unwrap();
         store.set_setting(panes::SETTING, "0.3,0.3,0.4").unwrap();
         let mut app = App::with_store(Config::default(), None, Ok(store), None);
-        assert!(near(app.widths.sources, 0.3), "{:?}", app.widths);
-        assert!(app.widths_stored);
+        assert!(
+            near(app.sizes().widths.sources, 0.3),
+            "{:?}",
+            app.sizes().widths
+        );
+        assert!(app.sizes_stored[0]);
 
         let _ = app.update(Message::Key(Action::ResetPanes));
         assert_eq!(
-            app.widths,
+            app.sizes().widths,
             panes::Widths::from_layout(Config::default().layout)
         );
-        assert!(!app.widths_stored);
+        assert!(!app.sizes_stored[0]);
         assert_eq!(
             app.store.as_ref().unwrap().setting(panes::SETTING).unwrap(),
             None
@@ -3830,34 +3961,37 @@ mod tests {
         store.set_setting(panes::SETTING, "wide").unwrap();
         let app = App::with_store(Config::default(), None, Ok(store), None);
         assert_eq!(
-            app.widths,
+            app.sizes().widths,
             panes::Widths::from_layout(Config::default().layout)
         );
-        assert!(!app.widths_stored);
+        assert!(!app.sizes_stored[0]);
     }
 
     #[test]
     fn the_keys_resize_the_pane_that_has_them() {
         let mut app = app_with(1);
         app.width = 1200.0;
-        let before = app.widths;
+        let before = app.sizes().widths;
         let _ = app.update(Message::Key(Action::WidenPane));
         assert!(
-            near(app.widths.list, before.list + panes::STEP),
+            near(app.sizes().widths.list, before.list + panes::STEP),
             "{:?}",
-            app.widths
+            app.sizes().widths
         );
-        assert!(near(app.widths.article, before.article - panes::STEP));
-        assert!(near(app.widths.sources, before.sources));
+        assert!(near(
+            app.sizes().widths.article,
+            before.article - panes::STEP
+        ));
+        assert!(near(app.sizes().widths.sources, before.sources));
         // Tab: the sources pane has the keys, and `<` narrows it.
         let _ = app.update(Message::Key(Action::NextPane));
         let _ = app.update(Message::Key(Action::NarrowPane));
         assert!(
-            near(app.widths.sources, before.sources - panes::STEP),
+            near(app.sizes().widths.sources, before.sources - panes::STEP),
             "{:?}",
-            app.widths
+            app.sizes().widths
         );
-        assert!(app.widths_stored);
+        assert!(app.sizes_stored[0]);
     }
 
     #[test]
@@ -3865,22 +3999,22 @@ mod tests {
         let mut app = app_with(1);
         app.width = 1200.0;
         let _ = app.update(Message::Key(Action::WidenPane));
-        let dragged = app.widths;
+        let dragged = app.sizes().widths;
         let mut config = Config::default();
         config.layout.sources = 0;
         let _ = app.update(Message::ConfigChanged(config));
-        assert_eq!(app.widths.sources, 0.0);
+        assert_eq!(app.sizes().widths.sources, 0.0);
         assert_eq!(app.dividers.len(), 1);
         assert!(near(
-            app.widths.list / app.widths.article,
+            app.sizes().widths.list / app.sizes().widths.article,
             dragged.list / dragged.article
         ));
         // Showing it again gives it the config's share; the others keep theirs.
         let _ = app.update(Message::ConfigChanged(Config::default()));
         assert_eq!(app.dividers.len(), 2);
-        assert!(app.widths.sources > 0.0);
+        assert!(app.sizes().widths.sources > 0.0);
         assert!(near(
-            app.widths.list / app.widths.article,
+            app.sizes().widths.list / app.sizes().widths.article,
             dragged.list / dragged.article
         ));
         // Without stored widths, a config change is just applied.
@@ -3889,7 +4023,139 @@ mod tests {
         config.layout.list = 8;
         let layout = config.layout;
         let _ = app.update(Message::ConfigChanged(config));
-        assert_eq!(app.widths, panes::Widths::from_layout(layout));
+        assert_eq!(app.sizes().widths, panes::Widths::from_layout(layout));
+    }
+
+    fn setting(app: &App, key: &str) -> Option<String> {
+        app.store.as_ref().unwrap().setting(key).unwrap()
+    }
+
+    #[test]
+    fn l_cycles_the_layouts_and_each_is_kept_for_the_next_launch() {
+        let mut app = app_with(1);
+        assert_eq!(app.arrangement, Arrangement::Columns);
+        for expected in [
+            Arrangement::Classic,
+            Arrangement::Wide,
+            Arrangement::Reading,
+            Arrangement::Columns,
+        ] {
+            let _ = app.update(Message::Key(Action::NextLayout));
+            assert_eq!(app.arrangement, expected);
+            assert_eq!(
+                setting(&app, panes::ARRANGEMENT_SETTING).as_deref(),
+                Some(expected.name())
+            );
+        }
+        let _ = app.update(Message::Key(Action::Layout(Arrangement::Wide)));
+        assert_eq!(app.arrangement, Arrangement::Wide);
+        assert_eq!(app.grid.len(), 2);
+        assert_eq!(app.dividers.len(), 1);
+    }
+
+    #[test]
+    fn a_stored_layout_beats_config_at_launch_and_junk_falls_back() {
+        let store = Store::open_in_memory().unwrap();
+        store
+            .set_setting(panes::ARRANGEMENT_SETTING, "classic")
+            .unwrap();
+        store
+            .set_setting("layout.classic", "0.3,0.3,0.4;0.6")
+            .unwrap();
+        let app = App::with_store(Config::default(), None, Ok(store), None);
+        assert_eq!(app.arrangement, Arrangement::Classic);
+        assert!(near(app.sizes().widths.sources, 0.3) && near(app.sizes().rows, 0.6));
+        assert_eq!(app.grid.len(), 3);
+
+        let store = Store::open_in_memory().unwrap();
+        store
+            .set_setting(panes::ARRANGEMENT_SETTING, "stacked")
+            .unwrap();
+        let mut config = Config::default();
+        config.layout.arrangement = Arrangement::Reading;
+        let app = App::with_store(config, None, Ok(store), None);
+        assert_eq!(app.arrangement, Arrangement::Reading);
+        assert!(!app.arrangement_stored);
+    }
+
+    #[test]
+    fn esc_leaves_reading_for_the_layout_before_it_and_only_then_clears_a_search() {
+        let mut app = app_with(3);
+        let _ = app.update(Message::Key(Action::Layout(Arrangement::Classic)));
+        let _ = app.update(Message::Key(Action::Search));
+        let _ = app.update(Message::Key(Action::Layout(Arrangement::Reading)));
+        assert_eq!(app.grid.len(), 1);
+        let _ = app.update(Message::Key(Action::ClearSearch));
+        assert_eq!(app.arrangement, Arrangement::Classic);
+        assert!(app.search.is_some(), "the search is still there");
+        let _ = app.update(Message::Key(Action::ClearSearch));
+        assert!(app.search.is_none());
+        // Reading straight from the config has nothing to go back to but
+        // columns.
+        let mut config = Config::default();
+        config.layout.arrangement = Arrangement::Reading;
+        let mut app = App::with_store(config, None, Ok(Store::open_in_memory().unwrap()), None);
+        let _ = app.update(Message::Key(Action::ClearSearch));
+        assert_eq!(app.arrangement, Arrangement::Columns);
+    }
+
+    #[test]
+    fn tab_has_nowhere_to_go_in_wide_and_reading_and_the_keys_leave_a_hidden_pane() {
+        let mut app = app_with(1);
+        let _ = app.update(Message::Key(Action::NextPane));
+        assert_eq!(app.pane, Pane::Sources);
+        let _ = app.update(Message::Key(Action::Layout(Arrangement::Wide)));
+        assert_eq!(app.pane, Pane::List, "the sources pane is gone");
+        let _ = app.update(Message::Key(Action::NextPane));
+        assert_eq!(app.pane, Pane::List);
+        let _ = app.update(Message::Key(Action::Layout(Arrangement::Reading)));
+        let _ = app.update(Message::Key(Action::NextPane));
+        assert_eq!(app.pane, Pane::List);
+        let _ = app.update(Message::Key(Action::Layout(Arrangement::Classic)));
+        let _ = app.update(Message::Key(Action::NextPane));
+        assert_eq!(app.pane, Pane::Sources);
+    }
+
+    #[test]
+    fn each_layout_keeps_its_own_divider_positions_and_reset_touches_one() {
+        let mut app = app_with(1);
+        app.width = 1200.0;
+        app.height = 800.0 + HINT_BAR;
+        // Columns: widen the list.
+        let _ = app.update(Message::Key(Action::WidenPane));
+        let columns = *app.sizes();
+        // Classic: the same key makes the list taller, and a drag on the
+        // rows divider moves rows.
+        let _ = app.update(Message::Key(Action::Layout(Arrangement::Classic)));
+        let _ = app.update(Message::Key(Action::WidenPane));
+        assert!(near(app.sizes().rows, panes::DEFAULT_ROWS + panes::STEP));
+        let rows_split = app
+            .dividers
+            .iter()
+            .find(|d| d.1 == panes::Divider::Rows)
+            .unwrap()
+            .0;
+        let _ = app.update(Message::DividerDragged(pane_grid::ResizeEvent {
+            split: rows_split,
+            ratio: 0.7,
+        }));
+        assert!(near(app.sizes().rows, 0.7));
+        assert_eq!(
+            setting(&app, "layout.classic").as_deref(),
+            Some(app.sizes().to_setting().as_str())
+        );
+        // Back in columns, nothing moved.
+        let _ = app.update(Message::Key(Action::Layout(Arrangement::Columns)));
+        assert_eq!(*app.sizes(), columns);
+        // Reset forgets only this arrangement's sizes.
+        let _ = app.update(Message::Key(Action::ResetPanes));
+        assert_eq!(
+            *app.sizes(),
+            panes::Sizes::from_layout(Config::default().layout)
+        );
+        assert_eq!(setting(&app, panes::SETTING), None);
+        let _ = app.update(Message::Key(Action::Layout(Arrangement::Classic)));
+        assert!(near(app.sizes().rows, 0.7));
     }
 
     #[test]
@@ -4652,7 +4918,9 @@ mod tests {
     #[test]
     fn tab_does_nothing_while_the_sources_pane_is_hidden() {
         let (mut app, ..) = app_with_folders();
-        app.config.layout.sources = 0;
+        let mut config = Config::default();
+        config.layout.sources = 0;
+        let _ = app.update(Message::ConfigChanged(config));
         let _ = app.update(Message::Key(Action::NextPane));
         assert_eq!(app.pane, Pane::List);
     }
