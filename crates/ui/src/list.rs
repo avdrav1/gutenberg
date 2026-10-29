@@ -50,6 +50,11 @@ pub enum Action {
     /// Moves the keys to the other pane: the sources or the list.
     NextPane,
     PrevPane,
+    /// Narrows or widens the pane that has the keys by a step, taking the
+    /// space from its neighbour; `ResetPanes` goes back to `[layout]`.
+    NarrowPane,
+    WidenPane,
+    ResetPanes,
 }
 
 /// `pending_g` is whether the last key was a lone `g`.
@@ -83,6 +88,9 @@ pub fn action_for(key: &Key, modifiers: Modifiers, pending_g: bool) -> Option<Ac
         Key::Character("t") => Some(Action::View(View::Today)),
         Key::Character("T") => Some(Action::Tools),
         Key::Character("K") => Some(Action::EnterKey),
+        Key::Character("<") => Some(Action::NarrowPane),
+        Key::Character(">") => Some(Action::WidenPane),
+        Key::Character("=") => Some(Action::ResetPanes),
         Key::Named(Named::Tab) if modifiers.shift() => Some(Action::PrevPane),
         Key::Named(Named::Tab) => Some(Action::NextPane),
         _ => None,

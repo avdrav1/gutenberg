@@ -6,6 +6,7 @@ mod hints;
 mod list;
 mod onboarding;
 mod palette;
+mod panes;
 mod sidebar;
 
 use std::collections::{HashMap, HashSet};
@@ -26,6 +27,7 @@ use iced::futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use iced::futures::Stream;
 use iced::keyboard;
 use iced::mouse::ScrollDelta;
+use iced::widget::pane_grid::{self, PaneGrid};
 use iced::widget::{
     column, container, image, mouse_area, opaque, rich_text, row, scrollable, span, stack, svg,
     text, Column, Row, Space,
@@ -256,6 +258,17 @@ struct App {
     top: usize,
     /// Height of the panes, from the window.
     height: f32,
+    /// Width of the window, for the narrowest a pane may be dragged to.
+    width: f32,
+    /// Each pane's share of the window.
+    widths: panes::Widths,
+    /// Whether `widths` came from the store (a drag or a key), so a config
+    /// change keeps them; else they follow `[layout]`.
+    widths_stored: bool,
+    /// The panes as `pane_grid` draws them, built from `widths`.
+    grid: pane_grid::State<panes::Id>,
+    /// The grid's dividers, from the left.
+    dividers: Vec<pane_grid::Split>,
     opened: Option<Opened>,
     /// Fetches the open article's images and reader page; set once its
     /// worker starts.
@@ -539,6 +552,8 @@ enum Message {
     /// Reads the refresh's progress, while one runs.
     PollProgress,
     Resized(Size),
+    /// A divider between panes dragged to a new ratio of its split.
+    DividerDragged(pane_grid::ResizeEvent),
     Frame(Instant),
     ConfigChanged(Config),
     /// The Omarchy theme, if there is one, and the desktop font if it
@@ -626,6 +641,8 @@ impl App {
                 last: None,
                 intervals: Vec::with_capacity(frames),
             });
+        let widths = panes::Widths::from_layout(config.layout);
+        let (grid, dividers) = panes::grid(&widths);
         let mut app = Self {
             tokens: Tokens::fallback(Scheme::Dark),
             omarchy: false,
@@ -652,6 +669,11 @@ impl App {
             selected: 0,
             top: 0,
             height: 768.0,
+            width: 1280.0,
+            widths,
+            widths_stored: false,
+            grid,
+            dividers,
             opened: None,
             web: None,
             pictures: HashMap::new(),
@@ -671,6 +693,7 @@ impl App {
             overlay: None,
             search: None,
         };
+        app.load_widths();
         app.reload();
         // First run: nothing to read yet, so start by picking sources.
         if app.store.is_ok() && app.sources.is_empty() && app.bench.is_none() {
@@ -827,6 +850,30 @@ impl App {
             Message::KeySaved(id, saved) => self.key_saved(id, saved),
             Message::Key(Action::Quit) => return iced::exit(),
             Message::Key(Action::NextPane | Action::PrevPane) => return self.switch_pane(),
+            Message::Key(action @ (Action::NarrowPane | Action::WidenPane)) => {
+                let pane = match self.pane {
+                    Pane::Sources => panes::Id::Sources,
+                    Pane::List => panes::Id::List,
+                };
+                let step = if action == Action::WidenPane {
+                    panes::STEP
+                } else {
+                    -panes::STEP
+                };
+                if self.widths.nudge(pane, step, self.width) {
+                    self.rebuild_grid();
+                    self.save_widths();
+                }
+            }
+            Message::Key(Action::ResetPanes) => {
+                if let Ok(store) = &self.store {
+                    if let Err(e) = store.unset_setting(panes::SETTING) {
+                        eprintln!("gutenberg: forgetting pane widths: {e}");
+                    }
+                }
+                self.widths_stored = false;
+                self.apply_layout();
+            }
             Message::Key(Action::AddSources) => self.open_onboarding(),
             Message::Key(Action::Reader) => self.toggle_reader(),
             Message::Key(Action::Palette) => {
@@ -914,7 +961,10 @@ impl App {
                     self.reload();
                 }
             }
-            Message::Resized(size) => self.set_height(size.height),
+            Message::Resized(size) => {
+                self.width = size.width;
+                self.set_height(size.height);
+            }
             Message::Frame(at) => return self.bench_frame(at),
             Message::MemoryStep => return self.memory_step(),
             Message::ThemeReloaded(tokens, font) => {
@@ -951,7 +1001,15 @@ impl App {
                 // same window is now a different number of logical pixels.
                 let height = self.height * self.scale_factor() / scale_factor(&config);
                 self.config = config;
+                self.apply_layout();
                 self.set_height(height);
+            }
+            Message::DividerDragged(event) => {
+                if let Some(divider) = self.dividers.iter().position(|d| *d == event.split) {
+                    let ratio = self.widths.resize(divider, event.ratio, self.width);
+                    self.grid.resize(event.split, ratio);
+                    self.save_widths();
+                }
             }
             Message::Press(entry) => {
                 self.drag = Some(Drag {
@@ -1119,6 +1177,54 @@ impl App {
 
     /// The window is `height` logical pixels tall: keeps the selected row
     /// in view and the list from scrolling past its end.
+    /// Reads the pane widths a drag or a key left in the store; `[layout]`
+    /// applies until there are any.
+    fn load_widths(&mut self) {
+        let stored = match &self.store {
+            Ok(store) => match store.setting(panes::SETTING) {
+                Ok(setting) => setting.and_then(|s| panes::Widths::from_setting(&s)),
+                Err(e) => {
+                    eprintln!("gutenberg: reading pane widths: {e}");
+                    None
+                }
+            },
+            Err(_) => None,
+        };
+        if let Some(widths) = stored {
+            self.widths = widths;
+            self.widths_stored = true;
+        }
+        self.apply_layout();
+    }
+
+    /// Lets `[layout]` choose which panes show and, with nothing stored, how
+    /// wide, then rebuilds the grid.
+    fn apply_layout(&mut self) {
+        let layout = self.config.layout;
+        self.widths = if self.widths_stored {
+            self.widths.shown(layout)
+        } else {
+            panes::Widths::from_layout(layout)
+        };
+        self.rebuild_grid();
+    }
+
+    fn rebuild_grid(&mut self) {
+        let (grid, dividers) = panes::grid(&self.widths);
+        self.grid = grid;
+        self.dividers = dividers;
+    }
+
+    /// Keeps the widths for the next launch.
+    fn save_widths(&mut self) {
+        self.widths_stored = true;
+        if let Ok(store) = &self.store {
+            if let Err(e) = store.set_setting(panes::SETTING, &self.widths.to_setting()) {
+                eprintln!("gutenberg: saving pane widths: {e}");
+            }
+        }
+    }
+
     fn set_height(&mut self, height: f32) {
         self.height = height;
         self.top = list::scroll_to_show(self.top, self.selected, self.list_height())
@@ -1522,19 +1628,34 @@ impl App {
         if let Some(state) = &self.onboarding {
             return onboarding::view(state, catalog::builtin(), t);
         }
-        let layout = self.config.layout;
-        let panes: [(u16, Element<'_, Message>, Rgb); 3] = [
-            (layout.sources, self.sidebar_view(), t.background),
-            (layout.list, self.list_view(), t.background),
-            (layout.article, self.article_view(), t.lighter_background),
-        ];
-        let panes = Row::with_children(
-            panes
-                .into_iter()
-                .filter(|(width, _, _)| *width > 0)
-                .map(|(width, content, background)| pane(content, background, t.border, width)),
-        )
-        .height(Length::Fill);
+        let accent = t.accent;
+        let panes = PaneGrid::new(&self.grid, |_, id, _| {
+            pane_grid::Content::new(match id {
+                panes::Id::Sources => pane(self.sidebar_view(), t.background, t.border),
+                panes::Id::List => pane(self.list_view(), t.background, t.border),
+                panes::Id::Article => pane(self.article_view(), t.lighter_background, t.border),
+            })
+        })
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .min_size(panes::MIN_WIDTH)
+        // The grab zone is the border line and a few pixels either side; the
+        // line itself is each pane's border, drawn as before.
+        .on_resize(6, Message::DividerDragged)
+        .style(move |_| pane_grid::Style {
+            hovered_region: pane_grid::Highlight {
+                background: Color::TRANSPARENT.into(),
+                border: Border::default(),
+            },
+            picked_split: pane_grid::Line {
+                color: color(accent),
+                width: 3.0,
+            },
+            hovered_split: pane_grid::Line {
+                color: color(accent),
+                width: 3.0,
+            },
+        });
         let window: Element<'_, Message> = if self.config.keys.hints {
             column![panes, self.hint_bar()].into()
         } else {
@@ -3588,10 +3709,9 @@ fn pane<'a>(
     content: Element<'a, Message>,
     background: Rgb,
     border_color: Rgb,
-    portion: u16,
 ) -> Element<'a, Message> {
     container(content)
-        .width(Length::FillPortion(portion))
+        .width(Length::Fill)
         .height(Length::Fill)
         // Whatever a pane holds is drawn inside it, never over its neighbor.
         .clip(true)
@@ -3660,6 +3780,116 @@ mod tests {
         let mut app = App::with_store(Config::default(), None, Ok(store), None);
         app.height = 520.0 + HINT_BAR; // 10 whole rows above the key bar
         app
+    }
+
+    fn near(a: f32, b: f32) -> bool {
+        (a - b).abs() < 1e-3
+    }
+
+    #[test]
+    fn dragging_a_divider_resizes_the_panes_and_keeps_the_widths_in_the_store() {
+        let mut app = app_with(1);
+        app.width = 1200.0;
+        assert_eq!(app.dividers.len(), 2);
+        let split = app.dividers[0];
+        let _ = app.update(Message::DividerDragged(pane_grid::ResizeEvent {
+            split,
+            ratio: 0.3,
+        }));
+        assert!(near(app.widths.sources, 0.3), "{:?}", app.widths);
+        assert!(near(app.widths.list / app.widths.article, 2.0 / 3.0));
+        let stored = app.store.as_ref().unwrap().setting(panes::SETTING).unwrap();
+        assert_eq!(stored.as_deref(), Some(app.widths.to_setting().as_str()));
+        // The grid moved with it, without being rebuilt mid-drag.
+        assert_eq!(app.grid.layout().splits().count(), 2);
+    }
+
+    #[test]
+    fn stored_widths_beat_config_at_launch_and_reset_forgets_them() {
+        let store = Store::open_in_memory().unwrap();
+        store.set_setting(panes::SETTING, "0.3,0.3,0.4").unwrap();
+        let mut app = App::with_store(Config::default(), None, Ok(store), None);
+        assert!(near(app.widths.sources, 0.3), "{:?}", app.widths);
+        assert!(app.widths_stored);
+
+        let _ = app.update(Message::Key(Action::ResetPanes));
+        assert_eq!(
+            app.widths,
+            panes::Widths::from_layout(Config::default().layout)
+        );
+        assert!(!app.widths_stored);
+        assert_eq!(
+            app.store.as_ref().unwrap().setting(panes::SETTING).unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn junk_in_the_store_falls_back_to_config() {
+        let store = Store::open_in_memory().unwrap();
+        store.set_setting(panes::SETTING, "wide").unwrap();
+        let app = App::with_store(Config::default(), None, Ok(store), None);
+        assert_eq!(
+            app.widths,
+            panes::Widths::from_layout(Config::default().layout)
+        );
+        assert!(!app.widths_stored);
+    }
+
+    #[test]
+    fn the_keys_resize_the_pane_that_has_them() {
+        let mut app = app_with(1);
+        app.width = 1200.0;
+        let before = app.widths;
+        let _ = app.update(Message::Key(Action::WidenPane));
+        assert!(
+            near(app.widths.list, before.list + panes::STEP),
+            "{:?}",
+            app.widths
+        );
+        assert!(near(app.widths.article, before.article - panes::STEP));
+        assert!(near(app.widths.sources, before.sources));
+        // Tab: the sources pane has the keys, and `<` narrows it.
+        let _ = app.update(Message::Key(Action::NextPane));
+        let _ = app.update(Message::Key(Action::NarrowPane));
+        assert!(
+            near(app.widths.sources, before.sources - panes::STEP),
+            "{:?}",
+            app.widths
+        );
+        assert!(app.widths_stored);
+    }
+
+    #[test]
+    fn a_config_change_keeps_dragged_widths_but_still_decides_what_shows() {
+        let mut app = app_with(1);
+        app.width = 1200.0;
+        let _ = app.update(Message::Key(Action::WidenPane));
+        let dragged = app.widths;
+        let mut config = Config::default();
+        config.layout.sources = 0;
+        let _ = app.update(Message::ConfigChanged(config));
+        assert_eq!(app.widths.sources, 0.0);
+        assert_eq!(app.dividers.len(), 1);
+        assert!(near(
+            app.widths.list / app.widths.article,
+            dragged.list / dragged.article
+        ));
+        // Showing it again gives it the config's share; the others keep theirs.
+        let _ = app.update(Message::ConfigChanged(Config::default()));
+        assert_eq!(app.dividers.len(), 2);
+        assert!(app.widths.sources > 0.0);
+        assert!(near(
+            app.widths.list / app.widths.article,
+            dragged.list / dragged.article
+        ));
+        // Without stored widths, a config change is just applied.
+        let _ = app.update(Message::Key(Action::ResetPanes));
+        let mut config = Config::default();
+        config.layout.list = 8;
+        let layout = config.layout;
+        let _ = app.update(Message::ConfigChanged(config));
+        assert_eq!(app.widths, panes::Widths::from_layout(layout));
     }
 
     #[test]

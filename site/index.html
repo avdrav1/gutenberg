@@ -186,7 +186,7 @@
 gutenberg --add &lt;feed-url&gt;     # add an RSS, Atom or JSON feed</pre>
   <p>Bind it in <code>~/.config/hypr/bindings.conf</code>:</p>
   <pre class="block">bindd = SUPER, N, News, exec, gutenberg</pre>
-  <p>Layout and text size live in <code>~/.config/gutenberg/config.toml</code> (<code>~/Library/Application Support/gutenberg/config.toml</code> on macOS) and apply as you save. Colors and font come from your Omarchy theme and the monospace font <code>omarchy font set</code> picks, and an open window follows them when they change. On a Mac there's no Omarchy theme: the window follows the system's light or dark appearance, in the system font with Menlo for code.</p>
+  <p>Layout and text size live in <code>~/.config/gutenberg/config.toml</code> (<code>~/Library/Application Support/gutenberg/config.toml</code> on macOS) and apply as you save. Drag the line between two panes, or press <code>&lt;</code> and <code>&gt;</code>, to change their widths; that stands in for <code>[layout]</code> until <code>=</code> resets it. Colors and font come from your Omarchy theme and the monospace font <code>omarchy font set</code> picks, and an open window follows them when they change. On a Mac there's no Omarchy theme: the window follows the system's light or dark appearance, in the system font with Menlo for code.</p>
   <pre class="block">[layout]
 sources = 2
 list = 4
