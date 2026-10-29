@@ -589,6 +589,36 @@ impl Store {
         Ok(())
     }
 
+    /// A window setting saved with `set_setting`, such as the pane widths a
+    /// drag left; `None` until one is saved.
+    pub fn setting(&self, key: &str) -> Result<Option<String>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT value FROM setting WHERE key = ?1",
+                params![key],
+                |row| row.get(0),
+            )
+            .optional()?)
+    }
+
+    /// Saves a window setting, replacing the last value for `key`.
+    pub fn set_setting(&self, key: &str, value: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO setting (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![key, value],
+        )?;
+        Ok(())
+    }
+
+    /// Forgets a window setting, so its default applies again.
+    pub fn unset_setting(&self, key: &str) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM setting WHERE key = ?1", params![key])?;
+        Ok(())
+    }
+
     /// Every article of `source_id`, newest first, as what tells them apart.
     pub fn article_keys(&self, source_id: i64) -> Result<Vec<ArticleKey>> {
         let mut stmt = self.conn.prepare_cached(
