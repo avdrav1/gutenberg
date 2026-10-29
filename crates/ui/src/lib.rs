@@ -1061,6 +1061,7 @@ impl App {
                     let ratio = self.sizes_mut().resize(divider, event.ratio, width, height);
                     self.grid.resize(event.split, ratio);
                     self.save_sizes();
+                    self.set_height(self.height);
                 }
             }
             Message::Press(entry) => {
@@ -1200,9 +1201,13 @@ impl App {
     /// The list's own height: the window's, less the key bar and the search
     /// line when they're shown.
     fn list_height(&self) -> f32 {
-        let mut height = self.height;
-        if self.config.keys.hints {
-            height -= HINT_BAR;
+        let mut height = self.panes_height();
+        // Where the list sits above the article, it gets `rows` of the
+        // height, as the grid draws it.
+        let stacked = matches!(self.arrangement, Arrangement::Classic | Arrangement::Wide)
+            && self.dividers.iter().any(|d| d.1 == panes::Divider::Rows);
+        if stacked {
+            height *= self.sizes().rows;
         }
         if self.search.is_some() {
             height -= SEARCH_BAR;
@@ -1313,6 +1318,8 @@ impl App {
         let (grid, dividers) = panes::grid(self.arrangement, self.sizes());
         self.grid = grid;
         self.dividers = dividers;
+        // The list may be a different height now.
+        self.set_height(self.height);
     }
 
     /// Keeps the arrangement's sizes for the next launch.
@@ -4156,6 +4163,39 @@ mod tests {
         assert_eq!(setting(&app, panes::SETTING), None);
         let _ = app.update(Message::Key(Action::Layout(Arrangement::Classic)));
         assert!(near(app.sizes().rows, 0.7));
+    }
+
+    #[test]
+    fn the_list_is_only_as_tall_as_its_pane_where_it_sits_above_the_article() {
+        let mut app = app_with(40);
+        app.height = 800.0 + HINT_BAR;
+        app.width = 1200.0;
+        assert!(near(app.list_height(), 800.0));
+        let _ = app.update(Message::Key(Action::Layout(Arrangement::Classic)));
+        assert!(
+            near(app.list_height(), 800.0 * panes::DEFAULT_ROWS),
+            "{}",
+            app.list_height()
+        );
+        // The selection stays in view in the shorter list.
+        let _ = app.update(Message::Key(Action::Last));
+        assert!(list::visible(app.top, app.list_height(), app.rows.len()).contains(&app.selected));
+        let rows_split = app
+            .dividers
+            .iter()
+            .find(|d| d.1 == panes::Divider::Rows)
+            .unwrap()
+            .0;
+        let _ = app.update(Message::DividerDragged(pane_grid::ResizeEvent {
+            split: rows_split,
+            ratio: 0.2,
+        }));
+        assert!(near(app.list_height(), 160.0), "{}", app.list_height());
+        assert!(list::visible(app.top, app.list_height(), app.rows.len()).contains(&app.selected));
+        // Reading has no list on screen; its height needn't be meaningful,
+        // but columns gets the whole height back.
+        let _ = app.update(Message::Key(Action::Layout(Arrangement::Columns)));
+        assert!(near(app.list_height(), 800.0));
     }
 
     #[test]

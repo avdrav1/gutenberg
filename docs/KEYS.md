@@ -20,8 +20,9 @@ The bar along the bottom of the window shows the keys for what's on screen; `hin
 | `K` | type the key the chosen MCP server needs (such as `JINA_API_KEY`); it's saved in your keyring | list |
 | `a` | add sources (the catalog) | any |
 | `Tab` / `Shift-Tab` | the keys go to the sources pane or back to the list; the chosen row's name takes the accent while the sources pane has them | any |
-| `<` / `>` | narrow / widen the pane that has the keys (the sources pane after `Tab`, else the list), taking the space from its neighbour; dragging the line between two panes does the same with the mouse. The widths come back at the next launch | any |
-| `=` | pane widths back to `[layout]` in `config.toml` | any |
+| `<` / `>` | narrow / widen the pane that has the keys (the sources pane after `Tab`, else the list), taking the space from its neighbour; where the list sits above the article they make it shorter / taller. Dragging the line between two panes does the same with the mouse. The sizes come back at the next launch, each layout's own | any |
+| `=` | pane sizes back to `[layout]` in `config.toml`, for the layout you're in | any |
+| `L` | next layout: columns (sources, list and article side by side), classic (sources; the list above the article), wide (the list above the article, no sources), reading (the article alone; `Esc` brings the list back). The layout comes back at the next launch | any |
 | `:` | command palette: find any action by name | any |
 | `?` | help: every action and its keys | any |
 | `q` | quit | any |
@@ -39,6 +40,8 @@ Opened with `:`. Type part of an action's name; letters only need to appear in o
 | `Esc` | close without running anything |
 
 Help (`?`) closes with `?`, `Esc` or `q`.
+
+The four layouts are also rows of their own, "Layout: columns" and so on, with no key but `L`'s cycle.
 
 ## Search
 
