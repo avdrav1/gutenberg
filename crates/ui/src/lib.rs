@@ -1285,7 +1285,10 @@ impl App {
         use hints::Screen;
         match (&self.search, &self.opened) {
             _ if matches!(self.overlay, Some(Overlay::SharePicker(_))) => Screen::SharePicker,
-            _ if matches!(self.overlay, Some(Overlay::ShareCompose(_))) => Screen::ShareCompose,
+            _ if matches!(&self.overlay, Some(Overlay::ShareCompose(c)) if c.takes_text()) => {
+                Screen::ShareCompose
+            }
+            _ if matches!(self.overlay, Some(Overlay::ShareCompose(_))) => Screen::ShareLink,
             (Some(search), _) if search.editing => Screen::Searching,
             _ if self.pane == Pane::Sources && !self.sources.is_empty() => Screen::Sources,
             (Some(_), _) => Screen::Results,
@@ -5399,6 +5402,8 @@ mod tests {
         let _ = app.update(Message::SharePicker(palette::Input::Type("f".into())));
         assert_eq!(composer(&app).destination, Destination::Facebook);
         assert!(!composer(&app).takes_text());
+        // The bar offers y only here, where it copies instead of typing.
+        assert_eq!(app.screen(), hints::Screen::ShareLink);
         let _ = app.view();
         let _ = app.update(Message::ShareCompose(palette::Input::Type("y".into())));
         assert!(composer(&app).copied);

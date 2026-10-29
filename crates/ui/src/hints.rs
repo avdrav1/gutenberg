@@ -32,8 +32,11 @@ pub enum Screen {
     Key,
     /// Picking where to share.
     SharePicker,
-    /// Writing the share.
+    /// Writing the share for a site that takes the comment.
     ShareCompose,
+    /// The share for a site that takes the link alone: `y` copies the
+    /// comment instead of typing it.
+    ShareLink,
 }
 
 /// One entry in the bar: keys, then what they do.
@@ -155,7 +158,19 @@ pub fn for_screen(screen: Screen) -> Vec<Hint> {
                 label: "cancel",
             },
         ],
+        // Where the site takes the comment, `y` types it, so only the
+        // link-only screen offers the copy.
         Screen::ShareCompose => vec![
+            Hint {
+                keys: "Enter",
+                label: "open in the browser",
+            },
+            Hint {
+                keys: "Esc",
+                label: "cancel",
+            },
+        ],
+        Screen::ShareLink => vec![
             Hint {
                 keys: "Enter",
                 label: "open in the browser",
@@ -188,7 +203,7 @@ fn key(action: Action, label: &'static str) -> Hint {
 mod tests {
     use super::*;
 
-    const EVERY: [Screen; 12] = [
+    const EVERY: [Screen; 13] = [
         Screen::Empty,
         Screen::List,
         Screen::Sources,
@@ -201,6 +216,7 @@ mod tests {
         Screen::Key,
         Screen::SharePicker,
         Screen::ShareCompose,
+        Screen::ShareLink,
     ];
 
     #[test]
@@ -221,6 +237,7 @@ mod tests {
             Screen::Key,
             Screen::SharePicker,
             Screen::ShareCompose,
+            Screen::ShareLink,
         ];
         for screen in EVERY.into_iter().filter(|s| !typing.contains(s)) {
             assert!(
@@ -228,6 +245,13 @@ mod tests {
                 "{screen:?}"
             );
         }
+    }
+
+    #[test]
+    fn only_the_link_only_share_offers_y_to_copy() {
+        let offers_y = |s| for_screen(s).iter().any(|h| h.keys == "y");
+        assert!(!offers_y(Screen::ShareCompose));
+        assert!(offers_y(Screen::ShareLink));
     }
 
     #[test]
