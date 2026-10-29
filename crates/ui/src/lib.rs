@@ -2781,12 +2781,12 @@ pub mod shots {
         <blockquote><p>"It is a budget we can live with," the governor said.</p></blockquote>
         <pre>total = base + 0.04 * enrollment</pre>"#;
 
-    /// Writes `path` (iced_test adds `-tiny-skia.png`): the window at `size`
-    /// in `tokens`, with an article open, read and starred rows, and a
-    /// folder chosen in the sources pane.
     pub use crate::panes::{Arrange, ARRANGEMENTS};
     pub use gutenberg_core::config::Arrangement;
 
+    /// Writes `path` (iced_test adds `-tiny-skia.png`): the window at `size`
+    /// in `tokens` and `arrangement`, with an article open, read and starred
+    /// rows, and a folder chosen in the sources pane.
     pub fn render(
         tokens: Tokens,
         size: (f32, f32),
