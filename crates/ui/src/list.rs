@@ -37,6 +37,8 @@ pub enum Action {
     MarkFolderRead,
     OpenInBrowser,
     CopyLink,
+    /// Opens the share picker for the selected article.
+    Share,
     /// Opens the search line at the top of the list.
     Search,
     /// Ends a search and shows the list it replaced.
@@ -85,6 +87,7 @@ pub fn action_for(key: &Key, modifiers: Modifiers, pending_g: bool) -> Option<Ac
         Key::Character("M") => Some(Action::MarkFolderRead),
         Key::Character("O") => Some(Action::OpenInBrowser),
         Key::Character("y") => Some(Action::CopyLink),
+        Key::Character("p") => Some(Action::Share),
         Key::Character("/") => Some(Action::Search),
         Key::Named(Named::Escape) => Some(Action::ClearSearch),
         Key::Character("A") => Some(Action::View(View::All)),

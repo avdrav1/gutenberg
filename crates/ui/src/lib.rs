@@ -7,6 +7,7 @@ mod list;
 mod onboarding;
 mod palette;
 mod panes;
+mod share;
 mod sidebar;
 
 use std::collections::{HashMap, HashSet};
@@ -326,7 +327,7 @@ struct App {
     store_path: Option<PathBuf>,
     /// The Add sources screen, shown instead of the panes while open.
     onboarding: Option<onboarding::Onboarding>,
-    /// The command palette or help, drawn over the panes.
+    /// The command palette, help or the share box, drawn over the panes.
     overlay: Option<Overlay>,
     /// A search in place of the chosen folder or feed's list.
     search: Option<Search>,
@@ -350,6 +351,10 @@ struct Search {
 enum Overlay {
     Palette(palette::Palette),
     Help,
+    /// Where to share the selected article.
+    SharePicker(share::Picker),
+    /// The share being written.
+    ShareCompose(share::Composer),
 }
 
 /// Who gets the keys.
@@ -366,6 +371,10 @@ enum KeyMode {
     ToolArguments,
     /// Typing an MCP server's key.
     KeyEntry,
+    /// Picking where to share.
+    SharePicker,
+    /// Writing a share.
+    ShareCompose,
 }
 
 /// The chosen MCP server's tools, in the list pane while it has no
@@ -608,8 +617,14 @@ enum Message {
     Palette(palette::Input),
     /// A command picked with the mouse in the palette.
     RunCommand(Action),
-    /// Closes the palette or help.
+    /// Closes the palette, help or the share box.
     CloseOverlay,
+    /// A key while the share picker is open.
+    SharePicker(palette::Input),
+    /// A destination clicked in the picker.
+    PickDestination(usize),
+    /// A key while writing a share.
+    ShareCompose(palette::Input),
     /// A key while typing in the search line.
     Search(palette::Input),
     /// A key while typing an MCP tool's arguments.
@@ -868,7 +883,9 @@ impl App {
                     return Task::none();
                 }
                 // These work in the list pane, so the keys go there.
-                (_, Action::Search | Action::Tools | Action::EnterKey) => self.pane = Pane::List,
+                (_, Action::Search | Action::Tools | Action::EnterKey | Action::Share) => {
+                    self.pane = Pane::List
+                }
                 _ => {}
             }
         }
@@ -955,6 +972,50 @@ impl App {
             Message::Key(Action::CopyLink) => {
                 if let Some(url) = self.selected_link() {
                     return iced::clipboard::write(url);
+                }
+            }
+            // Like O, nothing happens for an article without a link.
+            Message::Key(Action::Share) => {
+                if self.selected_link().is_some() {
+                    self.overlay = Some(Overlay::SharePicker(self.share_picker()));
+                }
+            }
+            Message::SharePicker(input) => {
+                let Some(Overlay::SharePicker(picker)) = &mut self.overlay else {
+                    return Task::none();
+                };
+                let closes = matches!(input, palette::Input::Close);
+                let picked = picker.apply(input);
+                if closes {
+                    self.overlay = None;
+                }
+                if let Some(destination) = picked {
+                    self.compose_share(destination);
+                }
+            }
+            Message::PickDestination(i) => {
+                let Some(Overlay::SharePicker(picker)) = &self.overlay else {
+                    return Task::none();
+                };
+                if let Some(destination) = picker.destinations.get(i).cloned() {
+                    self.compose_share(destination);
+                }
+            }
+            Message::ShareCompose(input) => {
+                let Some(Overlay::ShareCompose(composer)) = &mut self.overlay else {
+                    return Task::none();
+                };
+                if matches!(input, palette::Input::Close) {
+                    self.overlay = None;
+                    return Task::none();
+                }
+                match composer.apply(input) {
+                    Some(share::Done::Open(url)) => {
+                        self.overlay = None;
+                        open_in_browser(&url);
+                    }
+                    Some(share::Done::Copy(text)) => return iced::clipboard::write(text),
+                    None => {}
                 }
             }
             Message::Palette(input) => {
@@ -1054,6 +1115,10 @@ impl App {
                 self.config = config;
                 self.apply_layout();
                 self.set_height(height);
+                // An open picker shows the new [[share]] rows at once.
+                if matches!(self.overlay, Some(Overlay::SharePicker(_))) {
+                    self.overlay = Some(Overlay::SharePicker(self.share_picker()));
+                }
             }
             Message::DividerDragged(event) => {
                 if let Some(&(_, divider)) = self.dividers.iter().find(|d| d.0 == event.split) {
@@ -1219,6 +1284,8 @@ impl App {
     fn screen(&self) -> hints::Screen {
         use hints::Screen;
         match (&self.search, &self.opened) {
+            _ if matches!(self.overlay, Some(Overlay::SharePicker(_))) => Screen::SharePicker,
+            _ if matches!(self.overlay, Some(Overlay::ShareCompose(_))) => Screen::ShareCompose,
             (Some(search), _) if search.editing => Screen::Searching,
             _ if self.pane == Pane::Sources && !self.sources.is_empty() => Screen::Sources,
             (Some(_), _) => Screen::Results,
@@ -1389,6 +1456,22 @@ impl App {
     /// The selected article's own link.
     fn selected_link(&self) -> Option<String> {
         self.rows.get(self.selected)?.url.clone()
+    }
+
+    /// The share picker's rows: `[[share]]` in the config's order, or the
+    /// four networks.
+    fn share_picker(&self) -> share::Picker {
+        share::Picker::new(gutenberg_core::share::destinations(&self.config.share))
+    }
+
+    /// Replaces the picker with the compose box for the selected article,
+    /// read again now in case the list moved; without a link it closes.
+    fn compose_share(&mut self, destination: gutenberg_core::share::Destination) {
+        let selected = self.rows.get(self.selected);
+        let linked = selected.and_then(|row| Some((row.title.clone(), row.url.clone()?)));
+        self.overlay = linked.map(|(title, url)| {
+            Overlay::ShareCompose(share::Composer::new(destination, title, url))
+        });
     }
 
     /// Stars or unstars the selected article; the starred count follows.
@@ -1647,6 +1730,8 @@ impl App {
             (Some(_), _, _) => KeyMode::Onboarding,
             (None, Some(Overlay::Palette(_)), _) => KeyMode::Palette,
             (None, Some(Overlay::Help), _) => KeyMode::Help,
+            (None, Some(Overlay::SharePicker(_)), _) => KeyMode::SharePicker,
+            (None, Some(Overlay::ShareCompose(_)), _) => KeyMode::ShareCompose,
             (None, None, Some(Search { editing: true, .. })) => KeyMode::Search,
             (None, None, _) if self.tools.editor.is_some() => KeyMode::ToolArguments,
             (None, None, _) if self.tools.key.is_some() => KeyMode::KeyEntry,
@@ -1686,6 +1771,10 @@ impl App {
                     KeyMode::KeyEntry => {
                         palette::input_for(&key, modifiers, text.as_deref()).map(Message::KeyEntry)
                     }
+                    KeyMode::SharePicker => palette::input_for(&key, modifiers, text.as_deref())
+                        .map(Message::SharePicker),
+                    KeyMode::ShareCompose => palette::input_for(&key, modifiers, text.as_deref())
+                        .map(Message::ShareCompose),
                     KeyMode::Help => {
                         use keyboard::key::Named;
                         match key.as_ref() {
@@ -1862,7 +1951,7 @@ impl App {
                 } else {
                     "Enter runs · ↑↓ choose · Esc closes"
                 };
-                (Some(prompt), rows, footer)
+                (Some(prompt), rows, footer.to_owned())
             }
             Overlay::Help => {
                 let rows = commands::ALL
@@ -1874,7 +1963,45 @@ impl App {
                 (
                     Some(title),
                     rows,
-                    "Esc or ? closes · : finds a command by name",
+                    "Esc or ? closes · : finds a command by name".to_owned(),
+                )
+            }
+            Overlay::SharePicker(picker) => {
+                let rows: Vec<Element<'a, Message>> = picker
+                    .destinations
+                    .iter()
+                    .zip(&picker.letters)
+                    .enumerate()
+                    .map(|(i, (destination, letter))| {
+                        mouse_area(share_row(
+                            *letter,
+                            destination.name(),
+                            i == picker.cursor,
+                            t,
+                        ))
+                        .on_press(Message::PickDestination(i))
+                        .into()
+                    })
+                    .collect();
+                let prompt = row![text("Share to").color(color(t.muted))].padding([10, 12]);
+                let footer = if picker.destinations.is_empty() {
+                    "Nothing to share to: check [[share]] in config.toml · Esc closes"
+                } else {
+                    "Enter or a letter chooses · j k move · Esc closes"
+                };
+                (Some(prompt), rows, footer.to_owned())
+            }
+            Overlay::ShareCompose(composer) => {
+                let prompt = row![
+                    text("Share to").color(color(t.muted)),
+                    text(composer.destination.name()).color(color(t.accent)),
+                ]
+                .spacing(8)
+                .padding([10, 12]);
+                (
+                    Some(prompt),
+                    vec![self.compose_view(composer)],
+                    composer.hint(),
                 )
             }
         };
@@ -1883,7 +2010,15 @@ impl App {
             Column::new()
                 .push(prompt)
                 .push(Column::with_children(rows))
-                .push(container(text(footer).size(12).color(color(t.muted))).padding([8, 12]))
+                .push(
+                    container(
+                        text(footer)
+                            .size(12)
+                            .color(color(t.muted))
+                            .wrapping(text::Wrapping::WordOrGlyph),
+                    )
+                    .padding([8, 12]),
+                )
                 .width(Length::Fixed(560.0)),
         )
         .style(move |_| container::Style {
@@ -1909,6 +2044,47 @@ impl App {
                 ..Default::default()
             });
         mouse_area(dimmed).on_press(Message::CloseOverlay).into()
+    }
+
+    /// The compose box's body: the comment with a cursor where the site
+    /// takes it (greyed where it doesn't), the link, and the count left.
+    fn compose_view<'a>(&self, composer: &'a share::Composer) -> Element<'a, Message> {
+        let t = &self.tokens;
+        let (background, border_color) = (color(t.background), color(t.border));
+        let comment = if composer.takes_text() {
+            text(format!("{}▏", composer.share.text)).color(color(t.foreground))
+        } else {
+            text(composer.share.text.as_str()).color(color(t.muted))
+        };
+        let field = container(comment.size(14).wrapping(text::Wrapping::WordOrGlyph))
+            .padding([6, 10])
+            .width(Length::Fill)
+            .style(move |_| container::Style {
+                background: Some(background.into()),
+                border: Border {
+                    color: border_color,
+                    width: 1.0,
+                    radius: border::radius(4),
+                },
+                ..Default::default()
+            });
+        let link = text(composer.share.url.as_str())
+            .size(12)
+            .color(color(t.muted))
+            .wrapping(text::Wrapping::Glyph);
+        // Over the limit shows in the accent, as errors do elsewhere.
+        let counter = composer.remaining().map(|n| {
+            if n < 0 {
+                text(format!("{} over", -n)).size(12).color(color(t.accent))
+            } else {
+                text(format!("{n} left")).size(12).color(color(t.muted))
+            }
+        });
+        column![field, link]
+            .push(counter)
+            .spacing(6)
+            .padding([4, 12])
+            .into()
     }
 
     fn sidebar_view(&self) -> Element<'_, Message> {
@@ -3796,6 +3972,35 @@ fn drop_line<'a>(accent: Rgb) -> Element<'a, Message> {
         .into()
 }
 
+/// A share destination's letter and name, highlighted when the cursor is
+/// on it.
+fn share_row<'a>(
+    letter: Option<char>,
+    name: &str,
+    highlighted: bool,
+    t: &Tokens,
+) -> Element<'a, Message> {
+    let letter = letter.map_or_else(|| "  ".to_owned(), |c| c.to_string());
+    let selection = t.selection;
+    container(
+        row![
+            text(letter)
+                .size(13)
+                .font(Font::MONOSPACE)
+                .color(color(t.accent)),
+            text(name.to_owned()).size(14).color(color(t.foreground)),
+        ]
+        .spacing(16),
+    )
+    .padding([7, 12])
+    .width(Length::Fill)
+    .style(move |_| container::Style {
+        background: highlighted.then(|| color(selection).into()),
+        ..Default::default()
+    })
+    .into()
+}
+
 /// A command's name and its keys, highlighted when the cursor is on it.
 fn command_row<'a>(
     command: &'static commands::Command,
@@ -3881,6 +4086,16 @@ mod tests {
     use gutenberg_store::{NewArticle, NewSource, SourceKind};
 
     fn app_with(articles: usize) -> App {
+        app_from(articles, false)
+    }
+
+    /// `app_with`, with a link on every article, so `O`, `y` and `p` have
+    /// something to work on.
+    fn app_with_links(articles: usize) -> App {
+        app_from(articles, true)
+    }
+
+    fn app_from(articles: usize, links: bool) -> App {
         let mut store = Store::open_in_memory().unwrap();
         let source = store
             .add_source(&NewSource {
@@ -3895,7 +4110,7 @@ mod tests {
             .map(|i| NewArticle {
                 source_id: source.id,
                 guid: i.to_string(),
-                url: None,
+                url: links.then(|| format!("https://site.example/{i}")),
                 title: format!("Article {i}"),
                 author: None,
                 summary_html: Some(format!("<p>Body {i}</p>")),
@@ -5136,6 +5351,116 @@ mod tests {
         assert!(matches!(app.overlay, Some(Overlay::Help)));
         let _ = app.update(Message::CloseOverlay);
         assert!(app.overlay.is_none());
+    }
+
+    fn composer(app: &App) -> &share::Composer {
+        match &app.overlay {
+            Some(Overlay::ShareCompose(composer)) => composer,
+            _ => panic!("the compose box isn't open"),
+        }
+    }
+
+    #[test]
+    fn p_opens_the_picker_and_a_pick_opens_the_composer_with_the_title() {
+        use gutenberg_core::share::Destination;
+        let mut app = app_with_links(3);
+        let _ = app.update(Message::Key(Action::Down));
+        let _ = app.update(Message::Key(Action::Share));
+        assert_eq!(app.screen(), hints::Screen::SharePicker);
+        let Some(Overlay::SharePicker(picker)) = &app.overlay else {
+            panic!("no picker");
+        };
+        assert_eq!(picker.destinations, Destination::BUILT_IN.to_vec());
+        let _ = app.view();
+
+        // Enter on the first row, X: the comment starts as the title.
+        let _ = app.update(Message::SharePicker(palette::Input::Run));
+        assert_eq!(app.screen(), hints::Screen::ShareCompose);
+        let x = composer(&app);
+        assert_eq!(x.destination, Destination::X);
+        assert_eq!(x.share.text, "Article 1");
+        assert_eq!(x.share.url, "https://site.example/1");
+        // "Article 1" is 9 characters, a space and a 23-character link.
+        assert_eq!(x.remaining(), Some(280 - 9 - 1 - 23));
+        let _ = app.view();
+
+        // Typing edits the comment, and the URL Enter would open follows.
+        let _ = app.update(Message::ShareCompose(palette::Input::Type("!".into())));
+        assert_eq!(
+            composer(&app).url(),
+            "https://x.com/intent/tweet?text=Article%201%21&url=https%3A%2F%2Fsite.example%2F1"
+        );
+        let _ = app.update(Message::ShareCompose(palette::Input::Close));
+        assert!(app.overlay.is_none());
+        assert_eq!(app.screen(), hints::Screen::List);
+
+        // A letter picks its row from anywhere; a click picks a row too.
+        let _ = app.update(Message::Key(Action::Share));
+        let _ = app.update(Message::SharePicker(palette::Input::Type("f".into())));
+        assert_eq!(composer(&app).destination, Destination::Facebook);
+        assert!(!composer(&app).takes_text());
+        let _ = app.view();
+        let _ = app.update(Message::ShareCompose(palette::Input::Type("y".into())));
+        assert!(composer(&app).copied);
+        let _ = app.update(Message::CloseOverlay);
+        let _ = app.update(Message::Key(Action::Share));
+        let _ = app.update(Message::PickDestination(1));
+        assert_eq!(composer(&app).destination, Destination::Bluesky);
+
+        // Esc in the picker closes it without picking.
+        let _ = app.update(Message::CloseOverlay);
+        let _ = app.update(Message::Key(Action::Share));
+        let _ = app.update(Message::SharePicker(palette::Input::Close));
+        assert!(app.overlay.is_none());
+    }
+
+    #[test]
+    fn p_does_nothing_for_an_article_without_a_link() {
+        let mut app = app_with(3);
+        let _ = app.update(Message::Key(Action::Share));
+        assert!(app.overlay.is_none());
+        assert_eq!(app.screen(), hints::Screen::List);
+        // Nor with no articles at all.
+        let mut app = app_with(0);
+        let _ = app.update(Message::Key(Action::Share));
+        assert!(app.overlay.is_none());
+    }
+
+    #[test]
+    fn config_order_is_picker_order() {
+        use gutenberg_core::config::ShareEntry;
+        use gutenberg_core::share::Destination;
+        let mut app = app_with_links(1);
+        let config = Config {
+            share: vec![
+                ShareEntry {
+                    name: "bluesky".into(),
+                    template: None,
+                },
+                ShareEntry {
+                    name: "Mastodon".into(),
+                    template: Some("https://mastodon.social/share?text={title}%20{url}".into()),
+                },
+            ],
+            ..Config::default()
+        };
+        let _ = app.update(Message::ConfigChanged(config));
+        let _ = app.update(Message::Key(Action::Share));
+        let Some(Overlay::SharePicker(picker)) = &app.overlay else {
+            panic!("no picker");
+        };
+        assert_eq!(picker.destinations.len(), 2);
+        assert_eq!(picker.destinations[0], Destination::Bluesky);
+        assert_eq!(picker.destinations[1].name(), "Mastodon");
+        assert_eq!(picker.letters, [Some('b'), Some('m')]);
+
+        // A config reloaded while the picker is open changes its rows.
+        let _ = app.update(Message::ConfigChanged(Config::default()));
+        let Some(Overlay::SharePicker(picker)) = &app.overlay else {
+            panic!("no picker");
+        };
+        assert_eq!(picker.destinations, Destination::BUILT_IN.to_vec());
+        let _ = app.view();
     }
 
     fn stored(app: &App, id: i64) -> ArticleRow {
