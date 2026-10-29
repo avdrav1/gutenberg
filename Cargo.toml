@@ -52,6 +52,11 @@ ego-tree = "0.11"
 # Readability.js ported to Rust: a web page down to its article (reader view).
 dom_smoothie = "0.18"
 url = "2"
+# Share URLs: a space is %20, as x.com and bsky.app want; `url` only re-exports
+# form_urlencoded, whose + is wrong outside a query string.
+percent-encoding = "2"
+# Bluesky counts a post in grapheme clusters.
+unicode-segmentation = "1"
 futures = "0.3"
 tempfile = "3"
 criterion = "0.8"

@@ -30,6 +30,13 @@ pub enum Screen {
     Arguments,
     /// Typing an MCP server's key.
     Key,
+    /// Picking where to share.
+    SharePicker,
+    /// Writing the share for a site that takes the comment.
+    ShareCompose,
+    /// The share for a site that takes the link alone: `y` copies the
+    /// comment instead of typing it.
+    ShareLink,
 }
 
 /// One entry in the bar: keys, then what they do.
@@ -56,6 +63,7 @@ pub fn for_screen(screen: Screen) -> Vec<Hint> {
             key(Action::Open, "open"),
             key(Action::Search, "search"),
             key(Action::View(View::Unread), "unread"),
+            key(Action::Share, "share"),
             key(Action::AddSources, "add sources"),
             key(Action::Palette, "commands"),
             key(Action::Help, "keys"),
@@ -76,6 +84,7 @@ pub fn for_screen(screen: Screen) -> Vec<Hint> {
             key(Action::Reader, "full story"),
             key(Action::Star, "star"),
             key(Action::OpenInBrowser, "browser"),
+            key(Action::Share, "share"),
             key(Action::Search, "search"),
             key(Action::Palette, "commands"),
             key(Action::Help, "keys"),
@@ -86,6 +95,7 @@ pub fn for_screen(screen: Screen) -> Vec<Hint> {
             key(Action::Star, "star"),
             key(Action::OpenInBrowser, "browser"),
             key(Action::CopyLink, "copy link"),
+            key(Action::Share, "share"),
             key(Action::Palette, "commands"),
             key(Action::Help, "keys"),
         ],
@@ -132,6 +142,48 @@ pub fn for_screen(screen: Screen) -> Vec<Hint> {
                 label: "cancel",
             },
         ],
+        // The picker and the compose box take every key too.
+        Screen::SharePicker => vec![
+            moves,
+            Hint {
+                keys: "Enter",
+                label: "choose",
+            },
+            Hint {
+                keys: "letter",
+                label: "choose by name",
+            },
+            Hint {
+                keys: "Esc",
+                label: "cancel",
+            },
+        ],
+        // Where the site takes the comment, `y` types it, so only the
+        // link-only screen offers the copy.
+        Screen::ShareCompose => vec![
+            Hint {
+                keys: "Enter",
+                label: "open in the browser",
+            },
+            Hint {
+                keys: "Esc",
+                label: "cancel",
+            },
+        ],
+        Screen::ShareLink => vec![
+            Hint {
+                keys: "Enter",
+                label: "open in the browser",
+            },
+            Hint {
+                keys: "y",
+                label: "copy the comment",
+            },
+            Hint {
+                keys: "Esc",
+                label: "cancel",
+            },
+        ],
     }
 }
 
@@ -151,7 +203,7 @@ fn key(action: Action, label: &'static str) -> Hint {
 mod tests {
     use super::*;
 
-    const EVERY: [Screen; 10] = [
+    const EVERY: [Screen; 13] = [
         Screen::Empty,
         Screen::List,
         Screen::Sources,
@@ -162,6 +214,9 @@ mod tests {
         Screen::Tools,
         Screen::Arguments,
         Screen::Key,
+        Screen::SharePicker,
+        Screen::ShareCompose,
+        Screen::ShareLink,
     ];
 
     #[test]
@@ -176,13 +231,27 @@ mod tests {
 
     #[test]
     fn help_is_a_key_away_wherever_the_list_has_the_keys() {
-        let typing = [Screen::Searching, Screen::Arguments, Screen::Key];
+        let typing = [
+            Screen::Searching,
+            Screen::Arguments,
+            Screen::Key,
+            Screen::SharePicker,
+            Screen::ShareCompose,
+            Screen::ShareLink,
+        ];
         for screen in EVERY.into_iter().filter(|s| !typing.contains(s)) {
             assert!(
                 for_screen(screen).iter().any(|h| h.keys == "?"),
                 "{screen:?}"
             );
         }
+    }
+
+    #[test]
+    fn only_the_link_only_share_offers_y_to_copy() {
+        let offers_y = |s| for_screen(s).iter().any(|h| h.keys == "y");
+        assert!(!offers_y(Screen::ShareCompose));
+        assert!(offers_y(Screen::ShareLink));
     }
 
     #[test]

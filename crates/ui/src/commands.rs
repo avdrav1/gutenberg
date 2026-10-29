@@ -74,6 +74,11 @@ pub const ALL: &[Command] = &[
         keys: &["y"],
     },
     Command {
+        action: Action::Share,
+        name: "Share…",
+        keys: &["p"],
+    },
+    Command {
         action: Action::Search,
         name: "Search articles",
         keys: &["/"],
@@ -318,6 +323,7 @@ mod tests {
             | A::MarkFolderRead
             | A::OpenInBrowser
             | A::CopyLink
+            | A::Share
             | A::Search
             | A::ClearSearch
             | A::Tools
@@ -348,6 +354,7 @@ mod tests {
             A::MarkFolderRead,
             A::OpenInBrowser,
             A::CopyLink,
+            A::Share,
             A::Search,
             A::ClearSearch,
             A::View(View::All),

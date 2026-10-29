@@ -207,6 +207,22 @@ action = "mute"   # or "star", "read"
 match = "Rust"
 in = "LWN.net"     # a source's title or a folder's name
 action = "star"</pre>
+  <p>Share (<code>p</code>) opens a picker of X, Bluesky, Facebook and LinkedIn, then a comment, then the site's composer in your browser. <code>[[share]]</code> picks which sites, in what order, and adds any site that takes a share URL: <code>{url}</code>, <code>{title}</code> and <code>{text}</code> in the template become the article's link, its title and your comment.</p>
+  <pre class="block"># Share (p): the picker shows these in this order. Without any, it shows
+# X, Bluesky, Facebook and LinkedIn.
+[[share]]
+name = "bluesky"
+
+[[share]]
+name = "x"
+
+[[share]]
+name = "Mastodon"
+template = "https://mastodon.social/share?text={title}%20{url}"
+
+[[share]]
+name = "Pinboard"
+template = "https://pinboard.in/add?url={url}&amp;title={title}&amp;description={text}"</pre>
 
   <h2>Update</h2>
   <pre class="block">gutenberg --update</pre>
