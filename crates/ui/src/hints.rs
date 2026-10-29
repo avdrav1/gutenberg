@@ -59,6 +59,7 @@ pub fn for_screen(screen: Screen) -> Vec<Hint> {
             key(Action::AddSources, "add sources"),
             key(Action::Palette, "commands"),
             key(Action::Help, "keys"),
+            key(Action::NextLayout, "layout"),
         ],
         Screen::Sources => vec![
             moves,

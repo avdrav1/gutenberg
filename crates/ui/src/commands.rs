@@ -2,6 +2,7 @@
 //! palette searches and what help lists. One row here, one line in
 //! `docs/KEYS.md`, and a key in `list::action_for` make a new action.
 
+use gutenberg_core::config::Arrangement;
 use gutenberg_store::View;
 
 use crate::list::Action;
@@ -136,6 +137,31 @@ pub const ALL: &[Command] = &[
         action: Action::Help,
         name: "Help: every key",
         keys: &["?"],
+    },
+    Command {
+        action: Action::NextLayout,
+        name: "Next layout: columns, classic, wide, reading",
+        keys: &["L"],
+    },
+    Command {
+        action: Action::Layout(Arrangement::Columns),
+        name: "Layout: columns (sources, list and article side by side)",
+        keys: &[],
+    },
+    Command {
+        action: Action::Layout(Arrangement::Classic),
+        name: "Layout: classic (sources; the list above the article)",
+        keys: &[],
+    },
+    Command {
+        action: Action::Layout(Arrangement::Wide),
+        name: "Layout: wide (the list above the article, no sources)",
+        keys: &[],
+    },
+    Command {
+        action: Action::Layout(Arrangement::Reading),
+        name: "Layout: reading (the article alone; Esc brings the list back)",
+        keys: &[],
     },
     Command {
         action: Action::NarrowPane,
@@ -301,6 +327,8 @@ mod tests {
             | A::NarrowPane
             | A::WidenPane
             | A::ResetPanes
+            | A::NextLayout
+            | A::Layout(_)
             | A::View(_) => true,
         };
         let every = [
@@ -333,6 +361,11 @@ mod tests {
             A::NarrowPane,
             A::WidenPane,
             A::ResetPanes,
+            A::NextLayout,
+            A::Layout(Arrangement::Columns),
+            A::Layout(Arrangement::Classic),
+            A::Layout(Arrangement::Wide),
+            A::Layout(Arrangement::Reading),
         ];
         for action in every.into_iter().filter(|a| needs_row(*a)) {
             assert!(

@@ -7,6 +7,8 @@ ICED_TEST_BACKEND=tiny-skia cargo run -p gutenberg-ui --features shots \
     --example theme_shots -- tests/fixtures/themes docs/themes
 ```
 
+Each theme is rendered four times, once per layout (S11.2): `<name>.png` is columns, and `<name>-classic.png`, `<name>-wide.png` and `<name>-reading.png` the other three. The contrast figures below are per theme; the layouts share the theme's colors and differ only in where the panes sit.
+
 To render what's installed instead, pass `/usr/share/omarchy/themes` as the first argument. Text is in the rendering machine's desktop font, as in the app (`fc-match monospace`; JetBrainsMono Nerd Font here).
 
 ## The checks
@@ -60,3 +62,12 @@ All 24 screenshots were checked by eye:
 - the five light themes show light panes throughout.
 
 `mode` itself isn't read yet (S4.5). The panes come out light because the theme's own backgrounds are light.
+
+## Layouts
+
+Checked by eye in every theme, light and dark, after S11.2 (2026-10-29):
+
+- **classic**: the sources pane on the left, the list above the article on the right, the divider between them a line in the theme's border color; the selected row is in the short list, not below its edge.
+- **wide**: the list above the article with no sources pane; the list fills the width.
+- **reading**: the article alone, in the article pane's background, with the key bar still along the bottom.
+- The light themes show light panes in every layout.

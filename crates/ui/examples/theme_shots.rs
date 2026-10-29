@@ -8,12 +8,15 @@
 //! ```
 //!
 //! Reads `<dir>/*.toml` (or `<dir>/*/colors.toml`, as in
-//! `/usr/share/omarchy/themes`) and writes `<out>/<name>.png`, replacing
-//! any there. Prints each theme's contrast ratios.
+//! `/usr/share/omarchy/themes`) and writes `<out>/<name>.png` in the columns
+//! arrangement and `<out>/<name>-classic.png`, `-wide.png` and
+//! `-reading.png` in the others, replacing any there. Prints each theme's
+//! contrast ratios.
 
 use std::path::{Path, PathBuf};
 
 use gutenberg_theme::{contrast, Tokens};
+use gutenberg_ui::shots::{Arrange, Arrangement, ARRANGEMENTS};
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -48,12 +51,19 @@ fn main() {
             min(tokens.muted),
             min(tokens.accent)
         );
-        // iced_test names the file `<stem>-<renderer>.png`; move it in place.
-        let stem = out.join(&name);
-        let written = PathBuf::from(format!("{}-tiny-skia.png", stem.display()));
-        let _ = std::fs::remove_file(&written);
-        gutenberg_ui::shots::render(tokens, (1200.0, 720.0), &stem);
-        std::fs::rename(&written, stem.with_extension("png")).expect("rename screenshot");
+        for arrangement in ARRANGEMENTS {
+            // Columns keeps the plain name the README links to.
+            let file = match arrangement {
+                Arrangement::Columns => name.clone(),
+                other => format!("{name}-{}", other.name()),
+            };
+            // iced_test names the file `<stem>-<renderer>.png`; move it in place.
+            let stem = out.join(&file);
+            let written = PathBuf::from(format!("{}-tiny-skia.png", stem.display()));
+            let _ = std::fs::remove_file(&written);
+            gutenberg_ui::shots::render(tokens.clone(), (1200.0, 720.0), arrangement, &stem);
+            std::fs::rename(&written, stem.with_extension("png")).expect("rename screenshot");
+        }
     }
 }
 
