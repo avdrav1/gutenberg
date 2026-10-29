@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.28.0 — 2026-10-29
+
 - Four layouts, as mail clients have them: `L` cycles columns (as before), classic (the list above the article, sources on the left), wide (the list above the article, no sources) and reading (the article alone; `Esc` brings the list back). The palette lists them by name, `arrangement` under `[layout]` in `config.toml` picks the starting one, and each layout keeps its own divider positions.
 
 ## 0.27.0 — 2026-10-29
