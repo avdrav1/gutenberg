@@ -13,6 +13,7 @@ The bar along the bottom of the window shows the keys for what's on screen; `hin
 | `M` | mark read: everything the list shows for the folder or feed chosen in the sources pane and the current view | any |
 | `s` | star or unstar the selected article (★ in the list) | list, article |
 | `y` | copy the selected article's link | list, article |
+| `p` | share the selected article: a picker of X, Bluesky, Facebook, LinkedIn or the sites in `[[share]]`, then a comment that starts as the title; Enter opens the site's composer in the browser | list, article |
 | `/` | search every article's title, author and summary as you type | any |
 | `r` | refresh selected source; `R` all | any |
 | `u` / `S` / `t` / `A` | view unread only / starred / today's (published since midnight) / all; keeps the chosen folder or feed | any |
@@ -55,6 +56,29 @@ Opened with `/`. The list shows the newest 500 articles holding every word typed
 | `Enter` | stop typing; `j`/`k`, `o` and the rest work on the results |
 | `/` | type in the search again |
 | `Esc` | end the search; the folder or feed you were reading comes back |
+
+## Share
+
+Opened with `p`. The picker lists the sites from `[[share]]` in `config.toml`, in the file's order, or X, Bluesky, Facebook and LinkedIn without any.
+
+| Key | Action |
+|---|---|
+| `j` / `k` / `↓` / `↑` | next / previous site |
+| the letter shown by a row | choose that site |
+| `Enter` | choose the site under the cursor |
+| `Esc` | close |
+
+Then the comment, which starts as the article's title:
+
+| Key | Action |
+|---|---|
+| any letter | type it |
+| `Backspace` | delete the last letter |
+| `y` | copy the comment, for a site that takes the link alone (Facebook, LinkedIn) |
+| `Enter` | open the site's composer in the browser with the comment and the link; nothing is posted until you post it there |
+| `Esc` | close without opening anything |
+
+The counter under the comment knows each site: X allows 280 characters and counts any link as 23; Bluesky allows 300 and counts letters as a reader does (one for a flag or a family emoji), with the link on a line of its own. Sign in to Bluesky before sharing: its composer drops the text otherwise.
 
 ## MCP server's tools
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Share an article: `p` picks X, Bluesky, Facebook, LinkedIn or any site you add under `[[share]]` in `config.toml`, you write a comment that starts as the title, and Enter opens the site's composer in the browser with it. The counter knows X's 280 and Bluesky's 300. Facebook and LinkedIn take the link alone, so `y` copies your comment to paste there.
+
 ## 0.28.0 — 2026-10-29
 
 - Four layouts, as mail clients have them: `L` cycles columns (as before), classic (the list above the article, sources on the left), wide (the list above the article, no sources) and reading (the article alone; `Esc` brings the list back). The palette lists them by name, `arrangement` under `[layout]` in `config.toml` picks the starting one, and each layout keeps its own divider positions.
