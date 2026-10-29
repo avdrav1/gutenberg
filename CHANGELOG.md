@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.29.0 — 2026-10-29
+
 - Share an article: `p` picks X, Bluesky, Facebook, LinkedIn or any site you add under `[[share]]` in `config.toml`, you write a comment that starts as the title, and Enter opens the site's composer in the browser with it. The counter knows X's 280 and Bluesky's 300. Facebook and LinkedIn take the link alone, so `y` copies your comment to paste there.
 
 ## 0.28.0 — 2026-10-29
