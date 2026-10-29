@@ -2046,6 +2046,7 @@ dependencies = [
  "image",
  "libc",
  "notify",
+ "percent-encoding",
  "secret-service",
  "security-framework",
  "serde",
@@ -2054,6 +2055,7 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "toml",
+ "unicode-segmentation",
  "url",
 ]
 

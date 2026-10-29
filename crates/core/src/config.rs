@@ -21,6 +21,22 @@ pub struct Config {
     /// `[[rules]]`: see [`crate::rules`].
     pub rules: Vec<Rule>,
     pub updates: Updates,
+    /// `[[share]]`: see [`crate::share`].
+    pub share: Vec<ShareEntry>,
+}
+
+/// One row of the share picker. A built-in is its name alone; a custom
+/// site is a name and a template.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShareEntry {
+    /// A built-in's name ("x", "bluesky", "facebook", "linkedin"), or
+    /// what the picker shows for a custom site.
+    pub name: String,
+    /// A custom site's share URL with `{url}`, `{title}` and `{text}`;
+    /// absent for a built-in.
+    #[serde(default)]
+    pub template: Option<String>,
 }
 
 /// Telling you about new releases.
@@ -170,6 +186,18 @@ pub enum Error {
     FontSize { path: PathBuf },
     #[error("{}: a rule's match is empty", path.display())]
     EmptyRule { path: PathBuf },
+    #[error("{}: a [[share]] entry has no name", path.display())]
+    UnnamedShare { path: PathBuf },
+    #[error(
+        "{}: [[share]] {name:?} isn't x, bluesky, facebook or linkedin and has no template",
+        path.display()
+    )]
+    UnknownShare { path: PathBuf, name: String },
+    #[error(
+        "{}: [[share]] {name:?} needs {{url}}, {{title}} or {{text}} in its template",
+        path.display()
+    )]
+    ShareTemplate { path: PathBuf, name: String },
     #[error("watch {}: {source}", path.display())]
     Watch {
         path: PathBuf,
@@ -226,6 +254,17 @@ impl Config {
             return Err(Error::EmptyRule {
                 path: path.to_owned(),
             });
+        }
+        for entry in &config.share {
+            use crate::share::EntryError;
+            let path = path.to_owned();
+            let name = entry.name.clone();
+            match entry.destination() {
+                Ok(_) => {}
+                Err(EntryError::Unnamed) => return Err(Error::UnnamedShare { path }),
+                Err(EntryError::Unknown) => return Err(Error::UnknownShare { path, name }),
+                Err(EntryError::NoPlaceholder) => return Err(Error::ShareTemplate { path, name }),
+            }
         }
         Ok(config)
     }
@@ -417,6 +456,98 @@ mod tests {
             "[[rules]]\nmatch = \"x\"\naction = \"delete\"",
             "[[rules]]\nmatch = \"x\"",
             "[[rules]]\nmatch = \"x\"\naction = \"star\"\nwhere = \"y\"",
+        ] {
+            assert!(matches!(parse(bad), Err(Error::Parse { .. })), "{bad}");
+        }
+    }
+
+    #[test]
+    fn shares_default_to_nothing_in_the_file() {
+        use crate::share::{destinations, Destination};
+        let config = parse("").unwrap();
+        assert!(config.share.is_empty());
+        assert_eq!(destinations(&config.share), Destination::BUILT_IN.to_vec());
+    }
+
+    #[test]
+    fn share_entries_are_read_in_order() {
+        let config = parse(
+            "[[share]]\nname = \"bluesky\"\n\n\
+             [[share]]\nname = \"x\"\n\n\
+             [[share]]\nname = \"Mastodon\"\n\
+             template = \"https://mastodon.social/share?text={title}%20{url}\"\n\n\
+             [[share]]\nname = \"Pinboard\"\n\
+             template = \"https://pinboard.in/add?url={url}&title={title}&description={text}\"",
+        )
+        .unwrap();
+        assert_eq!(
+            config.share,
+            [
+                ShareEntry {
+                    name: "bluesky".into(),
+                    template: None,
+                },
+                ShareEntry {
+                    name: "x".into(),
+                    template: None,
+                },
+                ShareEntry {
+                    name: "Mastodon".into(),
+                    template: Some("https://mastodon.social/share?text={title}%20{url}".into()),
+                },
+                ShareEntry {
+                    name: "Pinboard".into(),
+                    template: Some(
+                        "https://pinboard.in/add?url={url}&title={title}&description={text}".into()
+                    ),
+                },
+            ]
+        );
+        let names: Vec<_> = crate::share::destinations(&config.share)
+            .iter()
+            .map(|d| d.name().to_owned())
+            .collect();
+        assert_eq!(names, ["Bluesky", "X", "Mastodon", "Pinboard"]);
+        // One entry means a one-row picker.
+        assert_eq!(
+            parse("[[share]]\nname = \"linkedin\"").unwrap().share.len(),
+            1
+        );
+    }
+
+    #[test]
+    fn a_share_needs_a_known_name_or_a_template_with_a_placeholder() {
+        let err = parse("[[share]]\nname = \" \"").unwrap_err();
+        assert!(matches!(err, Error::UnnamedShare { .. }), "{err}");
+        assert_eq!(
+            err.to_string(),
+            "config.toml: a [[share]] entry has no name"
+        );
+
+        let err = parse("[[share]]\nname = \"mastodon\"").unwrap_err();
+        assert!(
+            matches!(&err, Error::UnknownShare { name, .. } if name == "mastodon"),
+            "{err}"
+        );
+        assert_eq!(
+            err.to_string(),
+            "config.toml: [[share]] \"mastodon\" isn't x, bluesky, facebook or linkedin and has no template"
+        );
+
+        let err =
+            parse("[[share]]\nname = \"Mastodon\"\ntemplate = \"https://m.io/share\"").unwrap_err();
+        assert!(
+            matches!(&err, Error::ShareTemplate { name, .. } if name == "Mastodon"),
+            "{err}"
+        );
+        assert_eq!(
+            err.to_string(),
+            "config.toml: [[share]] \"Mastodon\" needs {url}, {title} or {text} in its template"
+        );
+
+        for bad in [
+            "[[share]]\nname = \"x\"\nkey = \"p\"",
+            "[[share]]\ntemplate = \"{url}\"",
         ] {
             assert!(matches!(parse(bad), Err(Error::Parse { .. })), "{bad}");
         }

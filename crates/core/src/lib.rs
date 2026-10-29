@@ -9,6 +9,7 @@ pub mod keyword;
 pub mod mcp;
 pub mod rules;
 pub mod secrets;
+pub mod share;
 pub mod story;
 pub mod sync;
 pub mod update;
