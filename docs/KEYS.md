@@ -78,7 +78,7 @@ Then the comment, which starts as the article's title:
 | `Enter` | open the site's composer in the browser with the comment and the link; nothing is posted until you post it there |
 | `Esc` | close without opening anything |
 
-The counter under the comment knows each site: X allows 280 characters and counts any link as 23; Bluesky allows 300 and counts letters as a reader does (one for a flag or a family emoji), with the link on a line of its own. Sign in to Bluesky before sharing: its composer drops the text otherwise.
+The counter under the comment knows each site: X allows 280 and counts as its composer does, a link starting with `http://` or `https://` as 23 and a Chinese, Japanese or Korean character or an emoji as two; Bluesky allows 300 and counts letters as a reader does (one for a flag or a family emoji), with the link on a line of its own. Sign in to Bluesky before sharing: its composer drops the text otherwise.
 
 ## MCP server's tools
 

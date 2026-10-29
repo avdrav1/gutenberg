@@ -233,9 +233,14 @@ pub fn encode(value: &str) -> String {
     utf8_percent_encode(value, ESCAPED).to_string()
 }
 
-/// X's count of `text`: each whitespace-separated run that starts with
-/// `http://` or `https://` counts [`Destination::X_LINK`], every other
-/// character one.
+/// X's count of `text`, as its composer counts: each whitespace-separated
+/// run that starts with `http://` or `https://` counts
+/// [`Destination::X_LINK`]; everything else is weighed by grapheme cluster,
+/// one per character in the scripts X weighs light (Latin, Greek, Cyrillic,
+/// Hebrew, Arabic and the rest up to U+10FF, plus general punctuation) and
+/// two for any cluster outside them, so a CJK character or an emoji
+/// sequence counts two. A bare domain without a scheme counts by character,
+/// which errs on the side of fewer characters left.
 pub fn x_length(text: &str) -> usize {
     let mut count = 0;
     let mut rest = text;
@@ -246,16 +251,32 @@ pub fn x_length(text: &str) -> usize {
         count += if run.starts_with("http://") || run.starts_with("https://") {
             Destination::X_LINK
         } else {
-            run.chars().count()
+            run.graphemes(true).map(x_weight).sum()
         };
-        // The whitespace character itself counts one.
+        // The whitespace character itself counts too.
         let mut after = after.chars();
-        if after.next().is_some() {
-            count += 1;
+        if let Some(space) = after.next() {
+            count += x_weight(space.encode_utf8(&mut [0; 4]));
         }
         rest = after.as_str();
     }
     count
+}
+
+/// What one grapheme cluster costs on X: one per scalar when all of them
+/// are in the ranges twitter-text weighs 100, two otherwise.
+fn x_weight(cluster: &str) -> usize {
+    let light = |c: char| {
+        matches!(
+            u32::from(c),
+            0..=0x10FF | 0x2000..=0x200D | 0x2010..=0x201F | 0x2032..=0x2037
+        )
+    };
+    if cluster.chars().all(light) {
+        cluster.chars().count()
+    } else {
+        2
+    }
 }
 
 #[cfg(test)]
@@ -291,6 +312,38 @@ mod tests {
         assert_eq!(x_length("http://a.io https://b.io"), 23 + 1 + 23);
         assert_eq!(x_length("httpsnot a link"), 15);
         assert_eq!(x_length(""), 0);
+    }
+
+    #[test]
+    fn x_weighs_cjk_and_emoji_at_two() {
+        // Five kana, a space, three kanji: each counts two.
+        assert_eq!(x_length("こんにちは 日本語"), 10 + 1 + 6);
+        // An emoji sequence is one cluster at two, however many scalars.
+        let family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}";
+        let flag = "\u{1F1EF}\u{1F1F5}";
+        assert_eq!(x_length(family), 2);
+        assert_eq!(
+            x_length(&format!("hi {flag} {family}!")),
+            2 + 1 + 2 + 1 + 2 + 1
+        );
+        // Hebrew, Arabic, Thai and Devanagari are under U+10FF: one each.
+        assert_eq!(x_length("שלום"), 4);
+        assert_eq!(x_length("สวัสดี"), 6);
+        // Curly quotes and the dashes X weighs light count one.
+        assert_eq!(x_length("\u{201C}a\u{201D} \u{2013} b"), 3 + 1 + 1 + 1 + 1);
+        // An ideographic space is outside the light ranges.
+        assert_eq!(x_length("a\u{3000}b"), 1 + 2 + 1);
+
+        // A Japanese headline of 150 characters is 300 on X, so with the
+        // space and the link the post is 44 over, not 106 under.
+        let s = share(&"字".repeat(150));
+        assert_eq!(Destination::X.count(&s), Some(300 + 1 + 23));
+        assert_eq!(Destination::X.remaining(&s), Some(-44));
+        // 254 letters and one emoji fill 280 exactly; a second emoji is over.
+        let edge = share(&format!("{}\u{1F600}", "a".repeat(254)));
+        assert_eq!(Destination::X.remaining(&edge), Some(0));
+        let over = share(&format!("{}\u{1F600}\u{1F600}", "a".repeat(254)));
+        assert_eq!(Destination::X.remaining(&over), Some(-2));
     }
 
     #[test]
