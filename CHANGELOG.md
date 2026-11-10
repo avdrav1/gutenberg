@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.30.0 — 2026-11-10
+
 - `r` refreshes the folder or feed chosen in the sources pane now, and `R` refreshes everything; both are in the command palette as well. A feed that failed and is waiting to try again is tried right away when you ask for it with `r`. These keys were listed in help before but did nothing.
 
 ## 0.29.0 — 2026-10-29
