@@ -3,7 +3,7 @@
 //! arrives. Failures back off; they are never an error the user must
 //! dismiss.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering};
@@ -248,7 +248,23 @@ pub async fn refresh(
     limits: &Limits,
     icons: Option<&Icons>,
 ) -> Result<Summary, gutenberg_store::Error> {
-    refresh_some(store, now, limits, icons, |_| true).await
+    refresh_some(store, now, now, limits, icons, |_| true).await
+}
+
+/// Refreshes these sources now, as when they're asked for by name (`r` in
+/// the window): one that's backing off after a failure is tried again
+/// too, since someone asked.
+pub async fn refresh_sources(
+    store: &mut Store,
+    ids: &HashSet<i64>,
+    now: i64,
+    limits: &Limits,
+    icons: Option<&Icons>,
+) -> Result<Summary, gutenberg_store::Error> {
+    refresh_some(store, now, i64::MAX, limits, icons, |due| {
+        ids.contains(&due.source_id)
+    })
+    .await
 }
 
 /// Refreshes one source now, if it's due, as when it's just been added.
@@ -258,17 +274,22 @@ pub async fn refresh_source(
     now: i64,
     limits: &Limits,
 ) -> Result<Summary, gutenberg_store::Error> {
-    refresh_some(store, now, limits, None, |due| due.source_id == source_id).await
+    refresh_some(store, now, now, limits, None, |due| {
+        due.source_id == source_id
+    })
+    .await
 }
 
+/// Refreshes the sources `pick` takes of those due by `due_by`.
 async fn refresh_some(
     store: &mut Store,
     now: i64,
+    due_by: i64,
     limits: &Limits,
     icons: Option<&Icons>,
     pick: impl Fn(&DueSource) -> bool,
 ) -> Result<Summary, gutenberg_store::Error> {
-    let mut due = store.sources_due(now)?;
+    let mut due = store.sources_due(due_by)?;
     due.retain(|d| pick(d));
     let progress = limits.progress.as_deref();
     let _running = Running(progress);
@@ -905,24 +926,52 @@ pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config)
         eprintln!("gutenberg: background refresh did not start: {err}");
     }
     Refresher {
-        asks,
-        status: Status { progress, newer },
+        status: Status {
+            progress,
+            newer,
+            asks,
+        },
     }
 }
 
-/// What the refresh thread tells the window, read without waiting.
+/// The window's side of the refresh thread: what it tells the window,
+/// read without waiting, and refreshes the window asks for, without
+/// waiting for them either.
 #[derive(Debug, Clone)]
 pub struct Status {
     /// How far the refresh running now has got.
     pub progress: Arc<Progress>,
     /// A newer Gutenberg release than this one, once GitHub has said so.
     pub newer: Arc<Mutex<Option<String>>>,
+    asks: mpsc::Sender<Ask>,
 }
 
 impl Status {
     pub fn newer_release(&self) -> Option<String> {
         self.newer.lock().ok().and_then(|newer| newer.clone())
     }
+    /// Asks for a refresh now, or after the one running, and returns at
+    /// once; its progress shows in [`Status::progress`]. False when the
+    /// refresh thread has stopped.
+    pub fn ask(&self, pick: Pick) -> bool {
+        self.asks.send(Ask { pick, reply: None }).is_ok()
+    }
+}
+
+/// Which sources a refresh asked for covers.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Pick {
+    /// Every source that's due, as the background refresh does.
+    Due,
+    /// These, even those backing off after a failure.
+    Sources(HashSet<i64>),
+}
+
+/// A refresh asked for, and where to say how it went if anyone waits.
+#[derive(Debug)]
+struct Ask {
+    pick: Pick,
+    reply: Option<Reply>,
 }
 
 /// Whether to check for releases, and where to say what was found.
@@ -949,7 +998,6 @@ impl Releases<'_> {
 /// Asks the background refresh to run now (`gutenberg --refresh` with a
 /// window open).
 pub struct Refresher {
-    asks: mpsc::Sender<Reply>,
     status: Status,
 }
 
@@ -962,7 +1010,11 @@ impl Refresher {
     pub fn now(&self) -> Result<Summary, String> {
         let (reply, answer) = mpsc::channel();
         let stopped = || "the background refresh stopped".to_owned();
-        self.asks.send(reply).map_err(|_| stopped())?;
+        let ask = Ask {
+            pick: Pick::Due,
+            reply: Some(reply),
+        };
+        self.status.asks.send(ask).map_err(|_| stopped())?;
         answer.recv().map_err(|_| stopped())?
     }
     /// What the window shows of the refresh thread's work.
@@ -977,7 +1029,7 @@ fn run(
     rules: &Mutex<Rules>,
     progress: Arc<Progress>,
     releases: &Releases<'_>,
-    asked: &mpsc::Receiver<Reply>,
+    asked: &mpsc::Receiver<Ask>,
 ) -> Result<(), String> {
     let mut store = Store::open(store_path).map_err(|e| e.to_string())?;
     let icons = Icons::beside(store_path);
@@ -989,27 +1041,56 @@ fn run(
         progress: Some(progress),
         ..Limits::default()
     };
-    let mut waiting: Vec<Reply> = Vec::new();
+    let mut waiting: Vec<Ask> = Vec::new();
+    // Everything due: at start, then each interval or when a source is
+    // added. Asks for some sources leave the interval running.
+    let mut all_due = true;
+    let mut since = Instant::now();
     loop {
-        if minutes.load(Ordering::Relaxed) > 0 || !waiting.is_empty() {
+        let every_on = minutes.load(Ordering::Relaxed) > 0;
+        let all = (all_due && every_on) || waiting.iter().any(|ask| ask.pick == Pick::Due);
+        let picked: HashSet<i64> = waiting
+            .iter()
+            .filter_map(|ask| match &ask.pick {
+                Pick::Sources(ids) => Some(ids.iter().copied()),
+                Pick::Due => None,
+            })
+            .flatten()
+            .collect();
+        if all || !picked.is_empty() {
             if let Ok(rules) = rules.lock() {
                 limits.rules = rules.clone();
             }
-            let done = runtime
-                .block_on(refresh(&mut store, unix_now(), &limits, Some(&icons)))
-                .map_err(|e| e.to_string());
-            for reply in waiting.drain(..) {
+            let now = unix_now();
+            let done = match all {
+                true => runtime.block_on(refresh(&mut store, now, &limits, Some(&icons))),
+                false => runtime.block_on(refresh_sources(
+                    &mut store,
+                    &picked,
+                    now,
+                    &limits,
+                    Some(&icons),
+                )),
+            }
+            .map_err(|e| e.to_string());
+            for reply in waiting.drain(..).filter_map(|ask| ask.reply) {
                 let _ = reply.send(done.clone());
             }
             done?;
-            releases.check(&runtime);
+            if all {
+                releases.check(&runtime);
+                since = Instant::now();
+            }
         }
+        waiting.clear();
+        all_due = false;
         // Wait out the interval, re-reading it so an edit applies now.
-        let since = Instant::now();
         loop {
             match asked.recv_timeout(Duration::from_secs(1)) {
-                Ok(reply) => {
-                    waiting.push(reply);
+                Ok(ask) => {
+                    // Asks that came together run as one refresh.
+                    waiting.push(ask);
+                    waiting.extend(asked.try_iter());
                     break;
                 }
                 Err(mpsc::RecvTimeoutError::Timeout) => {}
@@ -1020,10 +1101,12 @@ fn run(
             }
             let every = u64::from(minutes.load(Ordering::Relaxed)) * 60;
             if every > 0 && since.elapsed().as_secs() >= every {
+                all_due = true;
                 break;
             }
             // Sources added since the last refresh fetch now.
             if every > 0 && store.has_unchecked_sources().map_err(|e| e.to_string())? {
+                all_due = true;
                 break;
             }
         }

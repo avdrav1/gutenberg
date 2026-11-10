@@ -74,6 +74,7 @@ pub fn for_screen(screen: Screen) -> Vec<Hint> {
             key(Action::Open, "articles"),
             key(Action::NextPane, "list"),
             key(Action::View(View::Unread), "unread"),
+            key(Action::Refresh, "refresh"),
             key(Action::AddSources, "add sources"),
             key(Action::Palette, "commands"),
             key(Action::Help, "keys"),

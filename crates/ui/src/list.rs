@@ -50,6 +50,10 @@ pub enum Action {
     Tools,
     /// Types the key the chosen MCP server needs, to save in the keyring.
     EnterKey,
+    /// Refreshes the folder or feed chosen in the sources pane now.
+    Refresh,
+    /// Refreshes every source now.
+    RefreshAll,
     /// Moves the keys to the other pane: the sources or the list.
     NextPane,
     PrevPane,
@@ -100,6 +104,8 @@ pub fn action_for(key: &Key, modifiers: Modifiers, pending_g: bool) -> Option<Ac
         Key::Character(">") => Some(Action::WidenPane),
         Key::Character("=") => Some(Action::ResetPanes),
         Key::Character("L") => Some(Action::NextLayout),
+        Key::Character("r") => Some(Action::Refresh),
+        Key::Character("R") => Some(Action::RefreshAll),
         Key::Named(Named::Tab) if modifiers.shift() => Some(Action::PrevPane),
         Key::Named(Named::Tab) => Some(Action::NextPane),
         _ => None,
