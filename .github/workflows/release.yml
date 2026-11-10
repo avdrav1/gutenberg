@@ -40,7 +40,7 @@ jobs:
           # retires the Intel label, drop this target rather than hold a
           # release on it.
           - target: aarch64-apple-darwin
-            runner: macos-14
+            runner: macos-15
           - target: x86_64-apple-darwin
             runner: macos-15-intel
     runs-on: ${{ matrix.runner }}
@@ -161,7 +161,7 @@ jobs:
   # ~/Applications, and nothing of the Linux desktop.
   install-test-macos:
     needs: build
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
