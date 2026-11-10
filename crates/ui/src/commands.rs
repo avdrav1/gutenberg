@@ -89,6 +89,16 @@ pub const ALL: &[Command] = &[
         keys: &["Esc"],
     },
     Command {
+        action: Action::Refresh,
+        name: "Refresh the chosen folder or feed now",
+        keys: &["r"],
+    },
+    Command {
+        action: Action::RefreshAll,
+        name: "Refresh all feeds now",
+        keys: &["R"],
+    },
+    Command {
         action: Action::View(View::All),
         name: "View all articles",
         keys: &["A"],
@@ -328,6 +338,8 @@ mod tests {
             | A::ClearSearch
             | A::Tools
             | A::EnterKey
+            | A::Refresh
+            | A::RefreshAll
             | A::NextPane
             | A::PrevPane
             | A::NarrowPane
@@ -363,6 +375,8 @@ mod tests {
             A::View(View::Today),
             A::Tools,
             A::EnterKey,
+            A::Refresh,
+            A::RefreshAll,
             A::NextPane,
             A::PrevPane,
             A::NarrowPane,

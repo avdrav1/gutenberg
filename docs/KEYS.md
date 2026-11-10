@@ -15,7 +15,7 @@ The bar along the bottom of the window shows the keys for what's on screen; `hin
 | `y` | copy the selected article's link | list, article |
 | `p` | share the selected article: a picker of X, Bluesky, Facebook, LinkedIn or the sites in `[[share]]`, then a comment that starts as the title; Enter opens the site's composer in the browser | list, article |
 | `/` | search every article's title, author and summary as you type | any |
-| `r` | refresh selected source; `R` all | any |
+| `r` | refresh the folder or feed chosen in the sources pane now, even one waiting to retry after a failure (all feeds chosen: same as `R`); `R` refreshes every feed that's due. The bar along the top of the list shows it running | any |
 | `u` / `S` / `t` / `A` | view unread only / starred / today's (published since midnight) / all; keeps the chosen folder or feed | any |
 | `T` | the chosen MCP server's tools, to pick the one its refresh calls; again for its articles | list |
 | `K` | type the key the chosen MCP server needs (such as `JINA_API_KEY`); it's saved in your keyring | list |

@@ -18,7 +18,7 @@ use std::time::{Duration, Instant};
 use gutenberg_core::catalog;
 use gutenberg_core::config::{self, Arrangement, Config};
 use gutenberg_core::favicon::Icons;
-use gutenberg_core::sync::{unix_now, Status};
+use gutenberg_core::sync::{unix_now, Pick, Status};
 use gutenberg_core::web::{self, Answer, Web};
 use gutenberg_core::{ipc, keyword, mcp, secrets};
 use gutenberg_store::{ArticleRow, Filter, Folder, Source, SourceKind, Store, View, ViewCounts};
@@ -944,6 +944,8 @@ impl App {
             Message::Key(Action::Star) => self.toggle_star(),
             Message::Key(Action::ToggleRead) => self.toggle_read(),
             Message::Key(Action::MarkFolderRead) => self.mark_chosen_read(),
+            Message::Key(Action::Refresh) => self.refresh(self.refresh_pick()),
+            Message::Key(Action::RefreshAll) => self.refresh(Pick::Due),
             Message::Key(Action::OpenInBrowser) => {
                 if let Some(url) = self.selected_link() {
                     open_in_browser(&url);
@@ -1508,6 +1510,35 @@ impl App {
             eprintln!("gutenberg: marking read: {e}");
         }
         self.reload();
+    }
+
+    /// `r`: the feed chosen in the sources pane, or a folder's feeds;
+    /// everything when all feeds are chosen.
+    fn refresh_pick(&self) -> Pick {
+        match self.filter {
+            Filter::All => Pick::Due,
+            Filter::Source(id) => Pick::Sources(HashSet::from([id])),
+            Filter::Folder(id) => Pick::Sources(
+                self.sources
+                    .iter()
+                    .filter(|s| s.folder_id == Some(id))
+                    .map(|s| s.id)
+                    .collect(),
+            ),
+        }
+    }
+
+    /// Asks the refresh thread to refresh now and returns at once; the
+    /// progress bar shows it running within a second.
+    fn refresh(&mut self, pick: Pick) {
+        if matches!(&pick, Pick::Sources(ids) if ids.is_empty()) {
+            return;
+        }
+        if let Some(status) = &self.status {
+            if !status.ask(pick) {
+                eprintln!("gutenberg: the background refresh stopped");
+            }
+        }
     }
 
     /// Narrows the chosen folder or feed to a view, ending a search.
@@ -5102,6 +5133,20 @@ mod tests {
         let _ = app.update(Message::Press(ALL));
         let _ = app.update(Message::Release);
         assert_eq!(app.rows.len(), 3);
+    }
+
+    #[test]
+    fn r_refreshes_the_chosen_feed_or_folder_and_capital_r_everything() {
+        let (mut app, tech, a, b) = app_with_folders();
+        assert_eq!(app.refresh_pick(), Pick::Due);
+        app.filter = Filter::Folder(tech);
+        assert_eq!(app.refresh_pick(), Pick::Sources(HashSet::from([a])));
+        app.filter = Filter::Source(b);
+        assert_eq!(app.refresh_pick(), Pick::Sources(HashSet::from([b])));
+        // With no refresh thread (as in tests) the keys do nothing at all.
+        let _ = app.update(Message::Key(Action::Refresh));
+        let _ = app.update(Message::Key(Action::RefreshAll));
+        assert_eq!(app.refreshing, None);
     }
 
     #[test]

@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use gutenberg_core::rules::{Action, Rule, Rules};
-use gutenberg_core::sync::{refresh, Limits, Progress};
+use gutenberg_core::sync::{refresh, refresh_sources, Limits, Pick, Progress};
 use gutenberg_store::{NewSource, SourceKind, Store};
 
 const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/feeds");
@@ -309,6 +309,8 @@ fn a_refresh_asked_for_runs_even_with_background_refresh_off() {
     );
     let mut config = gutenberg_core::config::Config::default();
     config.refresh.minutes = 0;
+    // No release check: nothing leaves the machine.
+    config.updates.check = false;
     let refresher = gutenberg_core::sync::spawn(path.clone(), None, &config);
 
     let summary = refresher.now().unwrap();
@@ -420,4 +422,88 @@ fn progress_counts_sources_while_a_refresh_runs_and_clears_after() {
     assert_eq!(seen.first(), Some(&(0, 2)));
     assert!(seen.contains(&(1, 2)), "{seen:?}");
     assert_eq!(progress.get(), None);
+}
+
+#[test]
+fn a_source_asked_for_by_name_refreshes_alone_even_while_backing_off() {
+    // `r` in the window: only the chosen feed, and now, though a failure
+    // has it waiting.
+    let log = Arc::new(Log::default());
+    let reply = Arc::new(Mutex::new(Reply::Status(
+        "503 Service Unavailable",
+        Some(600),
+    )));
+    let base = serve(reply.clone(), Duration::ZERO, log.clone());
+    let mut store = Store::open_in_memory().unwrap();
+    let chosen = add_feed(&store, &format!("{base}/chosen"));
+    let other = add_feed(&store, &format!("{base}/other"));
+    let rt = runtime();
+    rt.block_on(refresh(&mut store, 1_000, &Limits::default(), None))
+        .unwrap();
+    assert_eq!(store.fetch_state(chosen).unwrap().retry_at, Some(1_600));
+
+    *reply.lock().unwrap() = feed_reply("lwn-headlines.xml", "\"x\"")
+        .lock()
+        .unwrap()
+        .clone();
+    let asked = std::collections::HashSet::from([chosen]);
+    let summary = rt
+        .block_on(refresh_sources(
+            &mut store,
+            &asked,
+            1_100,
+            &Limits::default(),
+            None,
+        ))
+        .unwrap();
+    assert_eq!(
+        (summary.sources, summary.new_articles),
+        (1, 10),
+        "{summary}"
+    );
+    assert_eq!(store.fetch_state(chosen).unwrap().retry_at, None);
+    // The other still waits out its backoff.
+    assert_eq!(store.fetch_state(other).unwrap().retry_at, Some(1_600));
+}
+
+#[test]
+fn the_window_asks_for_a_refresh_without_waiting_for_it() {
+    let base = serve(
+        feed_reply("lwn-headlines.xml", "\"lwn-1\""),
+        Duration::ZERO,
+        Arc::new(Log::default()),
+    );
+    let tmp = tempfile::tempdir().unwrap();
+    let path = tmp.path().join("gutenberg.db");
+    let (chosen, other) = {
+        let store = Store::open(&path).unwrap();
+        (
+            add_feed(&store, &format!("{base}/chosen")),
+            add_feed(&store, &format!("{base}/other")),
+        )
+    };
+    let mut config = gutenberg_core::config::Config::default();
+    config.refresh.minutes = 0;
+    // No release check: nothing leaves the machine.
+    config.updates.check = false;
+    let refresher = gutenberg_core::sync::spawn(path.clone(), None, &config);
+    let status = refresher.status();
+
+    assert!(status.ask(Pick::Sources(std::collections::HashSet::from([chosen]))));
+    let store = Store::open(&path).unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while store.fetch_state(chosen).unwrap().checked_at.is_none() {
+        assert!(Instant::now() < deadline, "the asked refresh never ran");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert_eq!(store.fetch_state(other).unwrap().checked_at, None);
+    // `R`: everything due.
+    assert!(status.ask(Pick::Due));
+    while store.fetch_state(other).unwrap().checked_at.is_none() {
+        assert!(
+            Instant::now() < deadline,
+            "the refresh of everything never ran"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
 }
