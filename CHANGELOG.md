@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.32.0 — 2026-11-11
+
 - A feed whose author is written as an email address run straight into a non-English character, such as `bob@example.com„ Bob`, now reads. It used to fail as a whole with "the feed parser crashed on it".
 
 - `d` deletes the feed chosen in the sources pane, whatever it is: one you added with `gutenberg --add`, from an OPML import, a keyword alert or an MCP server. It asks first, saying how many articles go with it and how many of those you starred; Enter deletes, Esc keeps it. It's in the command palette as "Delete the chosen feed".
