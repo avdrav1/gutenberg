@@ -99,6 +99,11 @@ pub const ALL: &[Command] = &[
         keys: &["R"],
     },
     Command {
+        action: Action::DeleteSource,
+        name: "Delete the chosen feed and its articles (asks first)",
+        keys: &["d"],
+    },
+    Command {
         action: Action::View(View::All),
         name: "View all articles",
         keys: &["A"],
@@ -340,6 +345,7 @@ mod tests {
             | A::EnterKey
             | A::Refresh
             | A::RefreshAll
+            | A::DeleteSource
             | A::NextPane
             | A::PrevPane
             | A::NarrowPane
@@ -377,6 +383,7 @@ mod tests {
             A::EnterKey,
             A::Refresh,
             A::RefreshAll,
+            A::DeleteSource,
             A::NextPane,
             A::PrevPane,
             A::NarrowPane,

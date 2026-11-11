@@ -150,3 +150,15 @@ fn a_sources_keys_come_newest_first_and_a_link_can_move() {
         .unwrap();
     assert_eq!(row.url.as_deref(), Some("https://publisher.example/5"));
 }
+
+#[test]
+fn a_sources_article_count_says_how_many_are_starred() {
+    let mut store = Store::open_in_memory().unwrap();
+    let feeds = add_feeds(&store, 2);
+    store.insert_articles(&articles(&feeds, 6)).unwrap();
+    let first = store.list_articles(Some(feeds[0]), 10).unwrap();
+    store.set_starred(first[0].id, true).unwrap();
+    assert_eq!(store.article_count(feeds[0]).unwrap(), (3, 1));
+    assert_eq!(store.article_count(feeds[1]).unwrap(), (3, 0));
+    assert_eq!(store.article_count(999).unwrap(), (0, 0));
+}

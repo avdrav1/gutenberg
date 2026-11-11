@@ -460,6 +460,15 @@ impl Store {
         Ok(())
     }
 
+    /// A source's articles: how many, and how many of them are starred.
+    pub fn article_count(&self, source_id: i64) -> Result<(i64, i64)> {
+        Ok(self.conn.query_row(
+            "SELECT count(*), coalesce(sum(starred), 0) FROM article WHERE source_id = ?1",
+            [source_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )?)
+    }
+
     /// Unread stories per source; sources with none are absent.
     pub fn unread_counts(&self) -> Result<HashMap<i64, i64>> {
         let mut stmt = self.conn.prepare_cached(
