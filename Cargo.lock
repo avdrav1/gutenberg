@@ -2119,6 +2119,8 @@ dependencies = [
  "iced_test",
  "libc",
  "scraper",
+ "serde",
+ "serde_json",
  "tempfile",
  "url",
 ]
