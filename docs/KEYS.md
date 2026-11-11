@@ -16,6 +16,7 @@ The bar along the bottom of the window shows the keys for what's on screen; `hin
 | `p` | share the selected article: a picker of X, Bluesky, Facebook, LinkedIn or the sites in `[[share]]`, then a comment that starts as the title; Enter opens the site's composer in the browser | list, article |
 | `/` | search every article's title, author and summary as you type | any |
 | `r` | refresh the folder or feed chosen in the sources pane now, even one waiting to retry after a failure (all feeds chosen: same as `R`); `R` refreshes every feed that's due. The bar along the top of the list shows it running | any |
+| `d` | delete the feed, keyword alert or MCP server chosen in the sources pane, with its articles (starred ones too); it asks first, naming the feed and how many articles go. Nothing happens with a folder or all feeds chosen | any |
 | `u` / `S` / `t` / `A` | view unread only / starred / today's (published since midnight) / all; keeps the chosen folder or feed | any |
 | `T` | the chosen MCP server's tools, to pick the one its refresh calls; again for its articles | list |
 | `K` | type the key the chosen MCP server needs (such as `JINA_API_KEY`); it's saved in your keyring | list |
@@ -41,6 +42,8 @@ Opened with `:`. Type part of an action's name; letters only need to appear in o
 | `Esc` | close without running anything |
 
 Help (`?`) closes with `?`, `Esc` or `q`.
+
+The delete confirmation (`d`): `Enter` deletes; `Esc`, `n` or `q` keeps the feed.
 
 The four layouts are also rows of their own, "Layout: columns" and so on, with no key but `L`'s cycle.
 

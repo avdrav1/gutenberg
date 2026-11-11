@@ -54,6 +54,9 @@ pub enum Action {
     Refresh,
     /// Refreshes every source now.
     RefreshAll,
+    /// Asks, then deletes the feed chosen in the sources pane with its
+    /// articles.
+    DeleteSource,
     /// Moves the keys to the other pane: the sources or the list.
     NextPane,
     PrevPane,
@@ -106,6 +109,7 @@ pub fn action_for(key: &Key, modifiers: Modifiers, pending_g: bool) -> Option<Ac
         Key::Character("L") => Some(Action::NextLayout),
         Key::Character("r") => Some(Action::Refresh),
         Key::Character("R") => Some(Action::RefreshAll),
+        Key::Character("d") => Some(Action::DeleteSource),
         Key::Named(Named::Tab) if modifiers.shift() => Some(Action::PrevPane),
         Key::Named(Named::Tab) => Some(Action::NextPane),
         _ => None,

@@ -355,6 +355,17 @@ enum Overlay {
     SharePicker(share::Picker),
     /// The share being written.
     ShareCompose(share::Composer),
+    /// Whether to delete a source, and what goes with it.
+    ConfirmDelete(Deleting),
+}
+
+/// A source `d` asked to delete.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Deleting {
+    id: i64,
+    title: String,
+    articles: i64,
+    starred: i64,
 }
 
 /// Who gets the keys.
@@ -375,6 +386,8 @@ enum KeyMode {
     SharePicker,
     /// Writing a share.
     ShareCompose,
+    /// Asked whether to delete a source.
+    ConfirmDelete,
 }
 
 /// The chosen MCP server's tools, in the list pane while it has no
@@ -619,6 +632,8 @@ enum Message {
     RunCommand(Action),
     /// Closes the palette, help or the share box.
     CloseOverlay,
+    /// Deletes the source the confirmation names.
+    ConfirmDelete,
     /// A key while the share picker is open.
     SharePicker(palette::Input),
     /// A destination clicked in the picker.
@@ -959,6 +974,7 @@ impl App {
             Message::Key(Action::MarkFolderRead) => self.mark_chosen_read(),
             Message::Key(Action::Refresh) => self.refresh(self.refresh_pick()),
             Message::Key(Action::RefreshAll) => self.refresh(Pick::Due),
+            Message::Key(Action::DeleteSource) => self.ask_to_delete(),
             Message::Key(Action::OpenInBrowser) => {
                 if let Some(url) = self.selected_link() {
                     open_in_browser(&url);
@@ -1051,6 +1067,7 @@ impl App {
                 return self.update(Message::Key(action));
             }
             Message::CloseOverlay => self.overlay = None,
+            Message::ConfirmDelete => self.delete_confirmed(),
             Message::Onboarding(action) => return self.update_onboarding(action),
             Message::OnboardingQuery(input) => {
                 if let Some(state) = &mut self.onboarding {
@@ -1304,6 +1321,7 @@ impl App {
                 Screen::ShareCompose
             }
             _ if matches!(self.overlay, Some(Overlay::ShareCompose(_))) => Screen::ShareLink,
+            _ if matches!(self.overlay, Some(Overlay::ConfirmDelete(_))) => Screen::ConfirmDelete,
             (Some(search), _) if search.editing => Screen::Searching,
             _ if self.pane == Pane::Sources && !self.sources.is_empty() => Screen::Sources,
             (Some(_), _) => Screen::Results,
@@ -1539,6 +1557,45 @@ impl App {
                     .collect(),
             ),
         }
+    }
+
+    /// `d`: asks whether to delete the source chosen in the sources pane,
+    /// saying what goes with it. A folder or every feed chosen: nothing.
+    fn ask_to_delete(&mut self) {
+        let (Filter::Source(id), Ok(store)) = (self.filter, &self.store) else {
+            return;
+        };
+        let Some(title) = self.source_titles.get(&id).cloned() else {
+            return;
+        };
+        match store.article_count(id) {
+            Ok((articles, starred)) => {
+                self.overlay = Some(Overlay::ConfirmDelete(Deleting {
+                    id,
+                    title,
+                    articles,
+                    starred,
+                }));
+            }
+            Err(e) => eprintln!("gutenberg: counting articles: {e}"),
+        }
+    }
+
+    /// Enter on the confirmation: the source and its articles go, and the
+    /// list shows every feed.
+    fn delete_confirmed(&mut self) {
+        let Some(Overlay::ConfirmDelete(deleting)) = self.overlay.take() else {
+            return;
+        };
+        let Ok(store) = &self.store else { return };
+        if let Err(e) = store.delete_source(deleting.id) {
+            eprintln!("gutenberg: deleting {}: {e}", deleting.title);
+            return;
+        }
+        if self.filter == Filter::Source(deleting.id) {
+            self.filter = Filter::All;
+        }
+        self.reload();
     }
 
     /// Asks the refresh thread to refresh now and returns at once; the
@@ -1779,6 +1836,7 @@ impl App {
             (None, Some(Overlay::Help), _) => KeyMode::Help,
             (None, Some(Overlay::SharePicker(_)), _) => KeyMode::SharePicker,
             (None, Some(Overlay::ShareCompose(_)), _) => KeyMode::ShareCompose,
+            (None, Some(Overlay::ConfirmDelete(_)), _) => KeyMode::ConfirmDelete,
             (None, None, Some(Search { editing: true, .. })) => KeyMode::Search,
             (None, None, _) if self.tools.editor.is_some() => KeyMode::ToolArguments,
             (None, None, _) if self.tools.key.is_some() => KeyMode::KeyEntry,
@@ -1827,6 +1885,15 @@ impl App {
                         match key.as_ref() {
                             keyboard::Key::Named(Named::Escape)
                             | keyboard::Key::Character("?" | "q") => Some(Message::CloseOverlay),
+                            _ => None,
+                        }
+                    }
+                    KeyMode::ConfirmDelete => {
+                        use keyboard::key::Named;
+                        match key.as_ref() {
+                            keyboard::Key::Named(Named::Enter) => Some(Message::ConfirmDelete),
+                            keyboard::Key::Named(Named::Escape)
+                            | keyboard::Key::Character("n" | "q") => Some(Message::CloseOverlay),
                             _ => None,
                         }
                     }
@@ -2037,6 +2104,23 @@ impl App {
                     "Enter or a letter chooses · j k move · Esc closes"
                 };
                 (Some(prompt), rows, footer.to_owned())
+            }
+            Overlay::ConfirmDelete(deleting) => {
+                let prompt = row![
+                    text("Delete").color(color(t.muted)),
+                    text(deleting.title.clone()).color(color(t.accent)),
+                ]
+                .spacing(8)
+                .padding([10, 12]);
+                let what = text(deleting.consequence())
+                    .size(14)
+                    .color(color(t.foreground))
+                    .wrapping(text::Wrapping::WordOrGlyph);
+                (
+                    Some(prompt),
+                    vec![container(what).padding([4, 12]).into()],
+                    "Enter deletes · Esc or n keeps it".to_owned(),
+                )
             }
             Overlay::ShareCompose(composer) => {
                 let prompt = row![
@@ -4126,6 +4210,40 @@ fn iced_theme(t: &Tokens) -> iced::Theme {
     )
 }
 
+impl Deleting {
+    /// What deleting it costs, in a sentence.
+    fn consequence(&self) -> String {
+        let articles = match self.articles {
+            0 => "It has no articles yet.".to_owned(),
+            1 => "Its 1 article goes with it".to_owned(),
+            n => format!("Its {} articles go with it", thousands(n)),
+        };
+        let starred = match (self.articles, self.starred) {
+            (0, _) => String::new(),
+            (_, 0) => ".".to_owned(),
+            (_, 1) => ", including 1 you starred.".to_owned(),
+            (_, n) => format!(", including {n} you starred."),
+        };
+        format!("{articles}{starred} This can't be undone; add it again to start over.")
+    }
+}
+
+/// `7268` → `7,268`.
+fn thousands(n: i64) -> String {
+    let digits = n.unsigned_abs().to_string();
+    let mut out = String::new();
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    if n < 0 {
+        out.insert(0, '-');
+    }
+    out
+}
+
 /// The sources the store has for rows of the Add sources screen: a
 /// catalog feed by its URL, a keyword alert preset by its query, an MCP
 /// server preset by the call it makes.
@@ -5429,6 +5547,69 @@ mod tests {
         assert!(store.list_articles(None, 10).unwrap().is_empty());
         // The list was on the removed feed; it shows every feed now.
         assert_eq!(app.filter, Filter::All);
+    }
+
+    #[test]
+    fn d_asks_before_deleting_the_chosen_feed_and_esc_keeps_it() {
+        let (mut app, tech, a, b) = app_with_folders();
+        // Every feed or a folder chosen: nothing to ask about.
+        let _ = app.update(Message::Key(Action::DeleteSource));
+        assert!(app.overlay.is_none());
+        app.filter = Filter::Folder(tech);
+        let _ = app.update(Message::Key(Action::DeleteSource));
+        assert!(app.overlay.is_none());
+
+        app.filter = Filter::Source(a);
+        app.reload();
+        let star = app.rows[0].id;
+        app.store.as_ref().unwrap().set_starred(star, true).unwrap();
+        let _ = app.update(Message::Key(Action::DeleteSource));
+        let Some(Overlay::ConfirmDelete(deleting)) = &app.overlay else {
+            panic!("d asks first")
+        };
+        assert_eq!(
+            (deleting.id, deleting.articles, deleting.starred),
+            (a, 2, 1)
+        );
+        assert_eq!(app.screen(), hints::Screen::ConfirmDelete);
+        // Esc keeps it.
+        let _ = app.update(Message::CloseOverlay);
+        assert_eq!(app.store.as_ref().unwrap().sources().unwrap().len(), 2);
+
+        // From the palette too; Enter deletes it and its articles.
+        let _ = app.update(Message::RunCommand(Action::DeleteSource));
+        let _ = app.update(Message::ConfirmDelete);
+        assert!(app.overlay.is_none());
+        let store = app.store.as_ref().unwrap();
+        let left: Vec<i64> = store.sources().unwrap().iter().map(|s| s.id).collect();
+        assert_eq!(left, [b]);
+        assert_eq!(store.article_count(a).unwrap(), (0, 0));
+        assert_eq!(app.filter, Filter::All);
+        assert!(app.rows.iter().all(|r| r.source_id == b));
+    }
+
+    #[test]
+    fn the_confirmation_says_what_goes_with_the_feed() {
+        let deleting = |articles, starred| Deleting {
+            id: 1,
+            title: "Yahoo Sports".into(),
+            articles,
+            starred,
+        };
+        assert_eq!(
+            deleting(7268, 0).consequence(),
+            "Its 7,268 articles go with it. This can't be undone; add it again to start over."
+        );
+        assert_eq!(
+            deleting(2, 1).consequence(),
+            "Its 2 articles go with it, including 1 you starred. This can't be undone; add it \
+             again to start over."
+        );
+        assert!(deleting(0, 0)
+            .consequence()
+            .starts_with("It has no articles yet."));
+        assert_eq!(thousands(1_234_567), "1,234,567");
+        assert_eq!(thousands(999), "999");
     }
 
     #[test]

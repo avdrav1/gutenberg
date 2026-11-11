@@ -30,6 +30,8 @@ pub enum Screen {
     Arguments,
     /// Typing an MCP server's key.
     Key,
+    /// Asked whether to delete a feed.
+    ConfirmDelete,
     /// Picking where to share.
     SharePicker,
     /// Writing the share for a site that takes the comment.
@@ -75,6 +77,7 @@ pub fn for_screen(screen: Screen) -> Vec<Hint> {
             key(Action::NextPane, "list"),
             key(Action::View(View::Unread), "unread"),
             key(Action::Refresh, "refresh"),
+            key(Action::DeleteSource, "delete"),
             key(Action::AddSources, "add sources"),
             key(Action::Palette, "commands"),
             key(Action::Help, "keys"),
@@ -171,6 +174,16 @@ pub fn for_screen(screen: Screen) -> Vec<Hint> {
                 label: "cancel",
             },
         ],
+        Screen::ConfirmDelete => vec![
+            Hint {
+                keys: "Enter",
+                label: "delete",
+            },
+            Hint {
+                keys: "Esc",
+                label: "keep it",
+            },
+        ],
         Screen::ShareLink => vec![
             Hint {
                 keys: "Enter",
@@ -204,7 +217,7 @@ fn key(action: Action, label: &'static str) -> Hint {
 mod tests {
     use super::*;
 
-    const EVERY: [Screen; 13] = [
+    const EVERY: [Screen; 14] = [
         Screen::Empty,
         Screen::List,
         Screen::Sources,
@@ -218,6 +231,7 @@ mod tests {
         Screen::SharePicker,
         Screen::ShareCompose,
         Screen::ShareLink,
+        Screen::ConfirmDelete,
     ];
 
     #[test]
@@ -239,6 +253,7 @@ mod tests {
             Screen::SharePicker,
             Screen::ShareCompose,
             Screen::ShareLink,
+            Screen::ConfirmDelete,
         ];
         for screen in EVERY.into_iter().filter(|s| !typing.contains(s)) {
             assert!(
