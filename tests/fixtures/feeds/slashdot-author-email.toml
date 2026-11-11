@@ -1,0 +1,2 @@
+# SOURCE synthetic, 2026-11-11: slashdot-main.xml with its first item's author written as an email, then byte 0x84 ("„" in this ISO-8859-1 feed's windows-1252 reading), then the name
+covers = "an author email touching a character wider than a byte, which panicked feed-rs 3.0.0 (found by fuzz/feed in CI); the feed reads in full and the author keeps the name"

@@ -228,6 +228,7 @@ pub fn parse(bytes: &[u8], feed_url: &str) -> Result<Feed, FeedError> {
     }
     let bytes = without_late_declarations(bytes);
     let bytes = short_declaration(&bytes);
+    let bytes = spaced_emails(&bytes);
     // A parser bug must cost one feed, not the refresh thread. (The crash
     // report still gets written, so it can be reported.)
     let parsed = std::panic::catch_unwind(|| {
@@ -309,6 +310,56 @@ fn without_late_declarations(bytes: &[u8]) -> std::borrow::Cow<'_, [u8]> {
 /// written short, keeping its encoding: quick-xml 0.42 panics when a
 /// declaration naming another encoding than UTF-8 ends any later (found by
 /// `fuzz/`, padded out with junk before its `?>`).
+/// Puts a space between an email address and a non-ASCII character
+/// touching it, as in `bob@example.com„ Bob`. feed-rs 3.0.0 takes an
+/// author's name as what's left once the email and one byte either side of
+/// it are cut away, and panics when that byte is part of a longer character
+/// (found by fuzz/feed in CI). The byte that follows the address, or ends
+/// the character before it, is never inside a character, in UTF-8 or a
+/// single-byte encoding, so the space splits nothing. Feeds without such an
+/// address are passed through untouched.
+fn spaced_emails(bytes: &[u8]) -> std::borrow::Cow<'_, [u8]> {
+    let local = |b: u8| b.is_ascii_alphanumeric() || b"._%+-".contains(&b);
+    let domain = |b: u8| b.is_ascii_alphanumeric() || b".-".contains(&b);
+    let mut spaces = Vec::new();
+    for at in memchr_all(b'@', bytes) {
+        let end = at + 1 + bytes[at + 1..].iter().take_while(|&&b| domain(b)).count();
+        if end > at + 1 && bytes.get(end).is_some_and(|&b| b >= 0x80) {
+            spaces.push(end);
+        }
+        let mut start = at - bytes[..at].iter().rev().take_while(|&&b| local(b)).count();
+        if bytes[..start].ends_with(b"mailto:") {
+            start -= b"mailto:".len();
+        }
+        if start < at && start > 0 && bytes[start - 1] >= 0x80 {
+            spaces.push(start);
+        }
+    }
+    if spaces.is_empty() {
+        return std::borrow::Cow::Borrowed(bytes);
+    }
+    spaces.sort_unstable();
+    spaces.dedup();
+    let mut out = Vec::with_capacity(bytes.len() + spaces.len());
+    let mut from = 0;
+    for at in spaces {
+        out.extend_from_slice(&bytes[from..at]);
+        out.push(b' ');
+        from = at;
+    }
+    out.extend_from_slice(&bytes[from..]);
+    std::borrow::Cow::Owned(out)
+}
+
+/// Where `needle` is in `bytes`.
+fn memchr_all(needle: u8, bytes: &[u8]) -> impl Iterator<Item = usize> + '_ {
+    bytes
+        .iter()
+        .enumerate()
+        .filter(move |(_, &b)| b == needle)
+        .map(|(i, _)| i)
+}
+
 fn short_declaration(bytes: &[u8]) -> std::borrow::Cow<'_, [u8]> {
     const ROOM: usize = 64;
     let start = bytes.strip_prefix(b"\xEF\xBB\xBF").map_or(0, |_| 3);
@@ -505,6 +556,38 @@ fn one_line(message: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_email_touching_a_wider_character_gets_a_space() {
+        let spaced = |b: &[u8]| spaced_emails(b).into_owned();
+        // UTF-8, after and before the address.
+        assert_eq!(
+            spaced("bob@example.com„ Bob".as_bytes()),
+            "bob@example.com „ Bob".as_bytes()
+        );
+        assert_eq!(
+            spaced("Bob „bob@example.com".as_bytes()),
+            "Bob „ bob@example.com".as_bytes()
+        );
+        assert_eq!(
+            spaced("„mailto:bob@example.com".as_bytes()),
+            "„ mailto:bob@example.com".as_bytes()
+        );
+        // ISO-8859-1 or windows-1252: one byte, the same rule.
+        assert_eq!(spaced(b"a@b.org\x84x"), b"a@b.org \x84x");
+        // Nothing to do: borrowed as it came.
+        for untouched in [
+            "Bob <bob@example.com>".as_bytes(),
+            "bob@example.com (Bob)".as_bytes(),
+            "an @ sign alone, and é".as_bytes(),
+            "„@„".as_bytes(),
+        ] {
+            assert!(matches!(
+                spaced_emails(untouched),
+                std::borrow::Cow::Borrowed(_)
+            ));
+        }
+    }
 
     #[test]
     fn only_a_declaration_at_the_start_stays() {
