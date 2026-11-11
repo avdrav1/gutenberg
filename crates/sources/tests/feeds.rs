@@ -204,3 +204,20 @@ fn a_second_xml_declaration_is_dropped_not_a_crash() {
     assert_eq!(doubled.entries.len(), whole.entries.len());
     assert_eq!(doubled.title, whole.title);
 }
+
+#[test]
+fn an_author_email_touching_a_wide_character_is_not_a_crash() {
+    // fuzz/feed found feed-rs 3.0.0 panicking on an author's email followed
+    // by a character wider than a byte; the whole feed failed with it.
+    let whole = feed::parse(&fixture("slashdot-main.xml"), "https://example.com/feed").unwrap();
+    let odd = feed::parse(
+        &fixture("slashdot-author-email.xml"),
+        "https://example.com/feed",
+    )
+    .unwrap_or_else(|e| panic!("slashdot-author-email.xml: {e}"));
+    assert_eq!(odd.entries.len(), whole.entries.len());
+    assert_eq!(odd.title, whole.title);
+    let author = odd.entries[0].author.as_deref().unwrap_or_default();
+    assert!(author.ends_with("BeauHD"), "{author:?}");
+    assert_eq!(odd.entries[1].author, whole.entries[1].author);
+}
