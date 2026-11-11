@@ -35,7 +35,7 @@ pub enum Action {
 }
 
 /// One row of a page; indices into the catalog's vecs, or into `queries`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Entry {
     Feed(usize),
     Keyword(usize),
@@ -69,6 +69,8 @@ pub struct Onboarding {
     pub checked_mcp: HashSet<usize>,
     /// MCP servers the store already has making the same call.
     known_mcp: HashSet<usize>,
+    /// Rows the store has that were unchecked: removed on Enter.
+    unchecked: HashSet<Entry>,
 }
 
 pub fn action_for(key: &Key, modifiers: Modifiers) -> Option<Action> {
@@ -134,6 +136,7 @@ impl Onboarding {
             known_presets,
             checked_mcp: HashSet::new(),
             known_mcp: HashSet::new(),
+            unchecked: HashSet::new(),
         }
     }
 
@@ -301,16 +304,32 @@ impl Onboarding {
         }
     }
 
-    /// Checked, or already in the store.
+    /// Checked, or in the store and not unchecked.
     pub fn is_checked(&self, catalog: &Catalog, entry: Entry) -> bool {
-        self.is_known(catalog, entry)
-            || match entry {
-                Entry::Feed(i) => self.checked.contains(&i),
-                Entry::Keyword(i) => self.checked_keywords.contains(&i),
-                Entry::Query(i) => self.queries.get(i).is_some_and(|(_, c)| *c),
-                Entry::Mcp(i) => self.checked_mcp.contains(&i),
-                Entry::NewQuery => false,
-            }
+        if self.is_known(catalog, entry) {
+            return !self.unchecked.contains(&entry);
+        }
+        match entry {
+            Entry::Feed(i) => self.checked.contains(&i),
+            Entry::Keyword(i) => self.checked_keywords.contains(&i),
+            Entry::Query(i) => self.queries.get(i).is_some_and(|(_, c)| *c),
+            Entry::Mcp(i) => self.checked_mcp.contains(&i),
+            Entry::NewQuery => false,
+        }
+    }
+
+    /// Rows the store has that were unchecked, in catalog order: what Enter
+    /// removes.
+    pub fn removals(&self) -> Vec<Entry> {
+        let order = |e: &Entry| match *e {
+            Entry::Feed(i) => (0, i),
+            Entry::Keyword(i) => (1, i),
+            Entry::Mcp(i) => (2, i),
+            Entry::NewQuery | Entry::Query(_) => (3, 0),
+        };
+        let mut removals: Vec<Entry> = self.unchecked.iter().copied().collect();
+        removals.sort_by_key(order);
+        removals
     }
 
     fn show(&mut self, category: usize, last: usize) {
@@ -354,6 +373,11 @@ impl Onboarding {
         };
         if entry == Entry::NewQuery {
             self.draft = Some(String::new());
+        } else if self.is_known(catalog, entry) {
+            // Unchecking what the store has removes it on Enter.
+            if !self.unchecked.remove(&entry) {
+                self.unchecked.insert(entry);
+            }
         } else if self.addable(catalog, entry) {
             let on = !self.is_checked(catalog, entry);
             self.set_checked(entry, on);
@@ -366,8 +390,8 @@ pub fn view<'a>(state: &'a Onboarding, catalog: &'a Catalog, t: &Tokens) -> Elem
         column![
             text("Add sources").size(22).color(color(t.foreground)),
             text(
-                "Pick what to read. Space checks, a checks a whole page, n types a keyword alert, \
-                 Enter adds, Esc skips."
+                "Pick what to read. Space checks, or unchecks one you have to remove it; a checks \
+                 a whole page, n types a keyword alert, Enter saves, Esc skips."
             )
             .size(13)
             .color(color(t.muted)),
@@ -476,7 +500,7 @@ fn entries_view<'a>(
                     Paywall::Hard => Some("paywall"),
                 };
                 let detail = format!("{} · {}", f.blurb, host(&f.site));
-                let tags = [known.then_some("added"), paywall];
+                let tags = [added_tag(known, checked), paywall];
                 check_row(checked, known, &f.title, tags, detail, i, at_cursor, t)
             }
             Entry::Keyword(k) => {
@@ -496,7 +520,7 @@ fn entries_view<'a>(
                 } else {
                     k.query.clone()
                 };
-                let tags = [known.then_some("added"), None];
+                let tags = [added_tag(known, checked), None];
                 check_row(checked, known, &k.title, tags, detail, i, at_cursor, t)
             }
             Entry::NewQuery => query_field(state, i, at_cursor, t),
@@ -660,7 +684,7 @@ fn mcp_row<'a>(
         detail.push_str(&format!(" · needs {}", m.secret));
     }
     let tags = [
-        known.then_some("added"),
+        added_tag(known, checked),
         (!m.secret.is_empty()).then_some("needs a key"),
     ];
     check_row(checked, known, &m.title, tags, detail, index, at_cursor, t)
@@ -696,16 +720,22 @@ fn section<'a>(title: &'static str, t: &Tokens) -> Element<'a, Message> {
 }
 
 fn footer<'a>(state: &Onboarding, t: &Tokens) -> Element<'a, Message> {
-    let n = state.picks().len();
-    let status = match n {
-        0 => "Nothing selected".to_owned(),
-        1 => "1 source selected".to_owned(),
-        n => format!("{n} sources selected"),
+    let (n, gone) = (state.picks().len(), state.removals().len());
+    let sources = |n: usize| match n {
+        1 => "1 source".to_owned(),
+        n => format!("{n} sources"),
     };
-    let add_label = match n {
-        0 => "Add sources".to_owned(),
-        1 => "Add 1 source".to_owned(),
-        n => format!("Add {n} sources"),
+    let status = match (n, gone) {
+        (0, 0) => "Nothing selected".to_owned(),
+        (n, 0) => format!("{} selected", sources(n)),
+        (0, gone) => format!("{} to remove", sources(gone)),
+        (n, gone) => format!("{} selected, {gone} to remove", sources(n)),
+    };
+    let add_label = match (n, gone) {
+        (0, 0) => "Add sources".to_owned(),
+        (n, 0) => format!("Add {}", sources(n)),
+        (0, gone) => format!("Remove {}", sources(gone)),
+        (n, gone) => format!("Add {n}, remove {gone}"),
     };
     let (foreground, background, accent, border_color) = (
         color(t.foreground),
@@ -747,6 +777,15 @@ fn footer<'a>(state: &Onboarding, t: &Tokens) -> Element<'a, Message> {
     .width(Length::Fill)
     .style(filled(t.background))
     .into()
+}
+
+/// The tag of a row the store has: kept, or going on Enter.
+fn added_tag(known: bool, checked: bool) -> Option<&'static str> {
+    match (known, checked) {
+        (false, _) => None,
+        (true, true) => Some("added"),
+        (true, false) => Some("removed on Enter"),
+    }
 }
 
 /// A one-pixel rule.
@@ -797,7 +836,7 @@ mod tests {
     }
 
     #[test]
-    fn known_rows_do_not_toggle_and_presets_do() {
+    fn unchecking_a_known_row_marks_it_for_removal_and_checking_it_keeps_it() {
         let catalog = catalog::builtin();
         let mut state = fresh(catalog, false);
         let rows = state.entries(catalog);
@@ -815,9 +854,21 @@ mod tests {
         // The store has the preset's query, spaced differently.
         let queries = HashSet::from([Keyword::new(&catalog.keywords[k].query).unwrap().query]);
         state = Onboarding::new(catalog, known, queries, false);
+        assert!(state.is_checked(catalog, Entry::Feed(first)));
         state.apply(catalog, Action::ToggleCursor);
         state.apply(catalog, Action::ToggleEntry(preset));
         assert_eq!(state.cursor, preset);
+        // Nothing to add; both are unchecked, to go on Enter.
+        assert!(state.picks().is_empty());
+        assert!(!state.is_checked(catalog, Entry::Feed(first)));
+        assert_eq!(state.removals(), [Entry::Feed(first), Entry::Keyword(k)]);
+        // Checked again: kept.
+        state.apply(catalog, Action::ToggleEntry(preset));
+        assert_eq!(state.removals(), [Entry::Feed(first)]);
+        // `a` checks and clears only what can be added; known rows stay.
+        state.apply(catalog, Action::ToggleAll);
+        state.apply(catalog, Action::ToggleAll);
+        assert_eq!(state.removals(), [Entry::Feed(first)]);
         assert!(state.picks().is_empty());
 
         let mut state = fresh(catalog, false);

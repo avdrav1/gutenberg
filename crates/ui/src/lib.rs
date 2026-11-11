@@ -792,20 +792,33 @@ impl App {
             A::Quit => return iced::exit(),
             A::Close => self.onboarding = None,
             A::Add => {
-                let picks = state.picks();
-                if picks.is_empty() {
+                let (picks, removals) = (state.picks(), state.removals());
+                if picks.is_empty() && removals.is_empty() {
                     self.onboarding = None;
                     return Task::none();
                 }
                 let Ok(store) = &self.store else {
                     return Task::none();
                 };
-                match catalog::subscribe(store, catalog::builtin(), &picks) {
+                let gone = removed_sources(&self.sources, catalog::builtin(), &removals);
+                let saved = gone
+                    .iter()
+                    .try_for_each(|&id| store.delete_source(id))
+                    .map_err(|e| format!("removing sources: {e}"))
+                    .and_then(|()| {
+                        catalog::subscribe(store, catalog::builtin(), &picks)
+                            .map_err(|e| format!("adding sources: {e}"))
+                    });
+                match saved {
                     Ok(_) => {
+                        // The list leaves a removed feed for every feed.
+                        if matches!(self.filter, Filter::Source(id) if gone.contains(&id)) {
+                            self.filter = Filter::All;
+                        }
                         self.onboarding = None;
                         self.reload();
                     }
-                    Err(e) => eprintln!("gutenberg: adding sources: {e}"),
+                    Err(e) => eprintln!("gutenberg: {e}"),
                 }
             }
             other => state.apply(catalog::builtin(), other),
@@ -4113,6 +4126,36 @@ fn iced_theme(t: &Tokens) -> iced::Theme {
     )
 }
 
+/// The sources the store has for rows of the Add sources screen: a
+/// catalog feed by its URL, a keyword alert preset by its query, an MCP
+/// server preset by the call it makes.
+fn removed_sources(
+    sources: &[Source],
+    catalog: &catalog::Catalog,
+    removals: &[onboarding::Entry],
+) -> HashSet<i64> {
+    use onboarding::Entry as E;
+    let matches = |source: &Source, entry: E| match entry {
+        E::Feed(i) => {
+            source.kind == SourceKind::Feed && source.url.as_ref() == Some(&catalog.feeds[i].url)
+        }
+        E::Keyword(i) => {
+            source.kind == SourceKind::Keyword
+                && keyword::Keyword::from_config(&source.config)
+                    .ok()
+                    .zip(keyword::Keyword::new(&catalog.keywords[i].query))
+                    .is_some_and(|(has, preset)| has.query == preset.query)
+        }
+        E::Mcp(i) => mcp::settings(source).is_some_and(|m| m.same_call(&catalog.mcp[i].settings())),
+        E::NewQuery | E::Query(_) => false,
+    };
+    sources
+        .iter()
+        .filter(|s| removals.iter().any(|&e| matches(s, e)))
+        .map(|s| s.id)
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5336,6 +5379,56 @@ mod tests {
             ]
         );
         assert_eq!(app.sources.len(), 12);
+    }
+
+    #[test]
+    fn unchecking_a_feed_in_add_sources_removes_it_and_its_articles_on_enter() {
+        let mut app = App::with_store(
+            Config::default(),
+            None,
+            Ok(Store::open_in_memory().unwrap()),
+            None,
+        );
+        let _ = app.update(Message::Onboarding(onboarding::Action::Add));
+        let catalog = catalog::builtin();
+        // The cursor opens on the first page's first feed.
+        let page = onboarding::Onboarding::new(catalog, HashSet::new(), HashSet::new(), false);
+        let Some(&onboarding::Entry::Feed(first)) = page.entries(catalog).first() else {
+            panic!("the first page starts with a feed")
+        };
+        let first = &catalog.feeds[first];
+        let store = app.store.as_mut().unwrap();
+        let source = store
+            .sources()
+            .unwrap()
+            .into_iter()
+            .find(|s| s.url.as_deref() == Some(first.url.as_str()))
+            .expect("the first starter was added");
+        store
+            .insert_articles(&[NewArticle {
+                source_id: source.id,
+                guid: "g".into(),
+                url: None,
+                title: "Noise".into(),
+                author: None,
+                summary_html: None,
+                published_at: Some(1),
+                fetched_at: 1,
+            }])
+            .unwrap();
+        app.reload();
+        app.filter = Filter::Source(source.id);
+
+        let _ = app.update(Message::Key(Action::AddSources));
+        let _ = app.update(Message::Onboarding(onboarding::Action::ToggleCursor));
+        let _ = app.update(Message::Onboarding(onboarding::Action::Add));
+        assert!(app.onboarding.is_none());
+        let store = app.store.as_ref().unwrap();
+        assert!(store.sources().unwrap().iter().all(|s| s.id != source.id));
+        assert_eq!(store.sources().unwrap().len(), 11);
+        assert!(store.list_articles(None, 10).unwrap().is_empty());
+        // The list was on the removed feed; it shows every feed now.
+        assert_eq!(app.filter, Filter::All);
     }
 
     #[test]
