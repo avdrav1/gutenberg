@@ -118,11 +118,11 @@ Shown on first run, when the store has no sources, and opened with `a`. The left
 | `j` / `k` / `↓` / `↑` | next / previous row |
 | `l` / `h` / `→` / `←` | next / previous page |
 | `Tab` / `Shift-Tab` | next / previous page |
-| `Space` | check or uncheck the feed, keyword alert or MCP server under the cursor; on the query field, start typing |
-| `a` | check everything on the page, or uncheck it all |
+| `Space` | check or uncheck the feed, keyword alert or MCP server under the cursor; unchecking one you already have marks it to be removed, with its articles, when you press `Enter`; on the query field, start typing |
+| `a` | check everything on the page, or uncheck it all; sources you already have are left as they are |
 | `n` | go to Keyword alerts and type a query |
-| `Enter` | add what's checked |
-| `Esc` | close without adding |
+| `Enter` | add what's checked and remove what you unchecked |
+| `Esc` | close without adding or removing anything |
 | `q` | quit |
 
 While typing a keyword alert:
