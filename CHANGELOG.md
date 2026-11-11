@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.31.0 — 2026-11-10
+
 - You can unsubscribe on the Add sources screen (`a`): uncheck a feed, keyword alert or MCP server you already have, and Enter removes it and its articles, starred ones included. The row is tagged "removed on Enter" and the button counts it ("Remove 1 source"); check it again before Enter to keep it. `a` on a page still leaves what you have alone.
 
 ## 0.30.0 — 2026-11-10
