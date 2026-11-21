@@ -4,6 +4,8 @@ mod article;
 mod browser;
 mod commands;
 mod hints;
+#[cfg(target_os = "linux")]
+mod hyprland;
 mod list;
 mod onboarding;
 mod palette;
@@ -616,6 +618,10 @@ enum Message {
     ThemeReloaded(Option<Tokens>, Option<NewFont>),
     /// Another launch found this window open: come forward.
     Focus,
+    /// Open on a notification: show this article, every feed in view.
+    OpenArticle(i64),
+    /// The window gained (true) or lost focus.
+    WindowFocused(bool),
     /// The desktop's light or dark preference, at start and when it changes.
     SystemTheme(iced::theme::Mode),
     /// Mouse down on a sources-pane row.
@@ -1118,9 +1124,15 @@ impl App {
             }
             // Wayland has no "raise": the window asks for activation, which
             // Hyprland grants with `misc:focus_on_activate`, Omarchy's
-            // default, switching to the window's workspace.
+            // default, switching to the window's workspace, but only with an
+            // activation token, which a socket command doesn't bring. So on
+            // Hyprland the window also asks `hyprctl` to focus it.
             #[cfg(not(target_os = "macos"))]
             Message::Focus => {
+                #[cfg(target_os = "linux")]
+                if hyprland::running() {
+                    std::thread::spawn(hyprland::focus_own_window);
+                }
                 return window::latest().and_then(|id| {
                     window::request_user_attention(id, Some(window::UserAttention::Informational))
                 });
@@ -1129,6 +1141,12 @@ impl App {
             // taking focus activates the app and makes the window key.
             #[cfg(target_os = "macos")]
             Message::Focus => return window::latest().and_then(window::gain_focus),
+            Message::OpenArticle(id) => self.open_article(id),
+            Message::WindowFocused(focused) => {
+                if let Some(status) = &self.status {
+                    status.set_focused(focused);
+                }
+            }
             Message::SystemTheme(mode) => {
                 self.scheme = match mode {
                     iced::theme::Mode::Light => Scheme::Light,
@@ -1464,6 +1482,29 @@ impl App {
             eprintln!("gutenberg: moving: {e}");
         }
         self.reload();
+    }
+
+    /// Shows article `id` (its story's row) under every feed and view,
+    /// opened, as Open on a notification asks.
+    fn open_article(&mut self, id: i64) {
+        let Ok(store) = &self.store else { return };
+        let story = match store.story_of(id) {
+            Ok(Some(story)) => story,
+            Ok(None) => return,
+            Err(e) => return eprintln!("gutenberg: finding article {id}: {e}"),
+        };
+        self.onboarding = None;
+        self.overlay = None;
+        self.tools = Tools::default();
+        self.filter = Filter::All;
+        self.view = View::All;
+        self.search = None;
+        self.reload();
+        let at = self.rows.iter().position(|r| r.id == id);
+        if let Some(i) = at.or_else(|| self.rows.iter().position(|r| r.story_id == story)) {
+            self.select(i);
+            self.open(i);
+        }
     }
 
     fn select(&mut self, i: usize) {
@@ -1930,6 +1971,16 @@ impl App {
         ];
         if let Some(path) = &self.config_path {
             subscriptions.push(Subscription::run_with(path.clone(), watch_config));
+        }
+        if self.status.is_some() {
+            // Nothing pops up while the window has focus.
+            subscriptions.push(iced::event::listen_with(|event, _, _| match event {
+                iced::Event::Window(window::Event::Focused) => Some(Message::WindowFocused(true)),
+                iced::Event::Window(window::Event::Unfocused) => {
+                    Some(Message::WindowFocused(false))
+                }
+                _ => None,
+            }));
         }
         if let Some(inbox) = self.inbox.as_ref().filter(|_| self.bench.is_none()) {
             subscriptions.push(Subscription::run_with(inbox.clone(), window_commands));
@@ -4013,8 +4064,15 @@ fn window_commands(inbox: &Inbox) -> impl Stream<Item = Message> + use<> {
         let mut family = font::monospace().map(|face| face.family);
         while let Some(command) = asked.next().await {
             if command != ipc::Command::ReloadTheme {
-                if command == ipc::Command::Focus && output.send(Message::Focus).await.is_err() {
-                    return;
+                let messages = match command {
+                    ipc::Command::Focus => vec![Message::Focus],
+                    ipc::Command::Open(id) => vec![Message::OpenArticle(id), Message::Focus],
+                    _ => vec![],
+                };
+                for message in messages {
+                    if output.send(message).await.is_err() {
+                        return;
+                    }
                 }
                 continue;
             }
@@ -5543,6 +5601,30 @@ mod tests {
         assert!(store.list_articles(None, 10).unwrap().is_empty());
         // The list was on the removed feed; it shows every feed now.
         assert_eq!(app.filter, Filter::All);
+    }
+
+    #[test]
+    fn open_from_a_notification_shows_the_article_under_every_feed() {
+        let (mut app, tech, a, b) = app_with_folders();
+        app.filter = Filter::Folder(tech);
+        app.view = View::Starred;
+        app.reload();
+        let id = app
+            .store
+            .as_ref()
+            .unwrap()
+            .list_articles(Some(b), 10)
+            .unwrap()[0]
+            .id;
+        let _ = app.update(Message::OpenArticle(id));
+        assert_eq!((app.filter, app.view), (Filter::All, View::All));
+        let row = &app.rows[app.selected];
+        assert_eq!((row.id, row.source_id), (id, b));
+        assert!(row.read, "opened, so read");
+        // One that's gone leaves the window as it was.
+        let _ = app.update(Message::OpenArticle(9_999));
+        assert_eq!(app.rows[app.selected].id, id);
+        let _ = a;
     }
 
     #[test]
