@@ -4758,8 +4758,8 @@ mod tests {
     fn a_failed_page_keeps_the_summary_and_a_late_one_is_dropped() {
         let mut app = app_with(3);
         let page = |i: usize| format!("http://127.0.0.1:9/{i}");
-        for i in 0..2 {
-            app.rows[i].url = Some(page(i));
+        for (i, row) in app.rows.iter_mut().take(2).enumerate() {
+            row.url = Some(page(i));
         }
         let _ = app.update(Message::Key(Action::Open));
         let _ = app.update(Message::Key(Action::Reader));
