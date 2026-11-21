@@ -10,14 +10,14 @@
 use std::process::{Command, Stdio};
 
 #[cfg(target_os = "linux")]
-use serde::Deserialize;
+use crate::hyprland::{self, Client};
 
 /// Opens `url` in the default browser without blocking the caller.
 pub fn open(url: &str) {
     let url = url.to_owned();
     std::thread::spawn(move || {
         #[cfg(target_os = "linux")]
-        if std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some() {
+        if hyprland::running() {
             focus_browser();
         }
         let opener = if cfg!(target_os = "macos") {
@@ -47,20 +47,8 @@ fn focus_browser() {
     let Some(entry) = default_browser() else {
         return;
     };
-    let Some(clients) = output("hyprctl", &["clients", "-j"]) else {
-        return;
-    };
-    let Some(address) = browser_window(&clients, &entry) else {
-        return;
-    };
-    // Hyprland 0.55 and later take Lua; older ones the classic dispatcher.
-    let lua = format!("hl.dsp.focus({{ window = \"address:{address}\" }})");
-    let focused = output("hyprctl", &["dispatch", &lua]).is_some_and(|reply| reply.trim() == "ok");
-    if !focused {
-        let _ = output(
-            "hyprctl",
-            &["dispatch", "focuswindow", &format!("address:{address}")],
-        );
+    if let Some(address) = browser_window(&hyprland::clients(), &entry) {
+        hyprland::focus(&address);
     }
 }
 
@@ -74,32 +62,9 @@ fn default_browser() -> Option<String> {
         ("xdg-settings", &["get", "default-web-browser"]),
     ];
     asks.into_iter().find_map(|(program, args)| {
-        let entry = output(program, args)?.trim().to_owned();
+        let entry = hyprland::output(program, args)?.trim().to_owned();
         (!entry.is_empty() && entry != "omarchy-browser.desktop").then_some(entry)
     })
-}
-
-/// What `program` printed, when it ran and succeeded.
-#[cfg(target_os = "linux")]
-fn output(program: &str, args: &[&str]) -> Option<String> {
-    let out = Command::new(program)
-        .args(args)
-        .stdin(Stdio::null())
-        .stderr(Stdio::null())
-        .output()
-        .ok()?;
-    out.status
-        .success()
-        .then(|| String::from_utf8_lossy(&out.stdout).into_owned())
-}
-
-#[cfg(target_os = "linux")]
-#[derive(Deserialize)]
-struct Client {
-    address: String,
-    class: String,
-    #[serde(rename = "focusHistoryID")]
-    focus_history_id: i64,
 }
 
 /// The address of the most recently focused window that belongs to the
@@ -107,14 +72,13 @@ struct Client {
 /// window class is its entry's name: `chromium.desktop` is `chromium`,
 /// `google-chrome.desktop` is `Google-chrome`.
 #[cfg(target_os = "linux")]
-fn browser_window(clients: &str, entry: &str) -> Option<String> {
+fn browser_window(clients: &[Client], entry: &str) -> Option<String> {
     let class = entry.strip_suffix(".desktop").unwrap_or(entry);
-    let clients: Vec<Client> = serde_json::from_str(clients).ok()?;
     clients
-        .into_iter()
+        .iter()
         .filter(|client| client.class.eq_ignore_ascii_case(class))
         .min_by_key(|client| client.focus_history_id)
-        .map(|client| client.address)
+        .map(|client| client.address.clone())
 }
 
 #[cfg(all(test, target_os = "linux"))]
@@ -128,10 +92,14 @@ mod tests {
         {"address": "0x4", "class": "Google-chrome", "focusHistoryID": 1}
     ]"#;
 
+    fn clients() -> Vec<Client> {
+        hyprland::parse_clients(CLIENTS).unwrap()
+    }
+
     #[test]
     fn the_browsers_last_focused_window_is_picked() {
         assert_eq!(
-            browser_window(CLIENTS, "chromium.desktop").as_deref(),
+            browser_window(&clients(), "chromium.desktop").as_deref(),
             Some("0x3")
         );
     }
@@ -139,14 +107,14 @@ mod tests {
     #[test]
     fn the_class_matches_the_entry_in_any_case() {
         assert_eq!(
-            browser_window(CLIENTS, "google-chrome.desktop").as_deref(),
+            browser_window(&clients(), "google-chrome.desktop").as_deref(),
             Some("0x4")
         );
     }
 
     #[test]
     fn a_browser_with_no_window_open_picks_nothing() {
-        assert_eq!(browser_window(CLIENTS, "firefox.desktop"), None);
-        assert_eq!(browser_window("not json", "chromium.desktop"), None);
+        assert_eq!(browser_window(&clients(), "firefox.desktop"), None);
+        assert!(hyprland::parse_clients("not json").is_none());
     }
 }

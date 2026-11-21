@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Desktop notifications: a rule with `action = "notify"` in `config.toml` pops up a notification when a new article matches it, naming the rule and the source. Open on the notification brings the window to that article. A story notifies only once, nothing pops up while the window has focus, and past three an hour (`per_hour` under `[notify]`) or in quiet hours (`quiet = "22:00-07:00"`) matches wait and arrive together as one summary. Linux only for now.
+
 ## 0.33.0 — 2026-11-21
 
 - On Hyprland, `O` and other links now open as a tab in the browser window you last used, even when it is on another workspace, and take you there. They used to open a new browser window on Gutenberg's workspace.

@@ -19,14 +19,17 @@ pub enum Command {
     Focus,
     /// Refresh what's due now; the answer is the refresh's summary.
     Refresh,
+    /// Come forward showing this article: Open on a notification.
+    Open(i64),
 }
 
 impl Command {
-    fn as_str(self) -> &'static str {
+    fn line(self) -> String {
         match self {
-            Self::ReloadTheme => "reload-theme",
-            Self::Focus => "focus",
-            Self::Refresh => "refresh",
+            Self::ReloadTheme => "reload-theme".to_owned(),
+            Self::Focus => "focus".to_owned(),
+            Self::Refresh => "refresh".to_owned(),
+            Self::Open(article) => format!("open {article}"),
         }
     }
 
@@ -35,7 +38,10 @@ impl Command {
             "reload-theme" => Some(Self::ReloadTheme),
             "focus" => Some(Self::Focus),
             "refresh" => Some(Self::Refresh),
-            _ => None,
+            other => other
+                .strip_prefix("open ")
+                .and_then(|id| id.trim().parse().ok())
+                .map(Self::Open),
         }
     }
 
@@ -44,7 +50,7 @@ impl Command {
     fn timeout(self) -> Duration {
         match self {
             Self::Refresh => Duration::from_secs(10 * 60),
-            Self::ReloadTheme | Self::Focus => Duration::from_secs(2),
+            Self::ReloadTheme | Self::Focus | Self::Open(_) => Duration::from_secs(2),
         }
     }
 }
@@ -182,7 +188,7 @@ pub fn send(path: &Path, command: Command) -> Result<String, Error> {
     stream
         .set_read_timeout(Some(command.timeout()))
         .map_err(io)?;
-    writeln!(stream, "{}", command.as_str()).map_err(io)?;
+    writeln!(stream, "{}", command.line()).map_err(io)?;
     let mut answer = String::new();
     BufReader::new(&stream).read_line(&mut answer).map_err(io)?;
     let answer = answer.trim();
@@ -281,8 +287,12 @@ mod tests {
             Command::Refresh => Ok("2 sources: 1 updated\n(3 new articles)".into()),
             Command::Focus => Err("no window\nyet".into()),
             Command::ReloadTheme => Ok(String::new()),
+            Command::Open(id) => Ok(format!("article {id}")),
         })
         .unwrap();
+        // Open carries its article.
+        assert_eq!(send(&path, Command::Open(42)).unwrap(), "article 42");
+        assert_eq!(Command::parse("open x"), None);
         // A detail stays on one line.
         assert_eq!(
             send(&path, Command::Refresh).unwrap(),

@@ -23,6 +23,68 @@ pub struct Config {
     pub updates: Updates,
     /// `[[share]]`: see [`crate::share`].
     pub share: Vec<ShareEntry>,
+    /// `[notify]`: see [`crate::notify`].
+    pub notify: Notify,
+}
+
+/// Desktop notifications from `notify` rules.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Notify {
+    /// Off silences every `notify` rule; on, nothing fires without one.
+    pub enabled: bool,
+    /// Most pop-ups in an hour; past it, matches wait and come together as
+    /// one summary.
+    pub per_hour: u32,
+    /// Local hours with no pop-ups, as `"22:00-07:00"`; what matches then
+    /// comes as one summary after.
+    pub quiet: Option<Quiet>,
+}
+
+impl Default for Notify {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            per_hour: 3,
+            quiet: None,
+        }
+    }
+}
+
+/// Quiet hours: minutes past local midnight, `from` inclusive, `to`
+/// exclusive; `from` after `to` runs over midnight.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(try_from = "String")]
+pub struct Quiet {
+    pub from: u16,
+    pub to: u16,
+}
+
+impl Quiet {
+    /// Whether `minute` (past local midnight) is inside.
+    pub fn contains(self, minute: u16) -> bool {
+        if self.from <= self.to {
+            (self.from..self.to).contains(&minute)
+        } else {
+            minute >= self.from || minute < self.to
+        }
+    }
+}
+
+impl TryFrom<String> for Quiet {
+    type Error = String;
+
+    fn try_from(text: String) -> Result<Self, String> {
+        let clock = |t: &str| -> Option<u16> {
+            let (h, m) = t.trim().split_once(':')?;
+            let (h, m): (u16, u16) = (h.parse().ok()?, m.parse().ok()?);
+            (h < 24 && m < 60).then_some(h * 60 + m)
+        };
+        let bad = || format!("quiet hours {text:?} aren't like \"22:00-07:00\"");
+        let (from, to) = text.split_once('-').ok_or_else(bad)?;
+        let (from, to) = (clock(from).ok_or_else(bad)?, clock(to).ok_or_else(bad)?);
+        Ok(Self { from, to })
+    }
 }
 
 /// One row of the share picker. A built-in is its name alone; a custom
@@ -419,6 +481,30 @@ mod tests {
         for size in [0, 7, 33] {
             let err = parse(&format!("[font]\nsize = {size}")).unwrap_err();
             assert!(matches!(err, Error::FontSize { .. }), "{size}");
+        }
+    }
+
+    #[test]
+    fn notify_has_defaults_and_reads_quiet_hours() {
+        assert_eq!(parse("").unwrap().notify, Notify::default());
+        let notify = parse("[notify]\nper_hour = 5\nquiet = \"22:00-07:30\"")
+            .unwrap()
+            .notify;
+        assert_eq!(notify.per_hour, 5);
+        let quiet = notify.quiet.unwrap();
+        assert_eq!((quiet.from, quiet.to), (22 * 60, 7 * 60 + 30));
+        // Over midnight: late evening and early morning are quiet, noon isn't.
+        assert!(quiet.contains(23 * 60) && quiet.contains(60) && !quiet.contains(12 * 60));
+        assert!(!quiet.contains(7 * 60 + 30));
+        let day = Quiet::try_from("12:00-13:00".to_owned()).unwrap();
+        assert!(day.contains(12 * 60 + 59) && !day.contains(13 * 60) && !day.contains(60));
+        for bad in [
+            "\"22:00\"",
+            "\"25:00-07:00\"",
+            "\"10pm-7am\"",
+            "\"22:60-07:00\"",
+        ] {
+            assert!(parse(&format!("[notify]\nquiet = {bad}")).is_err(), "{bad}");
         }
     }
 

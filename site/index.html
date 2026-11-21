@@ -198,15 +198,24 @@ size = 14   # 8 to 32
 
 [keys]
 hints = true   # the key bar along the bottom</pre>
-  <p>Rules star, read or mute new articles by a word or phrase in the headline or summary, in every source or one source or folder (<code>in</code>). A muted article is never stored.</p>
+  <p>Rules star, read, mute or notify about new articles by a word or phrase in the headline or summary, in every source or one source or folder (<code>in</code>). A muted article is never stored.</p>
   <pre class="block">[[rules]]
 match = "sponsored"
-action = "mute"   # or "star", "read"
+action = "mute"   # or "star", "read", "notify"
 
 [[rules]]
 match = "Rust"
 in = "LWN.net"     # a source's title or a folder's name
 action = "star"</pre>
+  <p>A <code>notify</code> rule shows a desktop notification for a new article it matches, naming the rule and the source; Open on it brings the window to that article. A story notifies once. Nothing pops up while the window has focus, since the list shows it. Past <code>per_hour</code> pop-ups in an hour, or in quiet hours, matches wait and come together as one summary. Linux only for now.</p>
+  <pre class="block">[[rules]]
+match = "CVE"
+action = "notify"
+
+[notify]
+per_hour = 3              # pop-ups an hour; past it, one summary later
+quiet = "22:00-07:00"     # local time; none by default
+# enabled = false         # silences every notify rule</pre>
   <p>Share (<code>p</code>) opens a picker of X, Bluesky, Facebook and LinkedIn, then a comment, then the site's composer in your browser. <code>[[share]]</code> picks which sites, in what order, and adds any site that takes a share URL: <code>{url}</code>, <code>{title}</code> and <code>{text}</code> in the template become the article's link, its title and your comment.</p>
   <pre class="block"># Share (p): the picker shows these in this order. Without any, it shows
 # X, Bluesky, Facebook and LinkedIn.

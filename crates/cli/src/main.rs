@@ -140,17 +140,19 @@ enum Listening {
     No,
 }
 
-/// Opens the window's socket: theme reloads and coming forward go to the
-/// window, refreshes to the refresh thread once it has started.
+/// Opens the window's socket: theme reloads, coming forward and opening an
+/// article go to the window, refreshes to the refresh thread once it has started.
 fn listen(outbox: gutenberg_ui::Outbox, refresher: Arc<OnceLock<Refresher>>) -> Listening {
     let Some(path) = ipc::socket_path() else {
         return Listening::No;
     };
     let on_command = move |command| match command {
-        ipc::Command::ReloadTheme | ipc::Command::Focus => match outbox.send(command) {
-            true => Ok(String::new()),
-            false => Err("the window is closing".to_owned()),
-        },
+        ipc::Command::ReloadTheme | ipc::Command::Focus | ipc::Command::Open(_) => {
+            match outbox.send(command) {
+                true => Ok(String::new()),
+                false => Err("the window is closing".to_owned()),
+            }
+        }
         ipc::Command::Refresh => match refresher.get() {
             Some(refresher) => refresher.now().map(|summary| summary.to_string()),
             None => Err("the window has no store to refresh".to_owned()),

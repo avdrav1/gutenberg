@@ -1,5 +1,5 @@
-//! Rules: `[[rules]]` in `config.toml` star, read or mute new articles by
-//! the words in their headline or summary.
+//! Rules: `[[rules]]` in `config.toml` star, read, mute or notify about new
+//! articles by the words in their headline or summary.
 //!
 //! ```toml
 //! [[rules]]
@@ -10,14 +10,19 @@
 //! match = "Linux 7"
 //! in = "Phoronix"
 //! action = "star"
+//!
+//! [[rules]]
+//! match = "CVE"
+//! action = "notify"
 //! ```
 //!
 //! `match` is a word or phrase, found whole and in any case: "AI" matches
 //! "AI's" but not "said". `in` names a source or a folder; without it a
 //! rule covers every source. Rules meet each article once, as a refresh
 //! first stores it: a muted article is never stored, and an article stored
-//! before a rule was written keeps its flags. Mute wins; star and read can
-//! both apply.
+//! before a rule was written keeps its flags. Mute wins; star, read and
+//! notify can all apply. What a `notify` match becomes is
+//! [`crate::notify`]'s business: the rules only say which rule matched.
 
 use gutenberg_store::{plain, Arrival, NewArticle};
 use serde::Deserialize;
@@ -39,11 +44,14 @@ pub enum Action {
     Star,
     Read,
     Mute,
+    /// A desktop notification, naming the rule.
+    Notify,
 }
 
-/// The rules ready to match: lowercased once.
+/// The rules ready to match: lowercased once, each with its `match` as
+/// written, which a notification names.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Rules(Vec<Rule>);
+pub struct Rules(Vec<(Rule, String)>);
 
 /// What the rules left of a batch of new articles.
 #[derive(Debug, Default)]
@@ -51,6 +59,9 @@ pub struct Sorted {
     pub articles: Vec<NewArticle>,
     /// How each of `articles` arrives, in the same order.
     pub arrivals: Vec<Arrival>,
+    /// For each of `articles`, the first `notify` rule it matched, as
+    /// written.
+    pub notify: Vec<Option<String>>,
     pub muted: usize,
 }
 
@@ -59,10 +70,13 @@ impl Rules {
         Self(
             rules
                 .iter()
-                .map(|rule| Rule {
-                    words: rule.words.trim().to_lowercase(),
-                    within: rule.within.as_ref().map(|w| w.trim().to_lowercase()),
-                    action: rule.action,
+                .map(|rule| {
+                    let ready = Rule {
+                        words: rule.words.trim().to_lowercase(),
+                        within: rule.within.as_ref().map(|w| w.trim().to_lowercase()),
+                        action: rule.action,
+                    };
+                    (ready, rule.words.trim().to_owned())
                 })
                 .collect(),
         )
@@ -72,14 +86,19 @@ impl Rules {
         self.0.is_empty()
     }
 
+    /// Whether any rule notifies.
+    pub fn notifies(&self) -> bool {
+        self.0.iter().any(|(rule, _)| rule.action == Action::Notify)
+    }
+
     /// `articles` from the source titled `source`, in the folder named
     /// `folder`, after the rules.
     pub fn sort(&self, source: &str, folder: Option<&str>, articles: Vec<NewArticle>) -> Sorted {
         let (source, folder) = (source.to_lowercase(), folder.map(str::to_lowercase));
-        let here: Vec<&Rule> = self
+        let here: Vec<&(Rule, String)> = self
             .0
             .iter()
-            .filter(|rule| {
+            .filter(|(rule, _)| {
                 rule.within
                     .as_ref()
                     .is_none_or(|w| *w == source || folder.as_ref() == Some(w))
@@ -90,6 +109,7 @@ impl Rules {
             if here.is_empty() {
                 sorted.articles.push(article);
                 sorted.arrivals.push(Arrival::default());
+                sorted.notify.push(None);
                 continue;
             }
             let text = format!(
@@ -104,14 +124,18 @@ impl Rules {
             .to_lowercase();
             let mut arrival = Arrival::default();
             let mut muted = false;
-            for rule in here
+            let mut notify = None;
+            for (rule, shown) in here
                 .iter()
-                .filter(|rule| contains_words(&text, &rule.words))
+                .filter(|(rule, _)| contains_words(&text, &rule.words))
             {
                 match rule.action {
                     Action::Star => arrival.starred = true,
                     Action::Read => arrival.read = true,
                     Action::Mute => muted = true,
+                    Action::Notify => {
+                        notify.get_or_insert_with(|| shown.clone());
+                    }
                 }
             }
             if muted {
@@ -119,6 +143,7 @@ impl Rules {
             } else {
                 sorted.articles.push(article);
                 sorted.arrivals.push(arrival);
+                sorted.notify.push(notify);
             }
         }
         sorted
@@ -230,6 +255,31 @@ mod tests {
         ]);
         let sorted = rules.sort("Feed", None, vec![article("A deal", None)]);
         assert!(sorted.articles.is_empty());
+        assert_eq!(sorted.muted, 1);
+    }
+
+    #[test]
+    fn notify_names_its_rule_beside_other_actions_and_mute_still_wins() {
+        let rules = Rules::new(&[
+            rule("CVE", None, Action::Notify),
+            rule("cve", None, Action::Star),
+            rule("Linux", None, Action::Notify),
+            rule("ad", None, Action::Mute),
+        ]);
+        assert!(rules.notifies());
+        assert!(!Rules::new(&[rule("cve", None, Action::Star)]).notifies());
+        let sorted = rules.sort(
+            "Feed",
+            None,
+            vec![
+                article("Linux CVE fixed", None),
+                article("Plain news", None),
+                article("CVE ad", None),
+            ],
+        );
+        // The first notify rule names it; star applies too; mute drops it.
+        assert_eq!(sorted.notify, [Some("CVE".to_owned()), None]);
+        assert!(sorted.arrivals[0].starred);
         assert_eq!(sorted.muted, 1);
     }
 

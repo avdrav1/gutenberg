@@ -23,6 +23,8 @@ image.workspace = true
 # The system keyring: the Secret Service on Linux, the keychain on macOS.
 [target.'cfg(target_os = "linux")'.dependencies]
 secret-service.workspace = true
+# Desktop notifications (S10.1); the same zbus and features secret-service uses.
+zbus = { version = "5", default-features = false, features = ["tokio"] }
 # malloc_trim, after decoding an image.
 libc = "0.2"
 
