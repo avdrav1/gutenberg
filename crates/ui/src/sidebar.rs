@@ -47,20 +47,23 @@ pub fn view_name(view: View) -> &'static str {
 }
 
 /// The views, then each folder followed by its sources, then unfiled
-/// sources. `folders` and `sources` come in stored order.
+/// sources. `folders` and `sources` come in stored order. A folder with no
+/// sources in it is left out.
 pub fn entries(folders: &[Folder], sources: &[Source]) -> Vec<Entry> {
     let mut rows: Vec<Entry> = VIEWS.into_iter().map(Entry::View).collect();
     for folder in folders {
-        rows.push(Entry::Folder(folder.id));
-        rows.extend(
-            sources
-                .iter()
-                .filter(|s| s.folder_id == Some(folder.id))
-                .map(|s| Entry::Source {
-                    id: s.id,
-                    filed: true,
-                }),
-        );
+        let filed: Vec<Entry> = sources
+            .iter()
+            .filter(|s| s.folder_id == Some(folder.id))
+            .map(|s| Entry::Source {
+                id: s.id,
+                filed: true,
+            })
+            .collect();
+        if !filed.is_empty() {
+            rows.push(Entry::Folder(folder.id));
+            rows.extend(filed);
+        }
     }
     let filed: Vec<i64> = folders.iter().map(|f| f.id).collect();
     rows.extend(
@@ -218,6 +221,22 @@ mod tests {
                 Entry::Source {
                     id: 10,
                     filed: false
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn a_folder_with_no_sources_is_left_out() {
+        let folders = [folder(1), folder(2)];
+        let sources = [source(10, Some(2))];
+        assert_eq!(
+            entries(&folders, &sources)[VIEWS.len()..],
+            [
+                Entry::Folder(2),
+                Entry::Source {
+                    id: 10,
+                    filed: true
                 },
             ]
         );

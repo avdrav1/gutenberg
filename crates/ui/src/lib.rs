@@ -827,10 +827,7 @@ impl App {
                     });
                 match saved {
                     Ok(_) => {
-                        // The list leaves a removed feed for every feed.
-                        if matches!(self.filter, Filter::Source(id) if gone.contains(&id)) {
-                            self.filter = Filter::All;
-                        }
+                        self.leave_removed(&gone);
                         self.onboarding = None;
                         self.reload();
                     }
@@ -1593,10 +1590,26 @@ impl App {
             eprintln!("gutenberg: deleting {}: {e}", deleting.title);
             return;
         }
-        if self.filter == Filter::Source(deleting.id) {
+        self.leave_removed(&[deleting.id]);
+        self.reload();
+    }
+
+    /// Once sources `gone` are deleted, before the reload: the list shows
+    /// every feed instead of a removed feed, or of a folder left with none
+    /// (which leaves the sources pane).
+    fn leave_removed(&mut self, gone: &[i64]) {
+        let left = match self.filter {
+            Filter::All => false,
+            Filter::Source(id) => gone.contains(&id),
+            Filter::Folder(folder) => self
+                .sources
+                .iter()
+                .filter(|s| s.folder_id == Some(folder))
+                .all(|s| gone.contains(&s.id)),
+        };
+        if left {
             self.filter = Filter::All;
         }
-        self.reload();
     }
 
     /// Asks the refresh thread to refresh now and returns at once; the
@@ -5530,6 +5543,22 @@ mod tests {
         assert!(store.list_articles(None, 10).unwrap().is_empty());
         // The list was on the removed feed; it shows every feed now.
         assert_eq!(app.filter, Filter::All);
+    }
+
+    #[test]
+    fn a_folder_left_with_no_feeds_leaves_the_sources_pane_and_the_list() {
+        let (mut app, tech, a, b) = app_with_folders();
+        app.filter = Filter::Folder(tech);
+        app.leave_removed(&[b]);
+        assert_eq!(app.filter, Filter::Folder(tech));
+
+        app.store.as_ref().unwrap().delete_source(a).unwrap();
+        app.leave_removed(&[a]);
+        app.reload();
+        assert_eq!(app.filter, Filter::All);
+        let rows = sidebar::entries(&app.folders, &app.sources);
+        assert!(!rows.contains(&sidebar::Entry::Folder(tech)));
+        assert!(app.rows.iter().all(|r| r.source_id == b));
     }
 
     #[test]
