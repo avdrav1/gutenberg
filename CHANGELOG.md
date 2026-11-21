@@ -3,6 +3,7 @@
 ## Unreleased
 
 - On Hyprland, `O` and other links now open as a tab in the browser window you last used, even when it is on another workspace, and take you there. They used to open a new browser window on Gutenberg's workspace.
+- A folder with no feeds left in it no longer shows in the sources pane. If you were reading it when its last feed went, the list goes back to all feeds.
 
 ## 0.32.0 — 2026-11-11
 

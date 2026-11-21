@@ -827,10 +827,7 @@ impl App {
                     });
                 match saved {
                     Ok(_) => {
-                        // The list leaves a removed feed for every feed.
-                        if matches!(self.filter, Filter::Source(id) if gone.contains(&id)) {
-                            self.filter = Filter::All;
-                        }
+                        self.leave_removed(|id| gone.contains(&id));
                         self.onboarding = None;
                         self.reload();
                     }
@@ -1593,10 +1590,26 @@ impl App {
             eprintln!("gutenberg: deleting {}: {e}", deleting.title);
             return;
         }
-        if self.filter == Filter::Source(deleting.id) {
+        self.leave_removed(|id| id == deleting.id);
+        self.reload();
+    }
+
+    /// Once the sources `gone` picks are deleted, before the reload: the
+    /// list shows every feed instead of a removed feed, or of a folder left
+    /// with none (which leaves the sources pane).
+    fn leave_removed(&mut self, gone: impl Fn(i64) -> bool) {
+        let left = match self.filter {
+            Filter::All => false,
+            Filter::Source(id) => gone(id),
+            Filter::Folder(folder) => self
+                .sources
+                .iter()
+                .filter(|s| s.folder_id == Some(folder))
+                .all(|s| gone(s.id)),
+        };
+        if left {
             self.filter = Filter::All;
         }
-        self.reload();
     }
 
     /// Asks the refresh thread to refresh now and returns at once; the
@@ -4745,8 +4758,8 @@ mod tests {
     fn a_failed_page_keeps_the_summary_and_a_late_one_is_dropped() {
         let mut app = app_with(3);
         let page = |i: usize| format!("http://127.0.0.1:9/{i}");
-        for i in 0..2 {
-            app.rows[i].url = Some(page(i));
+        for (i, row) in app.rows.iter_mut().take(2).enumerate() {
+            row.url = Some(page(i));
         }
         let _ = app.update(Message::Key(Action::Open));
         let _ = app.update(Message::Key(Action::Reader));
@@ -5530,6 +5543,22 @@ mod tests {
         assert!(store.list_articles(None, 10).unwrap().is_empty());
         // The list was on the removed feed; it shows every feed now.
         assert_eq!(app.filter, Filter::All);
+    }
+
+    #[test]
+    fn a_folder_left_with_no_feeds_leaves_the_sources_pane_and_the_list() {
+        let (mut app, tech, a, b) = app_with_folders();
+        app.filter = Filter::Folder(tech);
+        app.leave_removed(|id| id == b);
+        assert_eq!(app.filter, Filter::Folder(tech));
+
+        app.store.as_ref().unwrap().delete_source(a).unwrap();
+        app.leave_removed(|id| id == a);
+        app.reload();
+        assert_eq!(app.filter, Filter::All);
+        let rows = sidebar::entries(&app.folders, &app.sources);
+        assert!(!rows.contains(&sidebar::Entry::Folder(tech)));
+        assert!(app.rows.iter().all(|r| r.source_id == b));
     }
 
     #[test]
