@@ -1060,7 +1060,9 @@ impl Refresher {
 struct Watched<'a> {
     minutes: &'a AtomicU32,
     rules: &'a Mutex<Rules>,
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
     notify: &'a Mutex<config::Notify>,
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
     focused: &'a AtomicBool,
 }
 
