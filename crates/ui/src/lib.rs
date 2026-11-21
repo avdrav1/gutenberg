@@ -1,6 +1,7 @@
 //! See CLAUDE.md for what this crate owns.
 
 mod article;
+mod browser;
 mod commands;
 mod hints;
 mod list;
@@ -4068,27 +4069,9 @@ fn web_worker(
     })
 }
 
-/// Opens `url` in the default browser. `xdg-open` (`open` on macOS) runs
-/// detached; a thread reaps it so the window never waits on it.
+/// Opens `url` in the default browser; see [`browser`].
 fn open_in_browser(url: &str) {
-    use std::process::{Command, Stdio};
-    const OPENER: &str = if cfg!(target_os = "macos") {
-        "open"
-    } else {
-        "xdg-open"
-    };
-    let spawned = Command::new(OPENER)
-        .arg(url)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn();
-    match spawned {
-        Ok(mut child) => {
-            std::thread::spawn(move || child.wait());
-        }
-        Err(err) => eprintln!("gutenberg: opening {url}: {err}"),
-    }
+    browser::open(url);
 }
 
 /// Where a dragged row will land.

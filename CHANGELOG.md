@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- On Hyprland, `O` and other links now open as a tab in the browser window you last used, even when it is on another workspace, and take you there. They used to open a new browser window on Gutenberg's workspace.
+
 ## 0.32.0 — 2026-11-11
 
 - A feed whose author is written as an email address run straight into a non-English character, such as `bob@example.com„ Bob`, now reads. It used to fail as a whole with "the feed parser crashed on it".
