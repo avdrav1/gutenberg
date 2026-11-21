@@ -9,6 +9,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use gutenberg_core::config::Notify;
+use gutenberg_core::notify::{deliver, Popup, Sender};
 use gutenberg_core::rules::{Action, Rule, Rules};
 use gutenberg_core::sync::{refresh, refresh_sources, Limits, Pick, Progress};
 use gutenberg_store::{NewSource, SourceKind, Store};
@@ -387,6 +389,89 @@ fn rules_star_read_and_mute_what_a_refresh_brings() {
         .map(|a| &a.title)
         .collect();
     assert_eq!(read, ["The 7.3 kernel has been released"]);
+}
+
+/// Pop-ups, as the desktop would get them.
+#[derive(Default)]
+struct Shown(Vec<(String, String)>);
+
+impl Sender for Shown {
+    fn send(&mut self, popup: &Popup) -> Option<u32> {
+        self.0.push((popup.summary(), popup.body()));
+        Some(self.0.len() as u32)
+    }
+}
+
+#[test]
+fn notify_rules_turn_a_refresh_into_pop_ups_once() {
+    // S10.1: four LWN headlines match `notify` rules; with three pop-ups an
+    // hour, two come alone and the last two as one summary. A muted match
+    // never notifies, and a second refresh brings nothing new to say.
+    let base = serve(
+        feed_reply("lwn-headlines.xml", "\"lwn-1\""),
+        Duration::ZERO,
+        Arc::new(Log::default()),
+    );
+    let mut store = Store::open_in_memory().unwrap();
+    let url = format!("{base}/headlines/rss");
+    add_feed(&store, &url);
+    let rule = |words: &str, action| Rule {
+        words: words.into(),
+        within: None,
+        action,
+    };
+    let limits = Limits {
+        rules: Rules::new(&[
+            rule("Plumbers", Action::Notify),
+            rule("GNOME", Action::Notify),
+            rule("TAB election", Action::Notify),
+            rule("NFS", Action::Notify),
+            rule("Security updates", Action::Notify),
+            rule("Security updates", Action::Mute),
+        ]),
+        ..Limits::default()
+    };
+    let now = 1_000_000;
+    let summary = runtime()
+        .block_on(refresh(&mut store, now, &limits, None))
+        .unwrap();
+    assert_eq!(summary.matched.len(), 4);
+    let mut shown = Shown::default();
+    let settings = Notify::default();
+    let sent = deliver(
+        &mut store,
+        &settings,
+        &summary.matched,
+        now,
+        false,
+        &mut shown,
+    )
+    .unwrap();
+    assert_eq!(sent, 3);
+    assert_eq!(
+        shown.0[0].0,
+        "Linux Plumbers Conference videos now available"
+    );
+    assert!(
+        shown.0[0].1.starts_with("rule: Plumbers · "),
+        "{:?}",
+        shown.0[0]
+    );
+    assert_eq!(shown.0[2].0, "2 more stories");
+
+    let again = runtime()
+        .block_on(refresh(&mut store, now + 60, &limits, None))
+        .unwrap();
+    let sent = deliver(
+        &mut store,
+        &settings,
+        &again.matched,
+        now + 60,
+        false,
+        &mut shown,
+    )
+    .unwrap();
+    assert_eq!((again.matched.len(), sent), (0, 0));
 }
 
 #[test]

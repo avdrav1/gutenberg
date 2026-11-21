@@ -118,6 +118,10 @@ pub struct Summary {
     pub unchanged: usize,
     /// New articles a rule muted, so never stored.
     pub muted: usize,
+    /// New articles a `notify` rule matched: `(source_id, guid, rule)`,
+    /// for [`crate::notify::deliver`]. Stored ones among them are found by
+    /// their GUID and the refresh's time.
+    pub matched: Vec<(i64, String, String)>,
     /// What failed (a feed's URL, a keyword alert's query) and one line of
     /// why.
     pub failed: Vec<(String, String)>,
@@ -391,6 +395,13 @@ async fn refresh_some(
             .map_or(("", None), |(t, f)| (t.as_str(), f.as_deref()));
         let sorted = limits.rules.sort(title, folder, articles);
         summary.muted += sorted.muted;
+        for (article, rule) in sorted.articles.iter().zip(&sorted.notify) {
+            if let Some(rule) = rule {
+                summary
+                    .matched
+                    .push((source_id, article.guid.clone(), rule.clone()));
+            }
+        }
         sorted
     };
 
@@ -892,6 +903,10 @@ pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config)
     let minutes = Arc::new(AtomicU32::new(config.refresh.minutes));
     let rules = Arc::new(Mutex::new(Rules::new(&config.rules)));
     let (watched, watched_rules) = (minutes.clone(), rules.clone());
+    let notify = Arc::new(Mutex::new(config.notify));
+    let watched_notify = notify.clone();
+    let focused = Arc::new(AtomicBool::new(false));
+    let focus = focused.clone();
     let progress = Arc::new(Progress::default());
     let counted = progress.clone();
     let checks = Arc::new(AtomicBool::new(config.updates.check));
@@ -909,6 +924,9 @@ pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config)
                         if let Ok(mut rules) = watched_rules.lock() {
                             *rules = Rules::new(&config.rules);
                         }
+                        if let Ok(mut notify) = watched_notify.lock() {
+                            *notify = config.notify;
+                        }
                         watched_checks.store(config.updates.check, Ordering::Relaxed);
                     }
                 })
@@ -918,7 +936,13 @@ pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config)
                 checks: &checks,
                 newer: &found,
             };
-            if let Err(err) = run(&store_path, &minutes, &rules, counted, &releases, &asked) {
+            let watched = Watched {
+                minutes: &minutes,
+                rules: &rules,
+                notify: &notify,
+                focused: &focus,
+            };
+            if let Err(err) = run(&store_path, &watched, counted, &releases, &asked) {
                 eprintln!("gutenberg: background refresh stopped: {err}");
             }
         });
@@ -929,6 +953,7 @@ pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config)
         status: Status {
             progress,
             newer,
+            focused,
             asks,
         },
     }
@@ -943,10 +968,17 @@ pub struct Status {
     pub progress: Arc<Progress>,
     /// A newer Gutenberg release than this one, once GitHub has said so.
     pub newer: Arc<Mutex<Option<String>>>,
+    /// Whether the window has focus: nothing pops up while it does.
+    focused: Arc<AtomicBool>,
     asks: mpsc::Sender<Ask>,
 }
 
 impl Status {
+    /// The window gained or lost focus.
+    pub fn set_focused(&self, focused: bool) {
+        self.focused.store(focused, Ordering::Relaxed);
+    }
+
     pub fn newer_release(&self) -> Option<String> {
         self.newer.lock().ok().and_then(|newer| newer.clone())
     }
@@ -1023,14 +1055,74 @@ impl Refresher {
     }
 }
 
+/// What the refresh thread reads from `config.toml` as it changes, and from
+/// the window.
+struct Watched<'a> {
+    minutes: &'a AtomicU32,
+    rules: &'a Mutex<Rules>,
+    notify: &'a Mutex<config::Notify>,
+    focused: &'a AtomicBool,
+}
+
+/// Pop-ups after a refresh, if any rule notifies or notices are held.
+/// The desktop connection starts with the first pop-up and stays for Open.
+#[cfg(target_os = "linux")]
+fn notify_after(
+    store: &mut Store,
+    watched: &Watched<'_>,
+    summary: &Summary,
+    now: i64,
+    desktop: &mut Option<crate::notify::Desktop>,
+) {
+    struct Lazy<'a>(&'a mut Option<crate::notify::Desktop>);
+    impl crate::notify::Sender for Lazy<'_> {
+        fn send(&mut self, popup: &crate::notify::Popup) -> Option<u32> {
+            self.0
+                .get_or_insert_with(|| crate::notify::Desktop::spawn(open_over_socket))
+                .send(popup)
+        }
+    }
+    let Ok(settings) = watched.notify.lock().map(|s| *s) else {
+        return;
+    };
+    let focused = watched.focused.load(Ordering::Relaxed);
+    let delivered = crate::notify::deliver(
+        store,
+        &settings,
+        &summary.matched,
+        now,
+        focused,
+        &mut Lazy(desktop),
+    );
+    if let Err(err) = delivered {
+        eprintln!("gutenberg: notifications: {err}");
+    }
+}
+
+/// Open on a pop-up: the window shows the article, asked over its socket
+/// as any other process would (S10.3's headless refresh does the same).
+#[cfg(target_os = "linux")]
+fn open_over_socket(article: i64) {
+    std::thread::spawn(move || {
+        let sent = crate::ipc::socket_path()
+            .ok_or(crate::ipc::Error::NotRunning)
+            .and_then(|path| crate::ipc::send(&path, crate::ipc::Command::Open(article)));
+        if let Err(err) = sent {
+            eprintln!("gutenberg: opening article {article}: {err}");
+        }
+    });
+}
+
 fn run(
     store_path: &std::path::Path,
-    minutes: &AtomicU32,
-    rules: &Mutex<Rules>,
+    watched: &Watched<'_>,
     progress: Arc<Progress>,
     releases: &Releases<'_>,
     asked: &mpsc::Receiver<Ask>,
 ) -> Result<(), String> {
+    let Watched { minutes, rules, .. } = *watched;
+    #[cfg(target_os = "linux")]
+    let mut desktop = None;
     let mut store = Store::open(store_path).map_err(|e| e.to_string())?;
     let icons = Icons::beside(store_path);
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -1073,6 +1165,10 @@ fn run(
                 )),
             }
             .map_err(|e| e.to_string());
+            #[cfg(target_os = "linux")]
+            if let Ok(summary) = &done {
+                notify_after(&mut store, watched, summary, now, &mut desktop);
+            }
             for reply in waiting.drain(..).filter_map(|ask| ask.reply) {
                 let _ = reply.send(done.clone());
             }
@@ -1147,6 +1243,7 @@ mod tests {
             unchanged: 8,
             muted: 0,
             failed: vec![("u".into(), "e".into())],
+            matched: vec![],
         };
         assert_eq!(
             summary.to_string(),
