@@ -108,6 +108,39 @@ pub struct StoryCandidate {
     pub story_id: Option<i64>,
 }
 
+/// An article a `notify` rule matched, as its notification shows it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Notice {
+    pub article_id: i64,
+    pub story_id: i64,
+    pub title: String,
+    /// The source's title.
+    pub source: String,
+    /// The rule's `match`, as written.
+    pub reason: String,
+}
+
+/// What became of a [`Notice`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NoticeState {
+    /// Shown, alone or in a summary.
+    Sent,
+    /// Over the hour's budget or in quiet hours: waits for a summary.
+    Held,
+    /// The window had focus, so the list showed it.
+    Seen,
+}
+
+impl NoticeState {
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::Sent => "sent",
+            Self::Held => "held",
+            Self::Seen => "seen",
+        }
+    }
+}
+
 /// What tells one of a source's articles from another, newest first from
 /// [`Store::article_keys`](crate::Store::article_keys).
 #[derive(Debug, Clone, PartialEq, Eq)]

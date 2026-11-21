@@ -22,7 +22,8 @@ use rusqlite::{params, Connection, OptionalExtension};
 pub use migrate::LATEST as SCHEMA_VERSION;
 pub use model::{
     Arrival, ArticleKey, ArticleRow, DueSource, FetchState, Filter, Folder, NewArticle, NewSource,
-    Source, SourceKind, SourceTarget, StoryCandidate, Validators, View, ViewCounts,
+    Notice, NoticeState, Source, SourceKind, SourceTarget, StoryCandidate, Validators, View,
+    ViewCounts,
 };
 pub use text::plain;
 
@@ -619,6 +620,151 @@ impl Store {
             params![key, value],
         )?;
         Ok(())
+    }
+
+    /// The articles a refresh at `fetched_at` just stored that `notify`
+    /// rules matched, from `(source_id, guid, rule)`, with their stories.
+    /// One already stored before, or already noticed, is left out. Call it
+    /// after story grouping, so the stories are known.
+    pub fn new_notices(
+        &self,
+        matched: &[(i64, String, String)],
+        fetched_at: i64,
+    ) -> Result<Vec<Notice>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT a.id, COALESCE(a.story_id, a.id), a.title, s.title
+             FROM article a JOIN source s ON s.id = a.source_id
+             WHERE a.source_id = ?1 AND a.guid = ?2 AND a.fetched_at = ?3
+               AND NOT EXISTS (SELECT 1 FROM notified n WHERE n.article_id = a.id)",
+        )?;
+        let mut notices = Vec::new();
+        for (source_id, guid, reason) in matched {
+            let found = stmt
+                .query_row(params![source_id, guid, fetched_at], |row| {
+                    Ok(Notice {
+                        article_id: row.get(0)?,
+                        story_id: row.get(1)?,
+                        title: row.get(2)?,
+                        source: row.get(3)?,
+                        reason: reason.clone(),
+                    })
+                })
+                .optional()?;
+            notices.extend(found);
+        }
+        Ok(notices)
+    }
+
+    /// The story an article belongs to (itself when it's alone), if it's
+    /// still stored.
+    pub fn story_of(&self, article_id: i64) -> Result<Option<i64>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT COALESCE(story_id, id) FROM article WHERE id = ?1",
+                params![article_id],
+                |row| row.get(0),
+            )
+            .optional()?)
+    }
+
+    /// Whether an article of this story has notified, or been held or seen.
+    pub fn story_noticed(&self, story_id: i64) -> Result<bool> {
+        Ok(self
+            .conn
+            .prepare_cached("SELECT 1 FROM notified WHERE story_id = ?1 LIMIT 1")?
+            .exists(params![story_id])?)
+    }
+
+    /// The notices waiting for a summary, oldest first.
+    pub fn held_notices(&self) -> Result<Vec<Notice>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT n.article_id, n.story_id, a.title, s.title, n.reason
+             FROM notified n
+             JOIN article a ON a.id = n.article_id
+             JOIN source s ON s.id = a.source_id
+             WHERE n.state = 'held'
+             ORDER BY n.at, n.article_id",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(Notice {
+                article_id: row.get(0)?,
+                story_id: row.get(1)?,
+                title: row.get(2)?,
+                source: row.get(3)?,
+                reason: row.get(4)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Pop-ups shown since `since`: the hourly budget's count.
+    pub fn popups_since(&self, since: i64) -> Result<u32> {
+        Ok(self.conn.query_row(
+            "SELECT count(DISTINCT popup) FROM notified WHERE sent_at >= ?1",
+            params![since],
+            |row| row.get(0),
+        )?)
+    }
+
+    /// Records what became of each notice at `at`; a held one's row changes.
+    pub fn record_notices(&mut self, notices: &[(Notice, NoticeState)], at: i64) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        {
+            let mut stmt = tx.prepare_cached(
+                "INSERT INTO notified (article_id, story_id, reason, at, state)
+                 VALUES (?1, ?2, ?3, ?4, ?5)
+                 ON CONFLICT (article_id) DO UPDATE SET state = excluded.state",
+            )?;
+            for (notice, state) in notices {
+                stmt.execute(params![
+                    notice.article_id,
+                    notice.story_id,
+                    notice.reason,
+                    at,
+                    state.as_str()
+                ])?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// One pop-up shown at `at` for these articles; `notification_id` is the
+    /// desktop's, when it answered. Returns the pop-up's number.
+    pub fn record_popup(
+        &mut self,
+        article_ids: &[i64],
+        at: i64,
+        notification_id: Option<u32>,
+    ) -> Result<i64> {
+        let tx = self.conn.transaction()?;
+        let popup: i64 = tx.query_row(
+            "SELECT COALESCE(max(popup), 0) + 1 FROM notified",
+            [],
+            |row| row.get(0),
+        )?;
+        {
+            let mut stmt = tx.prepare_cached(
+                "UPDATE notified SET state = 'sent', sent_at = ?2, popup = ?3, notification_id = ?4
+                 WHERE article_id = ?1",
+            )?;
+            for id in article_ids {
+                stmt.execute(params![id, at, popup, notification_id])?;
+            }
+        }
+        tx.commit()?;
+        Ok(popup)
+    }
+
+    /// Minutes past local midnight at `at`, in the system's time zone.
+    pub fn local_minute(&self, at: i64) -> Result<u16> {
+        Ok(self.conn.query_row(
+            "SELECT CAST(strftime('%H', ?1, 'unixepoch', 'localtime') AS INTEGER) * 60
+                  + CAST(strftime('%M', ?1, 'unixepoch', 'localtime') AS INTEGER)",
+            params![at],
+            |row| row.get(0),
+        )?)
     }
 
     /// Forgets a window setting, so its default applies again.

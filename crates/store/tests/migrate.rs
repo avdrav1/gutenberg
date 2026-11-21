@@ -189,7 +189,8 @@ fn a_version_3_file_upgrades_with_its_articles_ungrouped() {
         // setting table.
         let raw = Connection::open(&path).unwrap();
         raw.execute_batch(
-            "DROP TABLE setting;
+            "DROP TABLE notified;
+             DROP TABLE setting;
              DROP INDEX article_by_story;
              DROP INDEX article_ungrouped;
              ALTER TABLE article DROP COLUMN story_id;
@@ -221,7 +222,7 @@ fn a_version_4_file_upgrades_and_can_hold_settings() {
     {
         // Back to the file 0.26.0 left: schema 4, no setting table.
         let raw = Connection::open(&path).unwrap();
-        raw.execute_batch("DROP TABLE setting; PRAGMA user_version = 4;")
+        raw.execute_batch("DROP TABLE notified; DROP TABLE setting; PRAGMA user_version = 4;")
             .unwrap();
     }
     let store = Store::open(&path).unwrap();
@@ -230,4 +231,40 @@ fn a_version_4_file_upgrades_and_can_hold_settings() {
     assert_eq!(store.setting("layout.widths").unwrap(), None);
     store.set_setting("layout.widths", "0.2,0.3,0.5").unwrap();
     assert!(store.setting("layout.widths").unwrap().is_some());
+}
+
+/// S10.1: a file from 0.33.0 (schema 5) gains the notified table, empty,
+/// and keeps its articles.
+#[test]
+fn a_version_5_file_upgrades_and_can_record_notices() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("gutenberg.db");
+    {
+        let mut store = Store::open(&path).unwrap();
+        let source = store.add_source(&feed("https://a.example/feed")).unwrap();
+        store.insert_articles(&[article(source.id, "a")]).unwrap();
+    }
+    {
+        // Back to the file 0.33.0 left: schema 5, no notified table.
+        let raw = Connection::open(&path).unwrap();
+        raw.execute_batch("DROP TABLE notified; PRAGMA user_version = 5;")
+            .unwrap();
+    }
+    let mut store = Store::open(&path).unwrap();
+    assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
+    assert!(store.held_notices().unwrap().is_empty());
+    assert_eq!(store.popups_since(0).unwrap(), 0);
+    let row = &store.list_articles(None, 10).unwrap()[0];
+    let notice = gutenberg_store::Notice {
+        article_id: row.id,
+        story_id: row.story_id,
+        title: row.title.clone(),
+        source: "a".into(),
+        reason: "CVE".into(),
+    };
+    store
+        .record_notices(&[(notice, gutenberg_store::NoticeState::Held)], 10)
+        .unwrap();
+    assert_eq!(store.held_notices().unwrap().len(), 1);
+    assert!(store.story_noticed(row.story_id).unwrap());
 }
