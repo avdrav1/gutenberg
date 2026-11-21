@@ -827,7 +827,7 @@ impl App {
                     });
                 match saved {
                     Ok(_) => {
-                        self.leave_removed(&gone);
+                        self.leave_removed(|id| gone.contains(&id));
                         self.onboarding = None;
                         self.reload();
                     }
@@ -1590,22 +1590,22 @@ impl App {
             eprintln!("gutenberg: deleting {}: {e}", deleting.title);
             return;
         }
-        self.leave_removed(&[deleting.id]);
+        self.leave_removed(|id| id == deleting.id);
         self.reload();
     }
 
-    /// Once sources `gone` are deleted, before the reload: the list shows
-    /// every feed instead of a removed feed, or of a folder left with none
-    /// (which leaves the sources pane).
-    fn leave_removed(&mut self, gone: &[i64]) {
+    /// Once the sources `gone` picks are deleted, before the reload: the
+    /// list shows every feed instead of a removed feed, or of a folder left
+    /// with none (which leaves the sources pane).
+    fn leave_removed(&mut self, gone: impl Fn(i64) -> bool) {
         let left = match self.filter {
             Filter::All => false,
-            Filter::Source(id) => gone.contains(&id),
+            Filter::Source(id) => gone(id),
             Filter::Folder(folder) => self
                 .sources
                 .iter()
                 .filter(|s| s.folder_id == Some(folder))
-                .all(|s| gone.contains(&s.id)),
+                .all(|s| gone(s.id)),
         };
         if left {
             self.filter = Filter::All;
@@ -5549,11 +5549,11 @@ mod tests {
     fn a_folder_left_with_no_feeds_leaves_the_sources_pane_and_the_list() {
         let (mut app, tech, a, b) = app_with_folders();
         app.filter = Filter::Folder(tech);
-        app.leave_removed(&[b]);
+        app.leave_removed(|id| id == b);
         assert_eq!(app.filter, Filter::Folder(tech));
 
         app.store.as_ref().unwrap().delete_source(a).unwrap();
-        app.leave_removed(&[a]);
+        app.leave_removed(|id| id == a);
         app.reload();
         assert_eq!(app.filter, Filter::All);
         let rows = sidebar::entries(&app.folders, &app.sources);
