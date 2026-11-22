@@ -116,8 +116,28 @@ pub struct Notice {
     pub title: String,
     /// The source's title.
     pub source: String,
-    /// The rule's `match`, as written.
+    /// Why it notifies, as the pop-up says it: `rule: CVE`, or
+    /// `6 outlets in 40 min`.
     pub reason: String,
+}
+
+/// An article of a story a refresh just added to, from
+/// [`Store::touched_stories`](crate::Store::touched_stories): what a
+/// breaking story is told by.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoryArticle {
+    pub article_id: i64,
+    pub story_id: i64,
+    pub title: String,
+    pub source_id: i64,
+    /// The source's title.
+    pub source: String,
+    /// Its folder's name, if it's in one.
+    pub folder: Option<String>,
+    pub sort_at: i64,
+    pub fetched_at: i64,
+    /// Whether it has a `notified` row already.
+    pub noticed: bool,
 }
 
 /// What became of a [`Notice`].
