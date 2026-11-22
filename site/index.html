@@ -216,6 +216,11 @@ action = "notify"
 per_hour = 3              # pop-ups an hour; past it, one summary later
 quiet = "22:00-07:00"     # local time; none by default
 # enabled = false         # silences every notify rule</pre>
+  <p>A story spreading fast notifies too, once you say where to watch: when five sources carry it within an hour, and one of them is a source or folder in <code>breaking_in</code>, it pops up with how many outlets and how fast ("6 outlets in 25 min"). As more outlets pick it up, the same notification updates ("now 8 outlets") instead of adding another, and an update doesn't count against <code>per_hour</code>.</p>
+  <pre class="block">[notify]
+breaking_in = ["World"]   # sources' titles or folders' names; none by default
+breaking_sources = 5      # outlets that make a story breaking
+breaking_minutes = 60     # within this many minutes</pre>
   <p>Share (<code>p</code>) opens a picker of X, Bluesky, Facebook and LinkedIn, then a comment, then the site's composer in your browser. <code>[[share]]</code> picks which sites, in what order, and adds any site that takes a share URL: <code>{url}</code>, <code>{title}</code> and <code>{text}</code> in the template become the article's link, its title and your comment.</p>
   <pre class="block"># Share (p): the picker shows these in this order. Without any, it shows
 # X, Bluesky, Facebook and LinkedIn.
