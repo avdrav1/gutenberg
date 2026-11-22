@@ -474,15 +474,15 @@ fn notify_rules_turn_a_refresh_into_pop_ups_once() {
     assert_eq!((again.matched.len(), sent), (0, 0));
 }
 
-/// A desktop as the spec has it: a pop-up that replaces another keeps its
-/// id; any other gets a new one.
+/// A desktop as Omarchy's shell is: a pop-up that replaces another takes
+/// its place on screen but answers with a new id, as every pop-up does.
 #[derive(Default)]
 struct Desk(Vec<(String, String, Option<u32>)>);
 
 impl Sender for Desk {
     fn send(&mut self, popup: &Popup) -> Option<u32> {
         self.0.push((popup.summary(), popup.body(), popup.replaces));
-        Some(popup.replaces.unwrap_or(self.0.len() as u32))
+        Some(self.0.len() as u32)
     }
 }
 
@@ -511,7 +511,8 @@ fn add_outlets(store: &Store, numbers: std::ops::RangeInclusive<u32>, folder: Op
 fn a_story_six_outlets_carry_within_the_hour_notifies_once_then_updates() {
     // S10.2: six outlets carry the Iceland volcano between 07:15 and 07:40;
     // at 08:00 that's breaking, once. A seventh outlet at 08:10 replaces
-    // the pop-up rather than adding one, and needs no budget to.
+    // the pop-up rather than adding one, and needs no budget to; an eighth
+    // at 08:15 replaces that.
     const NOW: i64 = 1_800_000_000; // 2027-01-15 08:00 UTC
     let mut store = Store::open_in_memory().unwrap();
     let world = store.add_folder("World").unwrap().id;
@@ -581,7 +582,26 @@ fn a_story_six_outlets_carry_within_the_hour_notifies_once_then_updates() {
     let (_, body, replaces) = &desk.0[1];
     assert_eq!(body, "now 7 outlets · Outlet 7");
     assert_eq!(*replaces, Some(1));
-    // An update is part of the pop-up it replaced: still one this hour.
+
+    // The desktop answered the update with id 2; an eighth outlet replaces
+    // that one.
+    add_outlets(&store, 8..=8, Some(world));
+    let eighth = runtime()
+        .block_on(refresh(&mut store, NOW + 900, &limits, None))
+        .unwrap();
+    let sent = deliver(
+        &mut store,
+        &settings,
+        &eighth.matched,
+        NOW + 900,
+        false,
+        &mut desk,
+    )
+    .unwrap();
+    assert_eq!(sent, 1);
+    assert_eq!(desk.0[2].1, "now 8 outlets · Outlet 8");
+    assert_eq!(desk.0[2].2, Some(2));
+    // Updates are part of the pop-up they replaced: still one this hour.
     assert_eq!(store.popups_since(NOW).unwrap(), 1);
 }
 

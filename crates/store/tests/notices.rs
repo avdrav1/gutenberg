@@ -54,10 +54,12 @@ fn an_update_replaces_a_pop_up_of_its_story_alone_and_keeps_its_place_in_the_hou
         reason: "now 7 outlets".into(),
         ..alone.clone()
     };
-    store.record_update(&later, 3_700, 7).unwrap();
+    // The desktop answered with a new id, as Omarchy's shell does: the
+    // next update replaces that one.
+    store.record_update(&later, 3_700, 7, Some(9)).unwrap();
     assert_eq!(store.popups_since(3_000).unwrap(), 0);
     assert_eq!(store.popups_since(0).unwrap(), 1);
-    assert_eq!(store.story_popup(alone.story_id).unwrap(), Some(7));
+    assert_eq!(store.story_popup(alone.story_id).unwrap(), Some(9));
 
     // Two stories folded into one summary: neither may replace it.
     let (c, d) = (add(&mut store, "c", 200), add(&mut store, "d", 200));

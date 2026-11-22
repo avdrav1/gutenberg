@@ -337,9 +337,9 @@ pub fn deliver(
         store.record_popup(&articles, now, id)?;
     }
     for update in &plan.updates {
-        sender.send(update);
-        if let (Some(id), [notice]) = (update.replaces, update.notices.as_slice()) {
-            store.record_update(notice, now, id)?;
+        let answered = sender.send(update);
+        if let (Some(replaced), [notice]) = (update.replaces, update.notices.as_slice()) {
+            store.record_update(notice, now, replaced, answered)?;
         }
     }
     Ok(plan.popups.len() + plan.updates.len())

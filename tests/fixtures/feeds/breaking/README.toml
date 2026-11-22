@@ -1,5 +1,5 @@
-# Made by hand for S10.2, not captured: seven outlets carry one story, the
-# Iceland volcano, at 07:15-07:40 (outlets 1-6) and 07:55 (outlet 7) UTC
-# on 2027-01-15, each with one unrelated headline at 05:00. The headlines
+# Made by hand for S10.2, not captured: eight outlets carry one story, the
+# Iceland volcano, at 07:15-07:40 (outlets 1-6), 07:55 (outlet 7) and 08:05
+# (outlet 8) UTC on 2027-01-15, each with one unrelated headline at 05:00. The headlines
 # vary as real ones do but stay one story under S5.4's grouping.
-covers = "one story across seven sources inside an hour"
+covers = "one story across eight sources inside an hour"

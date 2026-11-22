@@ -713,7 +713,7 @@ impl Store {
                  WHERE n.story_id = ?1 AND n.state = 'sent' AND n.notification_id IS NOT NULL
                    AND NOT EXISTS (SELECT 1 FROM notified o
                                    WHERE o.popup = n.popup AND o.story_id <> n.story_id)
-                 ORDER BY n.sent_at DESC, n.popup DESC LIMIT 1",
+                 ORDER BY n.at DESC, n.sent_at DESC LIMIT 1",
                 params![story_id],
                 |row| row.get(0),
             )
@@ -721,22 +721,30 @@ impl Store {
     }
 
     /// Records `notice` as an update to the story's pop-up the desktop
-    /// knows as `notification_id`: part of that pop-up, so it doesn't count
-    /// against the hour again.
-    pub fn record_update(&mut self, notice: &Notice, at: i64, notification_id: u32) -> Result<()> {
+    /// knew as `replaced`: part of that pop-up, so it doesn't count against
+    /// the hour again. `now_id` is the id the desktop answered with, which
+    /// the next update replaces; a desktop may answer with a new one.
+    pub fn record_update(
+        &mut self,
+        notice: &Notice,
+        at: i64,
+        replaced: u32,
+        now_id: Option<u32>,
+    ) -> Result<()> {
         self.conn.execute(
             "INSERT INTO notified (article_id, story_id, reason, at, state, sent_at, popup,
                                    notification_id)
-             SELECT ?1, ?2, ?3, ?4, 'sent', sent_at, popup, notification_id FROM notified
+             SELECT ?1, ?2, ?3, ?4, 'sent', sent_at, popup, ?6 FROM notified
              WHERE story_id = ?2 AND notification_id = ?5 AND state = 'sent'
-             ORDER BY sent_at DESC LIMIT 1
+             ORDER BY at DESC LIMIT 1
              ON CONFLICT (article_id) DO NOTHING",
             params![
                 notice.article_id,
                 notice.story_id,
                 notice.reason,
                 at,
-                notification_id
+                replaced,
+                now_id.unwrap_or(replaced)
             ],
         )?;
         Ok(())
