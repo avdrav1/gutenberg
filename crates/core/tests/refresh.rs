@@ -474,6 +474,165 @@ fn notify_rules_turn_a_refresh_into_pop_ups_once() {
     assert_eq!((again.matched.len(), sent), (0, 0));
 }
 
+/// A desktop as the spec has it: a pop-up that replaces another keeps its
+/// id; any other gets a new one.
+#[derive(Default)]
+struct Desk(Vec<(String, String, Option<u32>)>);
+
+impl Sender for Desk {
+    fn send(&mut self, popup: &Popup) -> Option<u32> {
+        self.0.push((popup.summary(), popup.body(), popup.replaces));
+        Some(popup.replaces.unwrap_or(self.0.len() as u32))
+    }
+}
+
+/// Outlets `numbers` of `tests/fixtures/feeds/breaking`, each served by its
+/// own server and stored as "Outlet N" in `folder`.
+fn add_outlets(store: &Store, numbers: std::ops::RangeInclusive<u32>, folder: Option<i64>) {
+    for n in numbers {
+        let base = serve(
+            feed_reply(&format!("breaking/outlet-{n}.xml"), &format!("\"o{n}\"")),
+            Duration::ZERO,
+            Arc::new(Log::default()),
+        );
+        store
+            .add_source(&NewSource {
+                folder_id: folder,
+                kind: SourceKind::Feed,
+                title: format!("Outlet {n}"),
+                url: Some(format!("{base}/rss")),
+                config: "{}".to_owned(),
+            })
+            .unwrap();
+    }
+}
+
+#[test]
+fn a_story_six_outlets_carry_within_the_hour_notifies_once_then_updates() {
+    // S10.2: six outlets carry the Iceland volcano between 07:15 and 07:40;
+    // at 08:00 that's breaking, once. A seventh outlet at 08:10 replaces
+    // the pop-up rather than adding one, and needs no budget to.
+    const NOW: i64 = 1_800_000_000; // 2027-01-15 08:00 UTC
+    let mut store = Store::open_in_memory().unwrap();
+    let world = store.add_folder("World").unwrap().id;
+    add_outlets(&store, 1..=6, Some(world));
+    let settings = Notify {
+        breaking_in: vec!["world".into()],
+        // The hour is spent after one pop-up, yet the update goes out.
+        per_hour: 1,
+        ..Notify::default()
+    };
+    let limits = Limits::default();
+    let mut desk = Desk::default();
+    let summary = runtime()
+        .block_on(refresh(&mut store, NOW, &limits, None))
+        .unwrap();
+    assert!(summary.matched.is_empty());
+    let sent = deliver(
+        &mut store,
+        &settings,
+        &summary.matched,
+        NOW,
+        false,
+        &mut desk,
+    )
+    .unwrap();
+    assert_eq!(sent, 1);
+    let (title, body, replaces) = &desk.0[0];
+    assert_eq!(
+        title,
+        "Reykjanes peninsula volcano erupts; Grindavik evacuated again"
+    );
+    assert_eq!(body, "6 outlets in 25 min · Outlet 6");
+    assert_eq!(*replaces, None);
+
+    // Nothing new: nothing to say.
+    let again = runtime()
+        .block_on(refresh(&mut store, NOW + 300, &limits, None))
+        .unwrap();
+    assert_eq!(
+        deliver(
+            &mut store,
+            &settings,
+            &again.matched,
+            NOW + 300,
+            false,
+            &mut desk
+        )
+        .unwrap(),
+        0
+    );
+
+    add_outlets(&store, 7..=7, Some(world));
+    let seventh = runtime()
+        .block_on(refresh(&mut store, NOW + 600, &limits, None))
+        .unwrap();
+    let sent = deliver(
+        &mut store,
+        &settings,
+        &seventh.matched,
+        NOW + 600,
+        false,
+        &mut desk,
+    )
+    .unwrap();
+    assert_eq!(sent, 1);
+    assert_eq!(desk.0.len(), 2);
+    let (_, body, replaces) = &desk.0[1];
+    assert_eq!(body, "now 7 outlets · Outlet 7");
+    assert_eq!(*replaces, Some(1));
+    // An update is part of the pop-up it replaced: still one this hour.
+    assert_eq!(store.popups_since(NOW).unwrap(), 1);
+}
+
+#[test]
+fn a_story_none_of_whose_sources_is_named_stays_quiet() {
+    const NOW: i64 = 1_800_000_000;
+    let mut store = Store::open_in_memory().unwrap();
+    add_outlets(&store, 1..=7, None);
+    let limits = Limits::default();
+    let summary = runtime()
+        .block_on(refresh(&mut store, NOW, &limits, None))
+        .unwrap();
+    let mut desk = Desk::default();
+    for places in [vec![], vec!["World".to_owned(), "Outlet 9".to_owned()]] {
+        let settings = Notify {
+            breaking_in: places,
+            ..Notify::default()
+        };
+        assert_eq!(
+            deliver(
+                &mut store,
+                &settings,
+                &summary.matched,
+                NOW,
+                false,
+                &mut desk
+            )
+            .unwrap(),
+            0
+        );
+    }
+    // Named by a source's title, the same story notifies.
+    let settings = Notify {
+        breaking_in: vec!["Outlet 3".into()],
+        ..Notify::default()
+    };
+    assert_eq!(
+        deliver(
+            &mut store,
+            &settings,
+            &summary.matched,
+            NOW,
+            false,
+            &mut desk
+        )
+        .unwrap(),
+        1
+    );
+    assert_eq!(desk.0[0].1, "7 outlets in 40 min · Outlet 7");
+}
+
 #[test]
 fn progress_counts_sources_while_a_refresh_runs_and_clears_after() {
     // Two feeds that take 400 ms each to answer, one host at a time.

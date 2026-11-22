@@ -118,7 +118,8 @@ pub struct Summary {
     pub unchanged: usize,
     /// New articles a rule muted, so never stored.
     pub muted: usize,
-    /// New articles a `notify` rule matched: `(source_id, guid, rule)`,
+    /// New articles a `notify` rule matched: `(source_id, guid, reason)`,
+    /// the reason as a pop-up says it (`rule: CVE`),
     /// for [`crate::notify::deliver`]. Stored ones among them are found by
     /// their GUID and the refresh's time.
     pub matched: Vec<(i64, String, String)>,
@@ -399,7 +400,7 @@ async fn refresh_some(
             if let Some(rule) = rule {
                 summary
                     .matched
-                    .push((source_id, article.guid.clone(), rule.clone()));
+                    .push((source_id, article.guid.clone(), format!("rule: {rule}")));
             }
         }
         sorted
@@ -903,7 +904,7 @@ pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config)
     let minutes = Arc::new(AtomicU32::new(config.refresh.minutes));
     let rules = Arc::new(Mutex::new(Rules::new(&config.rules)));
     let (watched, watched_rules) = (minutes.clone(), rules.clone());
-    let notify = Arc::new(Mutex::new(config.notify));
+    let notify = Arc::new(Mutex::new(config.notify.clone()));
     let watched_notify = notify.clone();
     let focused = Arc::new(AtomicBool::new(false));
     let focus = focused.clone();
@@ -925,7 +926,7 @@ pub fn spawn(store_path: PathBuf, config_path: Option<PathBuf>, config: &Config)
                             *rules = Rules::new(&config.rules);
                         }
                         if let Ok(mut notify) = watched_notify.lock() {
-                            *notify = config.notify;
+                            *notify = config.notify.clone();
                         }
                         watched_checks.store(config.updates.check, Ordering::Relaxed);
                     }
@@ -1084,7 +1085,7 @@ fn notify_after(
                 .send(popup)
         }
     }
-    let Ok(settings) = watched.notify.lock().map(|s| *s) else {
+    let Ok(settings) = watched.notify.lock().map(|s| s.clone()) else {
         return;
     };
     let focused = watched.focused.load(Ordering::Relaxed);

@@ -1,7 +1,9 @@
 //! Pop-ups over D-Bus, to `org.freedesktop.Notifications` (on Omarchy,
 //! its shell). A thread of its own holds the session-bus connection, so it
 //! hears Open on a pop-up for as long as the app runs; the refresh thread
-//! hands it pop-ups and waits at most [`WAIT`] for the desktop's id.
+//! hands it pop-ups and waits at most [`WAIT`] for the desktop's id. A
+//! pop-up that replaces another passes its id, so the desktop updates it
+//! in place.
 
 use std::collections::HashMap;
 use std::sync::{mpsc, Arc, Mutex};
@@ -141,7 +143,7 @@ async fn notify(
             "Notify",
             &(
                 "Gutenberg",
-                0u32,
+                popup.replaces.unwrap_or(0),
                 "gutenberg",
                 popup.summary(),
                 body,
