@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.35.0 — 2026-11-22
+
 - Breaking stories: name a source or folder in `breaking_in` under `[notify]`, and a story that five outlets carry within an hour, one of them there, pops up a notification saying how many outlets and how fast. As more pick it up the same notification updates ("now 8 outlets") rather than adding another. `breaking_sources` and `breaking_minutes` change the five and the hour.
 
 ## 0.34.0 — 2026-11-21
