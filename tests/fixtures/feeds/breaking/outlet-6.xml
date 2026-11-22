@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Outlet 6</title>
+    <link>https://outlet6.example/</link>
+    <description>A made-up outlet for S10.2's breaking-story test.</description>
+    <item>
+      <title>Reykjanes peninsula volcano erupts; Grindavik evacuated again</title>
+      <link>https://outlet6.example/iceland-volcano</link>
+      <guid>https://outlet6.example/iceland-volcano</guid>
+      <pubDate>Fri, 15 Jan 2027 07:40:00 GMT</pubDate>
+      <description>Lava reached the defences north of the town.</description>
+    </item>
+    <item>
+      <title>Museum returns looted bronzes to Benin</title>
+      <link>https://outlet6.example/other</link>
+      <guid>https://outlet6.example/other</guid>
+      <pubDate>Fri, 15 Jan 2027 05:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

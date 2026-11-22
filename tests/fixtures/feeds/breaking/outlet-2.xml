@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Outlet 2</title>
+    <link>https://outlet2.example/</link>
+    <description>A made-up outlet for S10.2's breaking-story test.</description>
+    <item>
+      <title>Grindavik evacuated as volcano erupts on Reykjanes peninsula</title>
+      <link>https://outlet2.example/iceland-volcano</link>
+      <guid>https://outlet2.example/iceland-volcano</guid>
+      <pubDate>Fri, 15 Jan 2027 07:20:00 GMT</pubDate>
+      <description>Lava reached the defences north of the town.</description>
+    </item>
+    <item>
+      <title>Football club appoints former captain as manager</title>
+      <link>https://outlet2.example/other</link>
+      <guid>https://outlet2.example/other</guid>
+      <pubDate>Fri, 15 Jan 2027 05:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

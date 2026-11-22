@@ -27,8 +27,8 @@ pub struct Config {
     pub notify: Notify,
 }
 
-/// Desktop notifications from `notify` rules.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// Desktop notifications from `notify` rules and breaking stories.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Notify {
     /// Off silences every `notify` rule; on, nothing fires without one.
@@ -39,6 +39,13 @@ pub struct Notify {
     /// Local hours with no pop-ups, as `"22:00-07:00"`; what matches then
     /// comes as one summary after.
     pub quiet: Option<Quiet>,
+    /// A story carried by this many sources within `breaking_minutes` is
+    /// breaking.
+    pub breaking_sources: u32,
+    pub breaking_minutes: u32,
+    /// Sources' titles or folders' names; a story is breaking only when one
+    /// of its articles comes from one of them. Empty, nothing is.
+    pub breaking_in: Vec<String>,
 }
 
 impl Default for Notify {
@@ -47,6 +54,9 @@ impl Default for Notify {
             enabled: true,
             per_hour: 3,
             quiet: None,
+            breaking_sources: 5,
+            breaking_minutes: 60,
+            breaking_in: Vec::new(),
         }
     }
 }
@@ -491,6 +501,14 @@ mod tests {
             .unwrap()
             .notify;
         assert_eq!(notify.per_hour, 5);
+        assert_eq!((notify.breaking_sources, notify.breaking_minutes), (5, 60));
+        assert!(notify.breaking_in.is_empty());
+        let breaking =
+            parse("[notify]\nbreaking_sources = 4\nbreaking_in = [\"World\", \"BBC News\"]")
+                .unwrap()
+                .notify;
+        assert_eq!(breaking.breaking_sources, 4);
+        assert_eq!(breaking.breaking_in, ["World", "BBC News"]);
         let quiet = notify.quiet.unwrap();
         assert_eq!((quiet.from, quiet.to), (22 * 60, 7 * 60 + 30));
         // Over midnight: late evening and early morning are quiet, noon isn't.

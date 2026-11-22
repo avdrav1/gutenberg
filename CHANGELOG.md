@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Breaking stories: name a source or folder in `breaking_in` under `[notify]`, and a story that five outlets carry within an hour, one of them there, pops up a notification saying how many outlets and how fast. As more pick it up the same notification updates ("now 8 outlets") rather than adding another. `breaking_sources` and `breaking_minutes` change the five and the hour.
+
 ## 0.34.0 — 2026-11-21
 
 - Desktop notifications: a rule with `action = "notify"` in `config.toml` pops up a notification when a new article matches it, naming the rule and the source. Open on the notification brings the window to that article. A story notifies only once, nothing pops up while the window has focus, and past three an hour (`per_hour` under `[notify]`) or in quiet hours (`quiet = "22:00-07:00"`) matches wait and arrive together as one summary. Linux only for now.

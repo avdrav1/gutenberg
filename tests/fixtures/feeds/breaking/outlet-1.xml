@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Outlet 1</title>
+    <link>https://outlet1.example/</link>
+    <description>A made-up outlet for S10.2's breaking-story test.</description>
+    <item>
+      <title>Volcano erupts on Reykjanes peninsula, Grindavik evacuated</title>
+      <link>https://outlet1.example/iceland-volcano</link>
+      <guid>https://outlet1.example/iceland-volcano</guid>
+      <pubDate>Fri, 15 Jan 2027 07:15:00 GMT</pubDate>
+      <description>Lava reached the defences north of the town.</description>
+    </item>
+    <item>
+      <title>Central bank holds interest rates steady through spring</title>
+      <link>https://outlet1.example/other</link>
+      <guid>https://outlet1.example/other</guid>
+      <pubDate>Fri, 15 Jan 2027 05:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>
