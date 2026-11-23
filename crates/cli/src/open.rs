@@ -2,7 +2,9 @@
 //! none open, the window starts on it (S10.3). Open on a pop-up from a
 //! timer's refresh runs it through [`launch`].
 
-use std::process::{Command, ExitCode, Stdio};
+use std::process::ExitCode;
+#[cfg(target_os = "linux")]
+use std::process::{Command, Stdio};
 
 use gutenberg_core::ipc;
 
@@ -31,12 +33,13 @@ pub fn in_open_window(article: i64) -> Option<ExitCode> {
 /// Runs `gutenberg --open <article>` apart from this process, which is
 /// about to exit: on Hyprland the compositor starts it, so it isn't a child
 /// of the timer's service; elsewhere it starts in a process group of its
-/// own (and the service is `KillMode=process`).
+/// own (and the service is `KillMode=process`). Linux only, like the
+/// timer's pop-ups.
+#[cfg(target_os = "linux")]
 pub fn launch(article: i64) {
     let Ok(exe) = std::env::current_exe() else {
         return eprintln!("gutenberg: open: can't find this program");
     };
-    #[cfg(target_os = "linux")]
     if std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some() {
         if let Some(path) = exe.to_str() {
             let line = format!("{} --open {article}", shell_quote(path));
@@ -51,7 +54,6 @@ pub fn launch(article: i64) {
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
-    #[cfg(unix)]
     std::os::unix::process::CommandExt::process_group(&mut command, 0);
     if let Err(err) = command.spawn() {
         eprintln!("gutenberg: open: {err}");
@@ -77,6 +79,7 @@ fn hyprland_exec(line: &str) -> bool {
 }
 
 /// `text` as one word for `sh`.
+#[cfg(target_os = "linux")]
 fn shell_quote(text: &str) -> String {
     format!("'{}'", text.replace('\'', r"'\''"))
 }
@@ -104,10 +107,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn a_path_is_quoted_for_the_shell_and_for_lua() {
         let line = format!("{} --open 7", shell_quote("/home/a b/it's/gutenberg"));
         assert_eq!(line, r#"'/home/a b/it'\''s/gutenberg' --open 7"#);
-        #[cfg(target_os = "linux")]
         assert_eq!(
             lua_string(&line),
             r#""'/home/a b/it'\\''s/gutenberg' --open 7""#
