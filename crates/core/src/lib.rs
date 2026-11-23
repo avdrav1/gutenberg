@@ -6,6 +6,7 @@ pub mod config;
 pub mod favicon;
 pub mod ipc;
 pub mod keyword;
+pub mod lock;
 pub mod mcp;
 pub mod notify;
 pub mod rules;

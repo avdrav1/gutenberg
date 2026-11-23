@@ -1137,6 +1137,7 @@ fn run(
         ..Limits::default()
     };
     let mut waiting: Vec<Ask> = Vec::new();
+    let lock_path = crate::lock::path();
     // Everything due: at start, then each interval or when a source is
     // added. Asks for some sources leave the interval running.
     let mut all_due = true;
@@ -1156,6 +1157,12 @@ fn run(
             if let Ok(rules) = rules.lock() {
                 limits.rules = rules.clone();
             }
+            // A timer's `gutenberg --refresh` may be writing; wait for it.
+            // Without the lock (no runtime directory) refresh anyway, as
+            // before there was one.
+            let _turn = lock_path
+                .as_deref()
+                .and_then(|path| crate::lock::RefreshLock::take(path).ok());
             let now = unix_now();
             let done = match all {
                 true => runtime.block_on(refresh(&mut store, now, &limits, Some(&icons))),

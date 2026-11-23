@@ -5,7 +5,7 @@
 //! pop-up that replaces another passes its id, so the desktop updates it
 //! in place.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{mpsc, Arc, Mutex};
 use std::time::Duration;
 
@@ -25,10 +25,30 @@ pub struct Desktop {
     asks: tokio::sync::mpsc::UnboundedSender<Ask>,
 }
 
+/// What became of a pop-up this desktop sent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Event {
+    /// Open (or the pop-up itself) was clicked: show this article.
+    Open(i64),
+    /// The pop-up with this id went: dismissed, expired or replaced.
+    Closed(u32),
+}
+
 impl Desktop {
     /// Starts the thread; `on_open` gets the article of a pop-up whose Open
     /// (or body) was clicked, on that thread.
     pub fn spawn(on_open: impl Fn(i64) + Send + 'static) -> Self {
+        Self::watch(true, move |event| {
+            if let Event::Open(article) = event {
+                on_open(article);
+            }
+        })
+    }
+
+    /// As [`spawn`](Self::spawn), with every [`Event`] of the pop-ups it
+    /// sends. Without `actions` a pop-up offers no Open, for a process that
+    /// won't stay to answer it.
+    pub fn watch(actions: bool, on_event: impl Fn(Event) + Send + 'static) -> Self {
         let (asks, asked) = tokio::sync::mpsc::unbounded_channel();
         let spawned = std::thread::Builder::new()
             .name("notify".into())
@@ -40,7 +60,7 @@ impl Desktop {
                     Ok(runtime) => runtime,
                     Err(err) => return eprintln!("gutenberg: notifications: {err}"),
                 };
-                runtime.block_on(serve(asked, on_open));
+                runtime.block_on(serve(asked, actions, on_event));
             });
         if let Err(err) = spawned {
             eprintln!("gutenberg: notifications did not start: {err}");
@@ -57,7 +77,11 @@ impl Sender for Desktop {
     }
 }
 
-async fn serve(mut asked: tokio::sync::mpsc::UnboundedReceiver<Ask>, on_open: impl Fn(i64)) {
+async fn serve(
+    mut asked: tokio::sync::mpsc::UnboundedReceiver<Ask>,
+    offer_actions: bool,
+    on_event: impl Fn(Event),
+) {
     let proxy = match connect().await {
         Ok(proxy) => proxy,
         Err(err) => {
@@ -70,8 +94,10 @@ async fn serve(mut asked: tokio::sync::mpsc::UnboundedReceiver<Ask>, on_open: im
     };
     let caps: Vec<String> = proxy.call("GetCapabilities", &()).await.unwrap_or_default();
     let markup = caps.iter().any(|c| c == "body-markup");
-    let actions = caps.iter().any(|c| c == "actions");
+    let actions = offer_actions && caps.iter().any(|c| c == "actions");
     let opens: Arc<Mutex<HashMap<u32, i64>>> = Arc::default();
+    // Ours: the desktop says when any pop-up closes.
+    let mut sent: HashSet<u32> = HashSet::new();
     let mut invoked = match proxy.receive_signal("ActionInvoked").await {
         Ok(stream) => Some(stream),
         Err(err) => {
@@ -79,6 +105,7 @@ async fn serve(mut asked: tokio::sync::mpsc::UnboundedReceiver<Ask>, on_open: im
             None
         }
     };
+    let mut closed = proxy.receive_signal("NotificationClosed").await.ok();
     loop {
         tokio::select! {
             ask = asked.recv() => {
@@ -88,6 +115,16 @@ async fn serve(mut asked: tokio::sync::mpsc::UnboundedReceiver<Ask>, on_open: im
                     eprintln!("gutenberg: notifying: {err}");
                 }
                 let id = id.ok();
+                if let Some(id) = id {
+                    sent.insert(id);
+                    // A replaced pop-up is gone, whatever id the desktop
+                    // answered with.
+                    if let Some(replaced) = popup.replaces.filter(|r| *r != id) {
+                        if sent.remove(&replaced) {
+                            on_event(Event::Closed(replaced));
+                        }
+                    }
+                }
                 if let (Some(id), Some(article), Ok(mut opens)) = (id, popup.article(), opens.lock()) {
                     opens.insert(id, article);
                 }
@@ -104,7 +141,20 @@ async fn serve(mut asked: tokio::sync::mpsc::UnboundedReceiver<Ask>, on_open: im
                 };
                 let article = opens.lock().ok().and_then(|opens| opens.get(&id).copied());
                 if let (Some(article), "default" | "open") = (article, key.as_str()) {
-                    on_open(article);
+                    on_event(Event::Open(article));
+                }
+            }
+            Some(signal) = async {
+                match closed.as_mut() {
+                    Some(stream) => stream.next().await,
+                    None => std::future::pending().await,
+                }
+            } => {
+                let Ok((id, _reason)) = signal.body().deserialize::<(u32, u32)>() else {
+                    continue;
+                };
+                if sent.remove(&id) {
+                    on_event(Event::Closed(id));
                 }
             }
         }
