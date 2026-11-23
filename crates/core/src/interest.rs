@@ -33,11 +33,13 @@ pub enum Reason {
     Word(String),
 }
 
-/// How often a feature came with each kind of signal.
+/// How often a feature came with each kind of signal, and so how much it
+/// lifts an article (worked out once, after learning).
 #[derive(Debug, Clone, Copy, Default)]
 struct Seen {
     interested: u32,
     skipped: u32,
+    lift: f64,
 }
 
 /// What signals taught, ready to score articles.
@@ -70,6 +72,9 @@ impl Model {
                 count(model.words.entry(word).or_default());
             }
         }
+        let lift = |seen: &mut Seen| seen.lift = model_lift(model.interested, model.skipped, *seen);
+        model.sources.values_mut().for_each(lift);
+        model.words.values_mut().for_each(lift);
         model
     }
 
@@ -78,36 +83,38 @@ impl Model {
         self.interested + self.skipped == 0
     }
 
-    /// How a feature seen `seen` times moves the odds of interest: the log
-    /// of its likelihood among interested signals over its likelihood
-    /// among skipped ones, each smoothed by one of each.
-    fn lift(&self, seen: Seen) -> f64 {
-        let given = |n: u32, of: u32| (f64::from(n) + 1.0) / (f64::from(of) + 2.0);
-        (given(seen.interested, self.interested) / given(seen.skipped, self.skipped)).ln()
-    }
-
     /// The features of an article that some signal had, with their lift.
     fn features(&self, source_id: i64, title: &str) -> Vec<(Reason, Seen, f64)> {
         let source = self
             .sources
             .get(&source_id)
-            .map(|&seen| (Reason::Source(source_id), seen, self.lift(seen)));
+            .map(|&seen| (Reason::Source(source_id), seen, seen.lift));
         let words = story::words(title).into_iter().filter_map(|word| {
             let seen = *self.words.get(&word)?;
-            Some((Reason::Word(word), seen, self.lift(seen)))
+            Some((Reason::Word(word), seen, seen.lift))
         });
         source.into_iter().chain(words).collect()
     }
 
     /// Higher is likelier to interest you; 0 is no evidence either way.
+    /// The same sum as over [`features`](Self::features), without making
+    /// them: it runs for every row of the list.
     pub fn score(&self, source_id: i64, title: &str) -> f64 {
         if self.is_empty() {
             return 0.0;
         }
-        self.features(source_id, title)
-            .iter()
-            .map(|(_, _, lift)| lift)
-            .sum()
+        let source = self.sources.get(&source_id).map_or(0.0, |s| s.lift);
+        let mut counted: Vec<&String> = Vec::new();
+        let mut lowered = String::new();
+        let words: f64 = story::each_word(title, &mut lowered, |word| {
+            let (key, &seen) = self.words.get_key_value(word)?;
+            if counted.contains(&key) {
+                return None;
+            }
+            counted.push(key);
+            Some(seen.lift)
+        });
+        source + words
     }
 
     /// The feature that lifted an article most, when it lifted it enough
@@ -136,6 +143,15 @@ impl Model {
         scored.sort_by(|a, b| b.0.total_cmp(&a.0));
         items.extend(scored.into_iter().map(|(_, item)| item));
     }
+}
+
+/// How a feature seen `seen` times moves the odds of interest, out of
+/// `interested` and `skipped` signals: the log of its likelihood among the
+/// interested over its likelihood among the skipped, each smoothed by one
+/// of each.
+fn model_lift(interested: u32, skipped: u32, seen: Seen) -> f64 {
+    let given = |n: u32, of: u32| (f64::from(n) + 1.0) / (f64::from(of) + 2.0);
+    (given(seen.interested, interested) / given(seen.skipped, skipped)).ln()
 }
 
 #[cfg(test)]
@@ -180,6 +196,30 @@ mod tests {
             Some(Reason::Source(1))
         );
         assert_eq!(model.reason(2, "Something else entirely"), None);
+    }
+
+    /// `score` skips making the features; it must add up the same.
+    #[test]
+    fn a_score_is_the_sum_of_its_features_lifts() {
+        let model = Model::learn(&[
+            signal(1, "Rust compiler speeds up", true),
+            signal(2, "Rust editions explained", true),
+            signal(2, "ΟΔΟΣ closed for the Rust summit", true),
+            signal(3, "Election results tonight", false),
+        ]);
+        for (source, title) in [
+            (2, "Rust, rust and RUST: the compiler"),
+            (3, "Election night: ΟΔΟΣ closed"),
+            (9, "Nothing anyone has seen"),
+        ] {
+            let sum: f64 = model
+                .features(source, title)
+                .iter()
+                .map(|(_, _, lift)| lift)
+                .sum();
+            assert!((model.score(source, title) - sum).abs() < 1e-12, "{title}");
+        }
+        assert!(model.score(9, "Nothing anyone has seen") == 0.0);
     }
 
     #[test]

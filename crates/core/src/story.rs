@@ -50,6 +50,31 @@ pub fn words(title: &str) -> Vec<String> {
     words
 }
 
+/// Sums `f` over a headline's [`words`] (repeats included), each lowered
+/// into `buffer` instead of a string of its own: for code that runs over
+/// every article.
+pub fn each_word(title: &str, buffer: &mut String, mut f: impl FnMut(&str) -> Option<f64>) -> f64 {
+    let mut sum = 0.0;
+    for word in title.split(|c: char| !c.is_alphanumeric()) {
+        if word.chars().count() < 2 || !word.chars().all(char::is_alphabetic) {
+            continue;
+        }
+        buffer.clear();
+        if word.is_ascii() {
+            buffer.push_str(word);
+            buffer.make_ascii_lowercase();
+        } else {
+            // As `words` lowers it, final sigma and all.
+            buffer.push_str(&word.to_lowercase());
+        }
+        if STOP.contains(&buffer.as_str()) {
+            continue;
+        }
+        sum += f(buffer).unwrap_or(0.0);
+    }
+    sum
+}
+
 /// A headline's [`words`], or none when fewer than [`MIN_WORDS`] are left.
 pub fn shingles(title: &str) -> Vec<String> {
     let mut words = words(title);

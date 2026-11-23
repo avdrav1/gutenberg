@@ -272,9 +272,13 @@ struct App {
     /// Whether the list is in the interesting order (`i`); kept in the
     /// store as [`ORDER_SETTING`].
     interesting: bool,
-    /// What your signals taught, as of the last reload in the interesting
+    /// What your signals taught, learned at a reload in the interesting
     /// order; empty otherwise.
     interest: interest::Model,
+    /// Whether a signal has been recorded since `interest` was learned, so
+    /// the next reload in the interesting order learns again. A refresh
+    /// records none.
+    interest_stale: bool,
     source_titles: HashMap<i64, String>,
     /// Keyword alerts, whose rows name the publisher (the article's author).
     keyword_sources: HashSet<i64>,
@@ -749,6 +753,7 @@ impl App {
             data_version: 0,
             interesting: false,
             interest: interest::Model::default(),
+            interest_stale: true,
             selected: 0,
             top: 0,
             height: 768.0,
@@ -886,11 +891,15 @@ impl App {
                 };
                 self.source_errors = errors;
                 self.rows = rows;
-                self.interest = interest::Model::default();
                 if self.interesting && self.search.is_none() {
-                    match store.signals() {
-                        Ok(signals) => self.interest = interest::Model::learn(&signals),
-                        Err(e) => eprintln!("gutenberg: reading what you opened: {e}"),
+                    if self.interest_stale {
+                        match store.signals() {
+                            Ok(signals) => {
+                                self.interest = interest::Model::learn(&signals);
+                                self.interest_stale = false;
+                            }
+                            Err(e) => eprintln!("gutenberg: reading what you opened: {e}"),
+                        }
                     }
                     self.interest
                         .order(&mut self.rows, |row| (row.source_id, row.title.as_str()));
@@ -1010,6 +1019,7 @@ impl App {
                             eprintln!("gutenberg: recording an opened article: {e}");
                         }
                     }
+                    self.interest_stale = true;
                     open_in_browser(&url);
                 }
             }
@@ -1583,6 +1593,7 @@ impl App {
         let (Ok(store), Some(row)) = (&self.store, self.rows.get(self.selected)) else {
             return;
         };
+        self.interest_stale = true;
         if let Err(e) = store.set_starred(row.id, !row.starred) {
             eprintln!("gutenberg: starring: {e}");
         }
@@ -1597,6 +1608,7 @@ impl App {
         };
         // Marked read without opening: a skip, unless it was opened. Marked
         // unread: not passed over after all.
+        self.interest_stale = true;
         let signal = if row.read {
             store.forget_story_skipped(row.story_id)
         } else {
@@ -1615,6 +1627,8 @@ impl App {
     /// kept for the next launch.
     fn toggle_interesting(&mut self) {
         self.interesting = !self.interesting;
+        // Deleting a feed takes its signals with it; learn afresh.
+        self.interest_stale = true;
         if let Ok(store) = &self.store {
             let kept = if self.interesting {
                 store.set_setting(ORDER_SETTING, "interesting")
@@ -1644,6 +1658,7 @@ impl App {
     /// becomes read.
     fn mark_chosen_read(&mut self) {
         let Ok(store) = &self.store else { return };
+        self.interest_stale = true;
         if let Err(e) = store.record_skipped_in(self.filter, self.view, unix_now()) {
             eprintln!("gutenberg: recording skipped articles: {e}");
         }
@@ -1754,6 +1769,7 @@ impl App {
                 eprintln!("gutenberg: recording an opened article: {e}");
             }
         }
+        self.interest_stale = true;
         if !row.read {
             if let Ok(store) = &self.store {
                 match store.set_story_read(row.story_id, true) {
@@ -3237,6 +3253,34 @@ pub mod bench {
             let mut app = App::with_store(Config::default(), None, Ok(store), None);
             app.height = height;
             Self(app)
+        }
+
+        /// [`new`](Self::new) in the interesting order, having opened every
+        /// tenth article and skipped every third of the rest, so the
+        /// model knows every headline's words and each row has a reason.
+        pub fn interesting(articles: usize, height: f32) -> Self {
+            let mut fixture = Self::new(articles, height);
+            let app = &mut fixture.0;
+            if let Ok(store) = &app.store {
+                for (i, row) in app.rows.iter().enumerate() {
+                    if i % 10 == 0 {
+                        store.record_opened(row.id, 1).expect("opened");
+                    } else if i % 3 == 0 {
+                        store
+                            .record_story_skipped(row.story_id, 1)
+                            .expect("skipped");
+                    }
+                }
+            }
+            app.toggle_interesting();
+            fixture
+        }
+
+        /// Reads the store and orders the list again, as a refresh that
+        /// brings articles does.
+        pub fn reload(&mut self) {
+            self.0.reload();
+            std::hint::black_box(&self.0.rows);
         }
 
         /// Scrolls one row, as a frame of the scroll bench does, and builds
