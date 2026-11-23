@@ -221,6 +221,9 @@ quiet = "22:00-07:00"     # local time; none by default
 breaking_in = ["World"]   # sources' titles or folders' names; none by default
 breaking_sources = 5      # outlets that make a story breaking
 breaking_minutes = 60     # within this many minutes</pre>
+  <p>Notifications come from refreshes, so with the window closed they need something else to refresh. The installer adds a systemd timer for that, every 15 minutes, and leaves it off; turn it on with:</p>
+  <pre class="block">systemctl --user enable --now gutenberg-refresh.timer</pre>
+  <p>With the window open the timer hands the refresh to it. With the window closed, Open on a notification starts Gutenberg on that article, for as long as the notification is up (at most 10 minutes).</p>
   <p>Share (<code>p</code>) opens a picker of X, Bluesky, Facebook and LinkedIn, then a comment, then the site's composer in your browser. <code>[[share]]</code> picks which sites, in what order, and adds any site that takes a share URL: <code>{url}</code>, <code>{title}</code> and <code>{text}</code> in the template become the article's link, its title and your comment.</p>
   <pre class="block"># Share (p): the picker shows these in this order. Without any, it shows
 # X, Bluesky, Facebook and LinkedIn.
