@@ -4,6 +4,7 @@ pub mod cache;
 pub mod catalog;
 pub mod config;
 pub mod favicon;
+pub mod interest;
 pub mod ipc;
 pub mod keyword;
 pub mod lock;

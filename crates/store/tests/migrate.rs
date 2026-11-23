@@ -189,7 +189,8 @@ fn a_version_3_file_upgrades_with_its_articles_ungrouped() {
         // setting table.
         let raw = Connection::open(&path).unwrap();
         raw.execute_batch(
-            "DROP TABLE notified;
+            "DROP TABLE signal;
+             DROP TABLE notified;
              DROP TABLE setting;
              DROP INDEX article_by_story;
              DROP INDEX article_ungrouped;
@@ -222,8 +223,10 @@ fn a_version_4_file_upgrades_and_can_hold_settings() {
     {
         // Back to the file 0.26.0 left: schema 4, no setting table.
         let raw = Connection::open(&path).unwrap();
-        raw.execute_batch("DROP TABLE notified; DROP TABLE setting; PRAGMA user_version = 4;")
-            .unwrap();
+        raw.execute_batch(
+            "DROP TABLE signal; DROP TABLE notified; DROP TABLE setting; PRAGMA user_version = 4;",
+        )
+        .unwrap();
     }
     let store = Store::open(&path).unwrap();
     assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
@@ -247,7 +250,7 @@ fn a_version_5_file_upgrades_and_can_record_notices() {
     {
         // Back to the file 0.33.0 left: schema 5, no notified table.
         let raw = Connection::open(&path).unwrap();
-        raw.execute_batch("DROP TABLE notified; PRAGMA user_version = 5;")
+        raw.execute_batch("DROP TABLE signal; DROP TABLE notified; PRAGMA user_version = 5;")
             .unwrap();
     }
     let mut store = Store::open(&path).unwrap();
@@ -267,4 +270,29 @@ fn a_version_5_file_upgrades_and_can_record_notices() {
         .unwrap();
     assert_eq!(store.held_notices().unwrap().len(), 1);
     assert!(store.story_noticed(row.story_id).unwrap());
+}
+
+/// S10.4: a file from 0.36.0 (schema 6) gains the signal table, empty,
+/// and keeps its articles.
+#[test]
+fn a_version_6_file_upgrades_and_can_record_signals() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("gutenberg.db");
+    {
+        let mut store = Store::open(&path).unwrap();
+        let source = store.add_source(&feed("https://a.example/feed")).unwrap();
+        store.insert_articles(&[article(source.id, "a")]).unwrap();
+    }
+    {
+        // Back to the file 0.36.0 left: schema 6, no signal table.
+        let raw = Connection::open(&path).unwrap();
+        raw.execute_batch("DROP TABLE signal; PRAGMA user_version = 6;")
+            .unwrap();
+    }
+    let store = Store::open(&path).unwrap();
+    assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
+    assert!(store.signals().unwrap().is_empty());
+    let row = &store.list_articles(None, 10).unwrap()[0];
+    store.record_opened(row.id, 10).unwrap();
+    assert_eq!(store.signals().unwrap().len(), 1);
 }

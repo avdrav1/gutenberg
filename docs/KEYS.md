@@ -18,6 +18,7 @@ The bar along the bottom of the window shows the keys for what's on screen; `hin
 | `r` | refresh the folder or feed chosen in the sources pane now, even one waiting to retry after a failure (all feeds chosen: same as `R`); `R` refreshes every feed that's due. The bar along the top of the list shows it running | any |
 | `d` | delete the feed, keyword alert or MCP server chosen in the sources pane, with its articles (starred ones too); it asks first, naming the feed and how many articles go. Nothing happens with a folder or all feeds chosen | any |
 | `u` / `S` / `t` / `A` | view unread only / starred / today's (published since midnight) / all; keeps the chosen folder or feed | any |
+| `i` | interesting first: the list ordered by what you open and star (for) and mark read without opening (against), learned from their headlines' words and their feeds; the selected row, and any under the pointer, says why ("you read a lot from LWN"). Again for newest first. Kept for the next launch; a search keeps its own order | any |
 | `T` | the chosen MCP server's tools, to pick the one its refresh calls; again for its articles | list |
 | `K` | type the key the chosen MCP server needs (such as `JINA_API_KEY`); it's saved in your keyring | list |
 | `a` | add sources (the catalog) | any |

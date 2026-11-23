@@ -34,6 +34,10 @@ const MIGRATIONS: &[Migration] = &[
         sql: include_str!("../migrations/0006_notified.sql"),
         then: None,
     },
+    Migration {
+        sql: include_str!("../migrations/0007_signal.sql"),
+        then: None,
+    },
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;
