@@ -45,6 +45,8 @@ pub enum Action {
     ClearSearch,
     /// Narrows the chosen folder or feed to a view.
     View(View),
+    /// Orders the list most interesting first, or newest first again.
+    Interesting,
     /// Shows the chosen MCP server's tools, to pick the one its refresh
     /// calls, or its articles again.
     Tools,
@@ -101,6 +103,7 @@ pub fn action_for(key: &Key, modifiers: Modifiers, pending_g: bool) -> Option<Ac
         Key::Character("u") => Some(Action::View(View::Unread)),
         Key::Character("S") => Some(Action::View(View::Starred)),
         Key::Character("t") => Some(Action::View(View::Today)),
+        Key::Character("i") => Some(Action::Interesting),
         Key::Character("T") => Some(Action::Tools),
         Key::Character("K") => Some(Action::EnterKey),
         Key::Character("<") => Some(Action::NarrowPane),

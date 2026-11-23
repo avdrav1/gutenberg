@@ -21,6 +21,7 @@ use std::time::{Duration, Instant};
 use gutenberg_core::catalog;
 use gutenberg_core::config::{self, Arrangement, Config};
 use gutenberg_core::favicon::Icons;
+use gutenberg_core::interest::{self, Reason};
 use gutenberg_core::sync::{unix_now, Pick, Status};
 use gutenberg_core::web::{self, Answer, Web};
 use gutenberg_core::{ipc, keyword, mcp, secrets};
@@ -47,6 +48,9 @@ use sidebar::{Entry, Move, Step};
 
 /// Most articles kept in the list; the PRD plans for 100k.
 const LIST_LIMIT: u32 = 100_000;
+/// The list's order in the store's settings: `interesting`, or absent for
+/// newest first.
+const ORDER_SETTING: &str = "list.order";
 /// How often to look for writes from the refresh thread or a terminal.
 const STORE_POLL: Duration = Duration::from_secs(1);
 /// How often the refresh's progress is read while one runs.
@@ -262,8 +266,15 @@ struct App {
     view: View,
     /// Articles in each view across every feed, for the view rows.
     view_counts: ViewCounts,
-    /// What the store held at the last reload, newest first.
+    /// What the store held at the last reload, newest first, or most
+    /// interesting first when `interesting` is on.
     rows: Vec<ArticleRow>,
+    /// Whether the list is in the interesting order (`i`); kept in the
+    /// store as [`ORDER_SETTING`].
+    interesting: bool,
+    /// What your signals taught, as of the last reload in the interesting
+    /// order; empty otherwise.
+    interest: interest::Model,
     source_titles: HashMap<i64, String>,
     /// Keyword alerts, whose rows name the publisher (the article's author).
     keyword_sources: HashSet<i64>,
@@ -736,6 +747,8 @@ impl App {
             unread: HashMap::new(),
             drag: None,
             data_version: 0,
+            interesting: false,
+            interest: interest::Model::default(),
             selected: 0,
             top: 0,
             height: 768.0,
@@ -767,6 +780,7 @@ impl App {
             search: None,
         };
         app.load_layout();
+        app.interesting = read_setting(&app.store, ORDER_SETTING).as_deref() == Some("interesting");
         app.reload();
         // First run: nothing to read yet, so start by picking sources.
         if app.store.is_ok() && app.sources.is_empty() && app.bench.is_none() {
@@ -872,6 +886,15 @@ impl App {
                 };
                 self.source_errors = errors;
                 self.rows = rows;
+                self.interest = interest::Model::default();
+                if self.interesting && self.search.is_none() {
+                    match store.signals() {
+                        Ok(signals) => self.interest = interest::Model::learn(&signals),
+                        Err(e) => eprintln!("gutenberg: reading what you opened: {e}"),
+                    }
+                    self.interest
+                        .order(&mut self.rows, |row| (row.source_id, row.title.as_str()));
+                }
                 self.source_titles = sources.iter().map(|s| (s.id, s.title.clone())).collect();
                 self.keyword_sources = sources
                     .iter()
@@ -976,11 +999,17 @@ impl App {
             Message::Key(Action::Star) => self.toggle_star(),
             Message::Key(Action::ToggleRead) => self.toggle_read(),
             Message::Key(Action::MarkFolderRead) => self.mark_chosen_read(),
+            Message::Key(Action::Interesting) => self.toggle_interesting(),
             Message::Key(Action::Refresh) => self.refresh(self.refresh_pick()),
             Message::Key(Action::RefreshAll) => self.refresh(Pick::Due),
             Message::Key(Action::DeleteSource) => self.ask_to_delete(),
             Message::Key(Action::OpenInBrowser) => {
                 if let Some(url) = self.selected_link() {
+                    if let (Ok(store), Some(row)) = (&self.store, self.rows.get(self.selected)) {
+                        if let Err(e) = store.record_opened(row.id, unix_now()) {
+                            eprintln!("gutenberg: recording an opened article: {e}");
+                        }
+                    }
                     open_in_browser(&url);
                 }
             }
@@ -1566,16 +1595,58 @@ impl App {
         let (Ok(store), Some(row)) = (&self.store, self.rows.get(self.selected)) else {
             return;
         };
+        // Marked read without opening: a skip, unless it was opened. Marked
+        // unread: not passed over after all.
+        let signal = if row.read {
+            store.forget_story_skipped(row.story_id)
+        } else {
+            store.record_story_skipped(row.story_id, unix_now())
+        };
+        if let Err(e) = signal {
+            eprintln!("gutenberg: recording a skipped article: {e}");
+        }
         if let Err(e) = store.set_story_read(row.story_id, !row.read) {
             eprintln!("gutenberg: marking read: {e}");
         }
         self.reload();
     }
 
+    /// `i`: most interesting first, or newest first again; the choice is
+    /// kept for the next launch.
+    fn toggle_interesting(&mut self) {
+        self.interesting = !self.interesting;
+        if let Ok(store) = &self.store {
+            let kept = if self.interesting {
+                store.set_setting(ORDER_SETTING, "interesting")
+            } else {
+                store.unset_setting(ORDER_SETTING)
+            };
+            if let Err(e) = kept {
+                eprintln!("gutenberg: keeping the list's order: {e}");
+            }
+        }
+        self.show_from_top();
+    }
+
+    /// Why the interesting order lifted an article, as its reason line
+    /// says it; nothing in the newest-first order.
+    fn reason(&self, row: &ArticleRow) -> Option<String> {
+        if !self.interesting || self.search.is_some() {
+            return None;
+        }
+        Some(match self.interest.reason(row.source_id, &row.title)? {
+            Reason::Source(id) => format!("you read a lot from {}", self.source_titles.get(&id)?),
+            Reason::Word(word) => format!("you open headlines with “{word}”"),
+        })
+    }
+
     /// Everything the list shows for the chosen folder or feed and view
     /// becomes read.
     fn mark_chosen_read(&mut self) {
         let Ok(store) = &self.store else { return };
+        if let Err(e) = store.record_skipped_in(self.filter, self.view, unix_now()) {
+            eprintln!("gutenberg: recording skipped articles: {e}");
+        }
         if let Err(e) = store.mark_read_in(self.filter, self.view) {
             eprintln!("gutenberg: marking read: {e}");
         }
@@ -1678,6 +1749,11 @@ impl App {
         let Some(row) = self.rows.get_mut(i) else {
             return;
         };
+        if let Ok(store) = &self.store {
+            if let Err(e) = store.record_opened(row.id, unix_now()) {
+                eprintln!("gutenberg: recording an opened article: {e}");
+            }
+        }
         if !row.read {
             if let Ok(store) = &self.store {
                 match store.set_story_read(row.story_id, true) {
@@ -2972,6 +3048,19 @@ impl App {
             ]
             .spacing(4)
         });
+        let reason = self.reason(row);
+        // The selected row says why it's here, for the keys; any row says
+        // it under the pointer.
+        let reason_meta = reason.as_ref().filter(|_| selected).map(|reason| {
+            row![
+                text("·").size(12).color(color(t.muted)),
+                text(reason.clone())
+                    .size(12)
+                    .color(color(t.accent))
+                    .wrapping(text::Wrapping::None),
+            ]
+            .spacing(4)
+        });
         let meta = Row::new()
             .push(
                 row.starred
@@ -2979,9 +3068,10 @@ impl App {
             )
             .push(meta)
             .push(sources)
+            .push(reason_meta)
             .spacing(4);
         let background = selected.then(|| color(t.selection).into());
-        mouse_area(
+        let row_element: Element<'a, Message> = mouse_area(
             container(column![title, meta].spacing(4))
                 .padding([8, 12])
                 .width(Length::Fill)
@@ -2993,7 +3083,29 @@ impl App {
                 }),
         )
         .on_press(Message::Click(i))
-        .into()
+        .into();
+        match reason {
+            None => row_element,
+            Some(reason) => {
+                let (fg, bg, border) = (t.foreground, t.lighter_background, t.border);
+                iced::widget::tooltip(
+                    row_element,
+                    container(text(reason).size(12).color(color(fg)))
+                        .padding([4, 8])
+                        .style(move |_| container::Style {
+                            background: Some(color(bg).into()),
+                            border: Border {
+                                color: color(border),
+                                width: 1.0,
+                                radius: 4.0.into(),
+                            },
+                            ..Default::default()
+                        }),
+                    iced::widget::tooltip::Position::Bottom,
+                )
+                .into()
+            }
+        }
     }
 
     fn article_view(&self) -> Element<'_, Message> {
@@ -5879,6 +5991,143 @@ mod tests {
         };
         assert_eq!(picker.destinations, Destination::BUILT_IN.to_vec());
         let _ = app.view();
+    }
+
+    /// LWN's articles and Sport's, alternating, newest first: l3 s3 l2 s2
+    /// l1 s1.
+    fn app_with_lwn_and_sport() -> App {
+        let mut store = Store::open_in_memory().unwrap();
+        let add = |store: &Store, name: &str| {
+            store
+                .add_source(&NewSource {
+                    folder_id: None,
+                    kind: SourceKind::Feed,
+                    title: name.into(),
+                    url: Some(format!("https://{name}.example/feed")),
+                    config: "{}".into(),
+                })
+                .unwrap()
+                .id
+        };
+        let (lwn, sport) = (add(&store, "LWN"), add(&store, "Sport"));
+        let article = |source_id, guid: &str, at| NewArticle {
+            source_id,
+            guid: guid.into(),
+            url: Some(format!("https://site.example/{guid}")),
+            title: guid.into(),
+            author: None,
+            summary_html: None,
+            published_at: Some(at),
+            fetched_at: 1,
+        };
+        store
+            .insert_articles(&[
+                article(lwn, "l3", 60),
+                article(sport, "s3", 50),
+                article(lwn, "l2", 40),
+                article(sport, "s2", 30),
+                article(lwn, "l1", 20),
+                article(sport, "s1", 10),
+            ])
+            .unwrap();
+        let mut app = App::with_store(Config::default(), None, Ok(store), None);
+        app.height = 520.0 + HINT_BAR;
+        app
+    }
+
+    fn select_titled(app: &mut App, title: &str) {
+        let i = app.rows.iter().position(|r| r.title == title).unwrap();
+        let _ = app.update(Message::Key(Action::First));
+        for _ in 0..i {
+            let _ = app.update(Message::Key(Action::Down));
+        }
+    }
+
+    #[test]
+    fn i_orders_by_what_you_open_and_skip_and_says_why() {
+        let mut app = app_with_lwn_and_sport();
+        // With nothing learned, the interesting order is the newest first.
+        let _ = app.update(Message::Key(Action::Interesting));
+        assert_eq!(titles(&app), ["l3", "s3", "l2", "s2", "l1", "s1"]);
+        let _ = app.update(Message::Key(Action::Interesting));
+
+        // Open two of LWN's (one in the browser), mark two of Sport's read
+        // unopened.
+        select_titled(&mut app, "l2");
+        let _ = app.update(Message::Key(Action::Open));
+        select_titled(&mut app, "l1");
+        let _ = app.update(Message::Key(Action::OpenInBrowser));
+        for title in ["s3", "s2"] {
+            select_titled(&mut app, title);
+            let _ = app.update(Message::Key(Action::ToggleRead));
+        }
+        let signals = app.store.as_ref().unwrap().signals().unwrap();
+        assert_eq!(signals.iter().filter(|s| s.interested).count(), 2);
+        assert_eq!(signals.iter().filter(|s| !s.interested).count(), 2);
+        assert!(
+            app.reason(&app.rows[0]).is_none(),
+            "newest first says nothing"
+        );
+
+        let _ = app.update(Message::Key(Action::Interesting));
+        assert_eq!(titles(&app), ["l3", "l2", "l1", "s3", "s2", "s1"]);
+        assert_eq!(app.selected, 0);
+        assert_eq!(
+            app.reason(&app.rows[0]).as_deref(),
+            Some("you read a lot from LWN")
+        );
+        assert!(app.reason(&app.rows[3]).is_none());
+        assert_eq!(
+            read_setting(&app.store, ORDER_SETTING).as_deref(),
+            Some("interesting")
+        );
+        let _ = app.view();
+
+        // A search keeps its own order and says nothing.
+        app.search = Some(Search {
+            query: "l3".into(),
+            editing: false,
+        });
+        app.reload();
+        assert_eq!(titles(&app), ["l3"]);
+        assert!(app.reason(&app.rows[0]).is_none());
+        let _ = app.update(Message::Key(Action::ClearSearch));
+        assert_eq!(titles(&app)[..3], ["l3", "l2", "l1"]);
+
+        // And back to newest first, which the next launch keeps too.
+        let _ = app.update(Message::Key(Action::Interesting));
+        assert_eq!(titles(&app), ["l3", "s3", "l2", "s2", "l1", "s1"]);
+        assert_eq!(read_setting(&app.store, ORDER_SETTING), None);
+    }
+
+    #[test]
+    fn the_interesting_order_comes_back_at_the_next_launch() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("gutenberg.db");
+        let store = Store::open(&path).unwrap();
+        store.set_setting(ORDER_SETTING, "interesting").unwrap();
+        drop(store);
+        let app = App::with_store(
+            Config::default(),
+            None,
+            Ok(Store::open(&path).unwrap()),
+            None,
+        );
+        assert!(app.interesting);
+    }
+
+    #[test]
+    fn marking_unread_takes_a_skip_back_and_m_on_a_feed_skips_it_all() {
+        let mut app = app_with_lwn_and_sport();
+        select_titled(&mut app, "s3");
+        let _ = app.update(Message::Key(Action::ToggleRead));
+        let _ = app.update(Message::Key(Action::ToggleRead));
+        assert!(app.store.as_ref().unwrap().signals().unwrap().is_empty());
+
+        let _ = app.update(Message::Key(Action::MarkFolderRead));
+        let signals = app.store.as_ref().unwrap().signals().unwrap();
+        assert_eq!(signals.len(), 6);
+        assert!(signals.iter().all(|s| !s.interested));
     }
 
     fn stored(app: &App, id: i64) -> ArticleRow {
