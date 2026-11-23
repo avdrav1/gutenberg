@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.36.0 — 2026-11-23
+
 - Notifications with the window closed: the installer adds a timer that refreshes every 15 minutes, off until you turn it on with `systemctl --user enable --now gutenberg-refresh.timer`. Notify rules and breaking stories then pop up even when Gutenberg isn't open, and Open on the notification starts the window on that article. With the window open, the timer leaves the refreshing to it.
 - `gutenberg --open <id>` shows an article in the open window, or starts the window on it.
 
