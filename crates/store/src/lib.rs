@@ -22,7 +22,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 pub use migrate::LATEST as SCHEMA_VERSION;
 pub use model::{
     Arrival, ArticleKey, ArticleRow, DueSource, FetchState, Filter, Folder, NewArticle, NewSource,
-    Notice, NoticeState, Source, SourceKind, SourceTarget, StoryArticle, StoryCandidate,
+    Notice, NoticeState, Signal, Source, SourceKind, SourceTarget, StoryArticle, StoryCandidate,
     Validators, View, ViewCounts,
 };
 pub use text::plain;
@@ -883,6 +883,86 @@ impl Store {
             params![article_id, url],
         )?;
         Ok(())
+    }
+
+    /// Records that you opened an article at `at`, in the window or the
+    /// browser. The first opening is kept; opening wins over a skip.
+    pub fn record_opened(&self, article_id: i64, at: i64) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO signal (article_id, opened_at) VALUES (?1, ?2)
+             ON CONFLICT (article_id) DO UPDATE
+             SET opened_at = COALESCE(opened_at, excluded.opened_at)",
+            params![article_id, at],
+        )?;
+        Ok(())
+    }
+
+    /// Records a skip for each unread article of a story, about to be
+    /// marked read without being opened. Opened ones are left alone.
+    pub fn record_story_skipped(&self, story_id: i64, at: i64) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO signal (article_id, skipped_at)
+             SELECT id, ?2 FROM article
+             WHERE (story_id = ?1 OR (story_id IS NULL AND id = ?1)) AND read = 0
+             ON CONFLICT (article_id) DO UPDATE
+             SET skipped_at = COALESCE(skipped_at, excluded.skipped_at)",
+            params![story_id, at],
+        )?;
+        Ok(())
+    }
+
+    /// Takes back a story's skips: you marked it unread again, so it
+    /// wasn't one you passed over.
+    pub fn forget_story_skipped(&self, story_id: i64) -> Result<()> {
+        self.conn.execute(
+            "UPDATE signal SET skipped_at = NULL
+             WHERE article_id IN
+               (SELECT id FROM article WHERE story_id = ?1 OR (story_id IS NULL AND id = ?1))",
+            [story_id],
+        )?;
+        self.conn.execute(
+            "DELETE FROM signal WHERE opened_at IS NULL AND skipped_at IS NULL",
+            [],
+        )?;
+        Ok(())
+    }
+
+    /// Records a skip for every article [`mark_read_in`](Self::mark_read_in)
+    /// is about to mark read, for the same filter and view.
+    pub fn record_skipped_in(&self, filter: Filter, view: View, at: i64) -> Result<()> {
+        let (source, folder, view) = in_view(filter, view);
+        self.conn.execute(
+            concat!(
+                "INSERT INTO signal (article_id, skipped_at)
+                 SELECT id, ?4 FROM article WHERE read = 0 AND (",
+                in_view_sql!(),
+                " OR story_id IN (SELECT story_id FROM article WHERE story_id IS NOT NULL AND ",
+                in_view_sql!(),
+                "))
+                 ON CONFLICT (article_id) DO UPDATE
+                 SET skipped_at = COALESCE(skipped_at, excluded.skipped_at)"
+            ),
+            params![source, folder, view, at],
+        )?;
+        Ok(())
+    }
+
+    /// Everything learned interest learns from: each article you opened,
+    /// starred, or marked read without opening.
+    pub fn signals(&self) -> Result<Vec<Signal>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT a.source_id, a.title, a.starred = 1 OR s.opened_at IS NOT NULL
+             FROM article a LEFT JOIN signal s ON s.article_id = a.id
+             WHERE a.starred = 1 OR s.article_id IS NOT NULL",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(Signal {
+                source_id: row.get(0)?,
+                title: row.get(1)?,
+                interested: row.get(2)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
     /// Marks every unread article the filter and view show as read, and

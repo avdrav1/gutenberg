@@ -108,6 +108,16 @@ pub struct StoryCandidate {
     pub story_id: Option<i64>,
 }
 
+/// What you did with an article, as learned interest (S10.4) learns
+/// from it: from [`Store::signals`](crate::Store::signals).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Signal {
+    pub source_id: i64,
+    pub title: String,
+    /// Opened or starred; otherwise marked read without opening.
+    pub interested: bool,
+}
+
 /// An article a `notify` rule matched, as its notification shows it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Notice {
