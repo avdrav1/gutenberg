@@ -34,7 +34,7 @@ use std::collections::HashSet;
 #[cfg(target_os = "linux")]
 mod desktop;
 #[cfg(target_os = "linux")]
-pub use desktop::Desktop;
+pub use desktop::{Desktop, Event};
 
 use gutenberg_store::{Notice, NoticeState, Store, StoryArticle};
 

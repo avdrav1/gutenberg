@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Notifications with the window closed: the installer adds a timer that refreshes every 15 minutes, off until you turn it on with `systemctl --user enable --now gutenberg-refresh.timer`. Notify rules and breaking stories then pop up even when Gutenberg isn't open, and Open on the notification starts the window on that article. With the window open, the timer leaves the refreshing to it.
+- `gutenberg --open <id>` shows an article in the open window, or starts the window on it.
+
 ## 0.35.0 — 2026-11-22
 
 - Breaking stories: name a source or folder in `breaking_in` under `[notify]`, and a story that five outlets carry within an hour, one of them there, pops up a notification saying how many outlets and how fast. As more pick it up the same notification updates ("now 8 outlets") rather than adding another. `breaking_sources` and `breaking_minutes` change the five and the hour.

@@ -3,6 +3,7 @@ mod crash;
 mod key;
 mod keyword;
 mod mcp;
+mod open;
 mod opml;
 mod refresh;
 mod unread;
@@ -14,19 +15,28 @@ use gutenberg_core::config::Config;
 use gutenberg_core::ipc;
 use gutenberg_core::sync::{Limits, Refresher};
 
+/// `config.toml` for a command-line run, or the defaults (no rules) if it
+/// can't be read.
+fn config() -> Config {
+    match Config::default_path().as_deref().map(Config::load) {
+        Some(Ok(config)) => config,
+        Some(Err(err)) => {
+            eprintln!("gutenberg: {err}; using defaults, no rules applied");
+            Config::default()
+        }
+        None => Config::default(),
+    }
+}
+
 /// How a refresh from the command line runs: with the rules in
 /// `config.toml`, or none if it can't be read.
 fn limits() -> Limits {
-    let rules = match Config::default_path().as_deref().map(Config::load) {
-        Some(Ok(config)) => config.rules,
-        Some(Err(err)) => {
-            eprintln!("gutenberg: {err}; no rules applied");
-            Vec::new()
-        }
-        None => Vec::new(),
-    };
+    limits_from(&config())
+}
+
+fn limits_from(config: &Config) -> Limits {
     Limits {
-        rules: gutenberg_core::rules::Rules::new(&rules),
+        rules: gutenberg_core::rules::Rules::new(&config.rules),
         ..Limits::default()
     }
 }
@@ -81,6 +91,16 @@ fn main() -> std::process::ExitCode {
         }
         Some("--export") if std::env::args().len() == 2 => return opml::export(),
         Some("--refresh") => return refresh::run(),
+        Some("--open") => {
+            let rest: Vec<String> = std::env::args().skip(2).collect();
+            let Some(article) = open::parse(&rest) else {
+                return usage();
+            };
+            if let Some(done) = open::in_open_window(article) {
+                return done;
+            }
+            return window(Some(article));
+        }
         Some("--update") if std::env::args().len() == 2 => return update::run(),
         Some("--unread") => {
             let rest: Vec<String> = std::env::args().skip(2).collect();
@@ -94,6 +114,11 @@ fn main() -> std::process::ExitCode {
         Some(_) => return usage(),
         None => {}
     }
+    window(None)
+}
+
+/// The window, and with `open`, that article shown in it.
+fn window(open: Option<i64>) -> std::process::ExitCode {
     let config_path = Config::default_path();
     let config = match config_path.as_deref().map(Config::load) {
         Some(Ok(config)) => config,
@@ -104,12 +129,16 @@ fn main() -> std::process::ExitCode {
         None => Config::default(),
     };
     let (outbox, inbox) = gutenberg_ui::inbox();
+    if let Some(article) = open {
+        // Waits in the inbox until the window reads it.
+        outbox.send(ipc::Command::Open(article));
+    }
     let refresher = Arc::new(OnceLock::new());
     // One window: the socket is taken before anything else starts, and a
     // second launch asks the open window to come forward instead.
     let _listening = match listen(outbox, refresher.clone()) {
         Listening::Yes(listener) => Some(listener),
-        Listening::Elsewhere => return focus_open_window(),
+        Listening::Elsewhere => return to_open_window(open),
         Listening::No => None,
     };
     // Refresh runs on its own thread with its own store connection.
@@ -168,11 +197,13 @@ fn listen(outbox: gutenberg_ui::Outbox, refresher: Arc<OnceLock<Refresher>>) -> 
     }
 }
 
-/// A second launch: the open window comes forward, and this one exits.
-fn focus_open_window() -> std::process::ExitCode {
+/// A second launch: the open window comes forward (showing `open`, if
+/// asked), and this one exits.
+fn to_open_window(open: Option<i64>) -> std::process::ExitCode {
+    let command = open.map_or(ipc::Command::Focus, ipc::Command::Open);
     let sent = ipc::socket_path()
         .ok_or(ipc::Error::NotRunning)
-        .and_then(|path| ipc::send(&path, ipc::Command::Focus));
+        .and_then(|path| ipc::send(&path, command));
     match sent {
         Ok(_) => std::process::ExitCode::SUCCESS,
         Err(err) => {
@@ -184,7 +215,7 @@ fn focus_open_window() -> std::process::ExitCode {
 
 fn usage() -> std::process::ExitCode {
     eprintln!(
-        "usage: gutenberg [--version | --add <url> [--folder <name>] | --keyword <query> [--folder <name>] | --mcp <command or URL> [--tool <name> [--args <json>]] [--secret <NAME>] [--folder <name>] | --key <NAME> | --import <file.opml> | --export | --unread [--json] | --refresh | --reload-theme | --update]"
+        "usage: gutenberg [--version | --add <url> [--folder <name>] | --keyword <query> [--folder <name>] | --mcp <command or URL> [--tool <name> [--args <json>]] [--secret <NAME>] [--folder <name>] | --key <NAME> | --import <file.opml> | --export | --unread [--json] | --refresh | --open <article> | --reload-theme | --update]"
     );
     std::process::ExitCode::from(2)
 }

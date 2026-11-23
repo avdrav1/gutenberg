@@ -9,8 +9,11 @@
 # so app launchers list it; on Omarchy it also adds a theme-set and a font-set
 # hook, so an open window follows `omarchy theme set` and `omarchy font set`,
 # and a bar widget with the unread count (not placed on the bar; add it with
-# `omarchy bar`). On macOS it puts Gutenberg.app in ~/Applications, checked
-# the same way. Nothing else on the system is touched.
+# `omarchy bar`). With systemd it adds a user timer that refreshes every 15
+# minutes, so notifications come with the window closed, but leaves it off
+# and says how to turn it on. On macOS it puts Gutenberg.app in
+# ~/Applications, checked the same way. Nothing else on the system is
+# touched.
 #
 # Environment:
 #   GUTENBERG_VERSION      a release such as 0.1.0 (default: latest)
@@ -100,6 +103,7 @@ main() {
             install_desktop "$dir/gutenberg" "$tmp/gutenberg/share"
             install_hooks "$dir/gutenberg"
             install_bar_widget "$dir/gutenberg" "$tmp/gutenberg/share"
+            install_timer "$dir/gutenberg"
             ;;
         Darwin) install_app "$base" "$target" "$tmp" ;;
     esac
@@ -172,6 +176,58 @@ install_bar_widget() {
     path=$(printf '%s' "$1" | sed 's/[\\"]/\\&/g')
     sed "s|@GUTENBERG@|$(sed_escape "$path")|" "$plugin/Unread.qml" > "$target/Unread.qml"
     say "Added an unread count for the Omarchy bar; to show it: omarchy bar put gutenberg.unread"
+}
+
+# A systemd user timer that runs `gutenberg --refresh` every 15 minutes, so
+# notify rules and breaking stories pop up with the window closed. With a
+# window open the run hands off to it. The units are written but not
+# enabled: turning it on is the user's call. One already on stays on, and
+# picks up the new units.
+install_timer() {
+    command -v systemctl >/dev/null 2>&1 || return 0
+    case $1 in
+        *[\'\"\\]*)
+            say "No refresh timer: systemd won't run a program whose path has a quote or a backslash ($1)"
+            return 0
+            ;;
+    esac
+    units="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+    mkdir -p "$units"
+    {
+        printf '# Installed by Gutenberg'"'"'s install.sh.\n'
+        printf '[Unit]\n'
+        printf 'Description=Gutenberg: refresh feeds and notify\n'
+        printf 'Documentation=https://gutenbergapp.com/\n\n'
+        printf '[Service]\n'
+        printf 'Type=oneshot\n'
+        printf 'ExecStart=%s --refresh\n' "$(systemd_quote "$1")"
+        printf '# Open on a notification starts the window; it outlives this run.\n'
+        printf 'KillMode=process\n'
+    } > "$units/gutenberg-refresh.service"
+    {
+        printf '# Installed by Gutenberg'"'"'s install.sh.\n'
+        printf '[Unit]\n'
+        printf 'Description=Gutenberg: refresh every 15 minutes\n\n'
+        printf '[Timer]\n'
+        printf 'OnCalendar=*:0/15\n'
+        printf 'Persistent=true\n\n'
+        printf '[Install]\n'
+        printf 'WantedBy=timers.target\n'
+    } > "$units/gutenberg-refresh.timer"
+    systemctl --user daemon-reload >/dev/null 2>&1 || true
+    if [ "$(systemctl --user is-enabled gutenberg-refresh.timer 2>/dev/null)" = enabled ]; then
+        say "Updated the refresh timer in $units; it's on"
+    else
+        say "Added a timer that refreshes every 15 minutes, for notifications with the window closed. It's off; to turn it on:"
+        say "  systemctl --user enable --now gutenberg-refresh.timer"
+    fi
+}
+
+# $1 as the program of a systemd unit's command line: in double quotes,
+# with % doubled, so systemd takes it whole. It has no quote or backslash
+# (systemd refuses those in a program's path), and $ isn't expanded there.
+systemd_quote() {
+    printf '"%s"' "$(printf '%s' "$1" | sed 's/%/%%/g')"
 }
 
 # $1 as one argument of a desktop entry's Exec line.
