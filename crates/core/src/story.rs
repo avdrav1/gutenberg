@@ -37,9 +37,8 @@ const STOP: &[&str] = &[
 ];
 
 /// The words of a headline that count: lowercase, letters only, two or
-/// more of them, without the commonest. Sorted and unique; empty when
-/// fewer than [`MIN_WORDS`] are left.
-pub fn shingles(title: &str) -> Vec<String> {
+/// more of them, without the commonest. Sorted and unique.
+pub fn words(title: &str) -> Vec<String> {
     let mut words: Vec<String> = title
         .split(|c: char| !c.is_alphanumeric())
         .filter(|w| w.chars().count() > 1 && w.chars().all(char::is_alphabetic))
@@ -48,6 +47,12 @@ pub fn shingles(title: &str) -> Vec<String> {
         .collect();
     words.sort();
     words.dedup();
+    words
+}
+
+/// A headline's [`words`], or none when fewer than [`MIN_WORDS`] are left.
+pub fn shingles(title: &str) -> Vec<String> {
+    let mut words = words(title);
     if words.len() < MIN_WORDS {
         words.clear();
     }
