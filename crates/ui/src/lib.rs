@@ -3373,6 +3373,93 @@ pub mod shots {
         snapshot(&app, size, path);
     }
 
+    /// Writes `path`: the list in the interesting order (S10.4), after a
+    /// reader opened LWN's articles and ones about Rust and skipped the
+    /// sport, with the top row selected and saying why it's there. With
+    /// `store`, that file's articles and signals instead of made-up ones.
+    pub fn render_interesting(
+        tokens: Tokens,
+        size: (f32, f32),
+        store: Option<&std::path::Path>,
+        path: &std::path::Path,
+    ) {
+        let store = match store {
+            Some(file) => Store::open(file).expect("store"),
+            None => {
+                let mut store = Store::open_in_memory().expect("in-memory store");
+                let feeds = [
+                    add_feed(&store, "LWN", None),
+                    add_feed(&store, "Sports Desk", None),
+                    add_feed(&store, "World Report", None),
+                ];
+                // (feed, headline, opened or skipped)
+                const READ: &[(usize, &str, Option<bool>)] = &[
+                    (0, "Kernel 7.4 merge window opens", None),
+                    (1, "Rovers stun City in late derby winner", None),
+                    (2, "Rust adopted for the national tax system", None),
+                    (2, "Talks resume in Geneva over grain exports", None),
+                    (
+                        1,
+                        "Transfer rumours: veteran striker linked with move",
+                        None,
+                    ),
+                    (0, "A look at the new folio-based page cache", None),
+                    (2, "Storm warning for the eastern coast", None),
+                    (0, "Kernel scheduler rework lands in 7.3", Some(true)),
+                    (2, "Rust in the rail signalling upgrade", Some(true)),
+                    (1, "United draw again at home", Some(false)),
+                    (0, "Debian 14 release notes", Some(true)),
+                    (1, "Transfer window closes quietly", Some(false)),
+                    (2, "Election results delayed in three regions", Some(false)),
+                    (0, "Memory tiering explained", Some(true)),
+                    (1, "City sack their manager", Some(false)),
+                ];
+                let now = unix_now();
+                let articles: Vec<NewArticle> = READ
+                    .iter()
+                    .enumerate()
+                    .map(|(i, (feed, title, _))| NewArticle {
+                        source_id: feeds[*feed],
+                        guid: i.to_string(),
+                        url: Some(format!("https://example.com/{i}")),
+                        title: (*title).into(),
+                        author: None,
+                        summary_html: Some(SUMMARY.into()),
+                        published_at: Some(now - i as i64 * 2_400),
+                        fetched_at: now,
+                    })
+                    .collect();
+                store.insert_articles(&articles).expect("articles");
+                for row in store.list_articles(None, 100).expect("rows") {
+                    let i: usize = READ.iter().position(|r| r.1 == row.title).expect("row");
+                    match READ[i].2 {
+                        Some(true) => {
+                            store.record_opened(row.id, now).expect("opened");
+                            store.set_read(row.id, true).expect("read");
+                        }
+                        Some(false) => {
+                            store
+                                .record_story_skipped(row.story_id, now)
+                                .expect("skipped");
+                            store.set_read(row.id, true).expect("read");
+                        }
+                        None => {}
+                    }
+                }
+                store
+            }
+        };
+        let mut app = App::with_store(Config::default(), None, Ok(store), None);
+        app.set_tokens(tokens);
+        app.height = size.1;
+        app.width = size.0;
+        if !app.interesting {
+            app.toggle_interesting();
+        }
+        app.select(0);
+        snapshot(&app, size, path);
+    }
+
     fn add_feed(store: &Store, title: &str, folder: Option<i64>) -> i64 {
         let slug: String = title
             .to_lowercase()
