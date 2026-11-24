@@ -3618,7 +3618,7 @@ pub mod shots {
             }
         };
         let at = |i: usize| now - FIRED[i].2 * 60;
-        let mut sent = |store: &mut Store, i: usize, id: u32| {
+        let sent = |store: &mut Store, i: usize, id: u32| {
             store
                 .record_notices(&[(notice(i), NoticeState::Sent)], at(i))
                 .expect("notice");
