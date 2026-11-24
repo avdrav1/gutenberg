@@ -34,6 +34,8 @@ pub enum Screen {
     ConfirmDelete,
     /// Picking where to share.
     SharePicker,
+    /// The notification history over the panes.
+    Notifications,
     /// Writing the share for a site that takes the comment.
     ShareCompose,
     /// The share for a site that takes the link alone: `y` copies the
@@ -146,6 +148,17 @@ pub fn for_screen(screen: Screen) -> Vec<Hint> {
                 label: "cancel",
             },
         ],
+        Screen::Notifications => vec![
+            moves,
+            Hint {
+                keys: "Enter",
+                label: "open the article",
+            },
+            Hint {
+                keys: "Esc",
+                label: "close",
+            },
+        ],
         // The picker and the compose box take every key too.
         Screen::SharePicker => vec![
             moves,
@@ -217,7 +230,7 @@ fn key(action: Action, label: &'static str) -> Hint {
 mod tests {
     use super::*;
 
-    const EVERY: [Screen; 14] = [
+    const EVERY: [Screen; 15] = [
         Screen::Empty,
         Screen::List,
         Screen::Sources,
@@ -232,6 +245,7 @@ mod tests {
         Screen::ShareCompose,
         Screen::ShareLink,
         Screen::ConfirmDelete,
+        Screen::Notifications,
     ];
 
     #[test]
@@ -254,6 +268,7 @@ mod tests {
             Screen::ShareCompose,
             Screen::ShareLink,
             Screen::ConfirmDelete,
+            Screen::Notifications,
         ];
         for screen in EVERY.into_iter().filter(|s| !typing.contains(s)) {
             assert!(

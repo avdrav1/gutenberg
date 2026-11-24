@@ -129,6 +129,11 @@ pub const ALL: &[Command] = &[
         keys: &["i"],
     },
     Command {
+        action: Action::Notifications,
+        name: "Notifications: every one, why it fired and what became of it",
+        keys: &["N"],
+    },
+    Command {
         action: Action::Tools,
         name: "MCP server's tools: pick the one it calls",
         keys: &["T"],
@@ -359,6 +364,7 @@ mod tests {
             | A::NextLayout
             | A::Layout(_)
             | A::Interesting
+            | A::Notifications
             | A::View(_) => true,
         };
         let every = [
@@ -386,6 +392,7 @@ mod tests {
             A::View(View::Starred),
             A::View(View::Today),
             A::Interesting,
+            A::Notifications,
             A::Tools,
             A::EnterKey,
             A::Refresh,

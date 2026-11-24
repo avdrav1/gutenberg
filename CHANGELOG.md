@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Notification history: press `N` (or find "Notifications" in the palette) to see every notification Gutenberg has sent, newest first, with why it fired, such as "rule: CVE" or "6 outlets in 40 min", and what became of it: shown, updated, in a summary, held for one, or seen in the window. Enter opens the article.
+
 ## 0.37.0 — 2026-11-23
 
 - Interesting first: press `i` (or find "Interesting first" in the palette) and the list puts first what you're likeliest to read, learned on your machine from what you open and star and what you mark read without opening. The selected article says why it's near the top, such as "you read a lot from LWN", and so does any article under the pointer. Press `i` again for newest first. It learns from today on, so it starts out in the usual order and sharpens as you read.

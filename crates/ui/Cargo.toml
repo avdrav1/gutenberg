@@ -42,5 +42,5 @@ name = "site_media"
 required-features = ["shots"]
 
 [[example]]
-name = "interest_shot"
+name = "story_shot"
 required-features = ["shots"]

@@ -4,6 +4,7 @@ mod article;
 mod browser;
 mod commands;
 mod hints;
+mod history;
 #[cfg(target_os = "linux")]
 mod hyprland;
 mod list;
@@ -375,6 +376,8 @@ enum Overlay {
     ShareCompose(share::Composer),
     /// Whether to delete a source, and what goes with it.
     ConfirmDelete(Deleting),
+    /// Every notification and why it fired (`N`).
+    Notifications(history::History),
 }
 
 /// A source `d` asked to delete.
@@ -406,6 +409,8 @@ enum KeyMode {
     ShareCompose,
     /// Asked whether to delete a source.
     ConfirmDelete,
+    /// Moving through the notification history.
+    Notifications,
 }
 
 /// The chosen MCP server's tools, in the list pane while it has no
@@ -635,6 +640,10 @@ enum Message {
     Focus,
     /// Open on a notification: show this article, every feed in view.
     OpenArticle(i64),
+    /// A key in the notification history.
+    History(palette::Input),
+    /// A click on a row of the notification history.
+    OpenNotified(usize),
     /// The window gained (true) or lost focus.
     WindowFocused(bool),
     /// The desktop's light or dark preference, at start and when it changes.
@@ -1005,6 +1014,27 @@ impl App {
                 self.overlay = Some(Overlay::Palette(palette::Palette::default()));
             }
             Message::Key(Action::Help) => self.overlay = Some(Overlay::Help),
+            Message::Key(Action::Notifications) => self.open_history(),
+            Message::History(input) => {
+                let Some(Overlay::Notifications(history)) = &mut self.overlay else {
+                    return Task::none();
+                };
+                if history::History::closes(&input) {
+                    self.overlay = None;
+                } else if let Some(article) = history.apply(input) {
+                    self.overlay = None;
+                    self.open_article(article);
+                }
+            }
+            Message::OpenNotified(i) => {
+                let Some(Overlay::Notifications(history)) = &self.overlay else {
+                    return Task::none();
+                };
+                if let Some(article) = history.entries.get(i).map(|n| n.article_id) {
+                    self.overlay = None;
+                    self.open_article(article);
+                }
+            }
             Message::Key(Action::Star) => self.toggle_star(),
             Message::Key(Action::ToggleRead) => self.toggle_read(),
             Message::Key(Action::MarkFolderRead) => self.mark_chosen_read(),
@@ -1377,6 +1407,7 @@ impl App {
             }
             _ if matches!(self.overlay, Some(Overlay::ShareCompose(_))) => Screen::ShareLink,
             _ if matches!(self.overlay, Some(Overlay::ConfirmDelete(_))) => Screen::ConfirmDelete,
+            _ if matches!(self.overlay, Some(Overlay::Notifications(_))) => Screen::Notifications,
             (Some(search), _) if search.editing => Screen::Searching,
             _ if self.pane == Pane::Sources && !self.sources.is_empty() => Screen::Sources,
             (Some(_), _) => Screen::Results,
@@ -1621,6 +1652,17 @@ impl App {
             eprintln!("gutenberg: marking read: {e}");
         }
         self.reload();
+    }
+
+    /// `N`: every notification and why it fired, newest first.
+    fn open_history(&mut self) {
+        let Ok(store) = &self.store else { return };
+        match store.notification_history() {
+            Ok(entries) => {
+                self.overlay = Some(Overlay::Notifications(history::History::new(entries)));
+            }
+            Err(e) => eprintln!("gutenberg: reading the notification history: {e}"),
+        }
     }
 
     /// `i`: most interesting first, or newest first again; the choice is
@@ -1984,6 +2026,7 @@ impl App {
             (None, Some(Overlay::SharePicker(_)), _) => KeyMode::SharePicker,
             (None, Some(Overlay::ShareCompose(_)), _) => KeyMode::ShareCompose,
             (None, Some(Overlay::ConfirmDelete(_)), _) => KeyMode::ConfirmDelete,
+            (None, Some(Overlay::Notifications(_)), _) => KeyMode::Notifications,
             (None, None, Some(Search { editing: true, .. })) => KeyMode::Search,
             (None, None, _) if self.tools.editor.is_some() => KeyMode::ToolArguments,
             (None, None, _) if self.tools.key.is_some() => KeyMode::KeyEntry,
@@ -2027,6 +2070,9 @@ impl App {
                         .map(Message::SharePicker),
                     KeyMode::ShareCompose => palette::input_for(&key, modifiers, text.as_deref())
                         .map(Message::ShareCompose),
+                    KeyMode::Notifications => {
+                        palette::input_for(&key, modifiers, text.as_deref()).map(Message::History)
+                    }
                     KeyMode::Help => {
                         use keyboard::key::Named;
                         match key.as_ref() {
@@ -2261,6 +2307,49 @@ impl App {
                     "Enter or a letter chooses · j k move · Esc closes"
                 };
                 (Some(prompt), rows, footer.to_owned())
+            }
+            Overlay::Notifications(history) => {
+                let now = unix_now();
+                let rows: Vec<Element<'a, Message>> = history
+                    .visible()
+                    .map(|i| {
+                        mouse_area(notified_row(
+                            &history.entries[i],
+                            i == history.cursor,
+                            now,
+                            t,
+                        ))
+                        .on_press(Message::OpenNotified(i))
+                        .into()
+                    })
+                    .collect();
+                let rows = if rows.is_empty() {
+                    vec![container(
+                        text(
+                            "Nothing has notified yet. A rule with action = \"notify\", \
+                             or breaking_in under [notify], in config.toml makes notifications.",
+                        )
+                        .size(14)
+                        .color(color(t.muted))
+                        .wrapping(text::Wrapping::WordOrGlyph),
+                    )
+                    .padding([4, 12])
+                    .into()]
+                } else {
+                    rows
+                };
+                let count = thousands(history.entries.len() as i64);
+                let prompt = row![
+                    text("Notifications").color(color(t.foreground)),
+                    text(count).color(color(t.muted)),
+                ]
+                .spacing(8)
+                .padding([10, 12]);
+                (
+                    Some(prompt),
+                    rows,
+                    "Enter opens the article · j k move · Esc or N closes".to_owned(),
+                )
             }
             Overlay::ConfirmDelete(deleting) => {
                 let prompt = row![
@@ -3460,6 +3549,128 @@ pub mod shots {
         snapshot(&app, size, path);
     }
 
+    /// Writes `path`: the notification history (S10.5) over the panes,
+    /// with one notification of each fate, the second row under the keys.
+    pub fn render_history(tokens: Tokens, size: (f32, f32), path: &std::path::Path) {
+        use gutenberg_store::{Notice, NoticeState};
+        let mut store = Store::open_in_memory().expect("in-memory store");
+        let feeds = [
+            add_feed(&store, "LWN", None),
+            add_feed(&store, "World Report", None),
+            add_feed(&store, "Security Week", None),
+        ];
+        // (feed, headline, minutes ago, reason)
+        const FIRED: &[(usize, &str, i64, &str)] = &[
+            (2, "OpenSSH fixes a pre-auth CVE in 10.3", 300, "rule: CVE"),
+            (
+                1,
+                "Ceasefire talks resume in Geneva",
+                180,
+                "5 outlets in 35 min",
+            ),
+            (
+                1,
+                "Ceasefire talks resume in Geneva after a night of shelling",
+                150,
+                "now 8 outlets",
+            ),
+            (0, "Kernel 7.4 merge window opens", 95, "rule: kernel"),
+            (
+                2,
+                "Browser zero-day patched in an emergency release",
+                90,
+                "rule: CVE",
+            ),
+            (
+                2,
+                "Router firmware CVE under active attack",
+                40,
+                "rule: CVE",
+            ),
+            (0, "Kernel scheduler rework lands", 12, "rule: kernel"),
+        ];
+        let now = unix_now();
+        let articles: Vec<NewArticle> = FIRED
+            .iter()
+            .enumerate()
+            .map(|(i, (feed, title, ago, _))| NewArticle {
+                source_id: feeds[*feed],
+                guid: i.to_string(),
+                url: Some(format!("https://example.com/{i}")),
+                title: (*title).into(),
+                author: None,
+                summary_html: Some(SUMMARY.into()),
+                published_at: Some(now - ago * 60),
+                fetched_at: now - ago * 60,
+            })
+            .collect();
+        store.insert_articles(&articles).expect("articles");
+        let rows = store.list_articles(None, 100).expect("rows");
+        let notice = |i: usize| {
+            let row = rows.iter().find(|r| r.title == FIRED[i].1).expect("row");
+            Notice {
+                article_id: row.id,
+                // The update's article joins the story it updates.
+                story_id: if i == 2 { -1 } else { row.id },
+                title: row.title.clone(),
+                source: String::new(),
+                reason: FIRED[i].3.into(),
+            }
+        };
+        let at = |i: usize| now - FIRED[i].2 * 60;
+        let sent = |store: &mut Store, i: usize, id: u32| {
+            store
+                .record_notices(&[(notice(i), NoticeState::Sent)], at(i))
+                .expect("notice");
+            store
+                .record_popup(&[notice(i).article_id], at(i), Some(id))
+                .expect("popup");
+        };
+        sent(&mut store, 0, 1);
+        // The breaking story, then its update replacing pop-up 2.
+        let breaking = Notice {
+            story_id: -1,
+            ..notice(1)
+        };
+        store
+            .record_notices(&[(breaking.clone(), NoticeState::Sent)], at(1))
+            .expect("notice");
+        store
+            .record_popup(&[breaking.article_id], at(1), Some(2))
+            .expect("popup");
+        store
+            .record_update(&notice(2), at(2), 2, Some(3))
+            .expect("update");
+        // Two over the hour's budget, summed up together; one still held;
+        // one seen in the window.
+        for i in [3, 4] {
+            store
+                .record_notices(&[(notice(i), NoticeState::Held)], at(i))
+                .expect("held");
+        }
+        store
+            .record_popup(
+                &[notice(3).article_id, notice(4).article_id],
+                at(4) + 600,
+                Some(4),
+            )
+            .expect("summary");
+        store
+            .record_notices(&[(notice(5), NoticeState::Held)], at(5))
+            .expect("held");
+        store
+            .record_notices(&[(notice(6), NoticeState::Seen)], at(6))
+            .expect("seen");
+
+        let mut app = App::with_store(Config::default(), None, Ok(store), None);
+        app.set_tokens(tokens);
+        app.height = size.1;
+        app.width = size.0;
+        let _ = app.update(Message::Key(Action::Notifications));
+        let _ = app.update(Message::History(palette::Input::Down));
+        snapshot(&app, size, path);
+    }
+
     fn add_feed(store: &Store, title: &str, folder: Option<i64>) -> i64 {
         let slug: String = title
             .to_lowercase()
@@ -4422,6 +4633,54 @@ fn share_row<'a>(
     )
     .padding([7, 12])
     .width(Length::Fill)
+    .style(move |_| container::Style {
+        background: highlighted.then(|| color(selection).into()),
+        ..Default::default()
+    })
+    .into()
+}
+
+/// A notification in the history: the headline, then when, the source,
+/// why it fired and what became of it.
+fn notified_row<'a>(
+    notified: &gutenberg_store::Notified,
+    highlighted: bool,
+    now: i64,
+    t: &Tokens,
+) -> Element<'a, Message> {
+    let selection = t.selection;
+    let muted = |s: String| {
+        text(s)
+            .size(12)
+            .color(color(t.muted))
+            .wrapping(text::Wrapping::None)
+    };
+    let meta = row![
+        muted(format!(
+            "{} ago · {} ·",
+            list::age(notified.at, now),
+            notified.source
+        )),
+        text(notified.reason.clone())
+            .size(12)
+            .color(color(t.accent))
+            .wrapping(text::Wrapping::None),
+        muted(format!("· {}", history::fate(notified.fate))),
+    ]
+    .spacing(4);
+    container(
+        column![
+            text(notified.title.clone())
+                .size(14)
+                .color(color(t.foreground))
+                .wrapping(text::Wrapping::None),
+            meta,
+        ]
+        .spacing(2),
+    )
+    .padding([6, 12])
+    .width(Length::Fill)
+    .clip(true)
     .style(move |_| container::Style {
         background: highlighted.then(|| color(selection).into()),
         ..Default::default()
@@ -6172,6 +6431,117 @@ mod tests {
         for _ in 0..i {
             let _ = app.update(Message::Key(Action::Down));
         }
+    }
+
+    /// Two notifications on LWN and Sport's articles: l2 shown, then s3
+    /// held for a summary.
+    fn app_with_notifications() -> App {
+        let mut app = app_with_lwn_and_sport();
+        let store = app.store.as_mut().unwrap();
+        let rows = store.list_articles(None, 10).unwrap();
+        let notice = |title: &str, reason: &str| {
+            let row = rows.iter().find(|r| r.title == title).unwrap();
+            gutenberg_store::Notice {
+                article_id: row.id,
+                story_id: row.story_id,
+                title: row.title.clone(),
+                source: String::new(),
+                reason: reason.into(),
+            }
+        };
+        let shown = notice("l2", "rule: kernel");
+        store
+            .record_notices(&[(shown.clone(), gutenberg_store::NoticeState::Sent)], 100)
+            .unwrap();
+        store
+            .record_popup(&[shown.article_id], 100, Some(1))
+            .unwrap();
+        store
+            .record_notices(
+                &[(
+                    notice("s3", "6 outlets in 40 min"),
+                    gutenberg_store::NoticeState::Held,
+                )],
+                200,
+            )
+            .unwrap();
+        app
+    }
+
+    fn history(app: &App) -> &history::History {
+        let Some(Overlay::Notifications(history)) = &app.overlay else {
+            panic!("no history");
+        };
+        history
+    }
+
+    #[test]
+    fn n_lists_every_notification_newest_first_and_enter_opens_one() {
+        let mut app = app_with_notifications();
+        let _ = app.update(Message::Key(Action::Notifications));
+        let rows: Vec<_> = history(&app)
+            .entries
+            .iter()
+            .map(|n| {
+                (
+                    n.title.as_str(),
+                    n.source.as_str(),
+                    n.reason.as_str(),
+                    n.fate,
+                )
+            })
+            .collect();
+        assert_eq!(
+            rows,
+            [
+                (
+                    "s3",
+                    "Sport",
+                    "6 outlets in 40 min",
+                    gutenberg_store::Fate::Held
+                ),
+                ("l2", "LWN", "rule: kernel", gutenberg_store::Fate::Shown),
+            ]
+        );
+        assert_eq!(app.screen(), hints::Screen::Notifications);
+        let _ = app.view();
+
+        // The list's keys don't reach past it.
+        let _ = app.update(Message::History(palette::Input::Type("j".into())));
+        assert_eq!(history(&app).cursor, 1);
+        assert_eq!(app.selected, 0);
+        let _ = app.update(Message::History(palette::Input::Run));
+        assert!(app.overlay.is_none());
+        assert_eq!(app.opened.as_ref().map(|o| o.title.as_str()), Some("l2"));
+        assert_eq!(app.rows[app.selected].title, "l2");
+    }
+
+    #[test]
+    fn a_click_opens_a_notification_and_esc_or_n_closes_the_history() {
+        let mut app = app_with_notifications();
+        for close in [palette::Input::Close, palette::Input::Type("N".into())] {
+            let _ = app.update(Message::Key(Action::Notifications));
+            let _ = app.update(Message::History(close));
+            assert!(app.overlay.is_none());
+            assert!(app.opened.is_none());
+        }
+        let _ = app.update(Message::Key(Action::Notifications));
+        let _ = app.update(Message::OpenNotified(0));
+        assert!(app.overlay.is_none());
+        assert_eq!(app.rows[app.selected].title, "s3");
+    }
+
+    #[test]
+    fn with_nothing_notified_the_history_says_how_to_get_some() {
+        let mut app = app_with_lwn_and_sport();
+        let _ = app.update(Message::Key(Action::Notifications));
+        assert!(history(&app).entries.is_empty());
+        // Enter has nothing to open; it stays until Esc.
+        let _ = app.update(Message::History(palette::Input::Run));
+        assert!(app.opened.is_none());
+        let _ = app.view();
+        let _ = app.update(Message::History(palette::Input::Close));
+        assert!(app.overlay.is_none());
     }
 
     #[test]

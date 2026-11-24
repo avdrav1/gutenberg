@@ -26,6 +26,7 @@ The bar along the bottom of the window shows the keys for what's on screen; `hin
 | `<` / `>` | narrow / widen the pane that has the keys (the sources pane after `Tab`, else the list), taking the space from its neighbour; where the list sits above the article they make it shorter / taller. Dragging the line between two panes does the same with the mouse. The sizes come back at the next launch, each layout's own | any |
 | `=` | pane sizes back to `[layout]` in `config.toml`, for the layout you're in | any |
 | `L` | next layout: columns (sources, list and article side by side), classic (sources; the list above the article), wide (the list above the article, no sources), reading (the article alone; `Esc` brings the list back). The layout comes back at the next launch | any |
+| `N` | notifications: every one that fired, newest first, with when, the source, why (`rule: CVE`, `6 outlets in 40 min`) and what became of it (shown, updated its pop-up, in a summary, held for a summary, seen in the window) | any |
 | `:` | command palette: find any action by name | any |
 | `?` | help: every action and its keys | any |
 | `q` | quit | any |
@@ -43,6 +44,8 @@ Opened with `:`. Type part of an action's name; letters only need to appear in o
 | `Esc` | close without running anything |
 
 Help (`?`) closes with `?`, `Esc` or `q`.
+
+The notification history (`N`): `j` / `k` or `↓` / `↑` move, `g` / `G` go to the first / last, `Enter` (or a click) opens the article in the list, and `Esc`, `N` or `q` closes it.
 
 The delete confirmation (`d`): `Enter` deletes; `Esc`, `n` or `q` keeps the feed.
 
