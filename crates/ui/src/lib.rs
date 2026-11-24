@@ -3549,6 +3549,128 @@ pub mod shots {
         snapshot(&app, size, path);
     }
 
+    /// Writes `path`: the notification history (S10.5) over the panes,
+    /// with one notification of each fate, the second row under the keys.
+    pub fn render_history(tokens: Tokens, size: (f32, f32), path: &std::path::Path) {
+        use gutenberg_store::{Notice, NoticeState};
+        let mut store = Store::open_in_memory().expect("in-memory store");
+        let feeds = [
+            add_feed(&store, "LWN", None),
+            add_feed(&store, "World Report", None),
+            add_feed(&store, "Security Week", None),
+        ];
+        // (feed, headline, minutes ago, reason)
+        const FIRED: &[(usize, &str, i64, &str)] = &[
+            (2, "OpenSSH fixes a pre-auth CVE in 10.3", 300, "rule: CVE"),
+            (
+                1,
+                "Ceasefire talks resume in Geneva",
+                180,
+                "5 outlets in 35 min",
+            ),
+            (
+                1,
+                "Ceasefire talks resume in Geneva after a night of shelling",
+                150,
+                "now 8 outlets",
+            ),
+            (0, "Kernel 7.4 merge window opens", 95, "rule: kernel"),
+            (
+                2,
+                "Browser zero-day patched in an emergency release",
+                90,
+                "rule: CVE",
+            ),
+            (
+                2,
+                "Router firmware CVE under active attack",
+                40,
+                "rule: CVE",
+            ),
+            (0, "Kernel scheduler rework lands", 12, "rule: kernel"),
+        ];
+        let now = unix_now();
+        let articles: Vec<NewArticle> = FIRED
+            .iter()
+            .enumerate()
+            .map(|(i, (feed, title, ago, _))| NewArticle {
+                source_id: feeds[*feed],
+                guid: i.to_string(),
+                url: Some(format!("https://example.com/{i}")),
+                title: (*title).into(),
+                author: None,
+                summary_html: Some(SUMMARY.into()),
+                published_at: Some(now - ago * 60),
+                fetched_at: now - ago * 60,
+            })
+            .collect();
+        store.insert_articles(&articles).expect("articles");
+        let rows = store.list_articles(None, 100).expect("rows");
+        let notice = |i: usize| {
+            let row = rows.iter().find(|r| r.title == FIRED[i].1).expect("row");
+            Notice {
+                article_id: row.id,
+                // The update's article joins the story it updates.
+                story_id: if i == 2 { -1 } else { row.id },
+                title: row.title.clone(),
+                source: String::new(),
+                reason: FIRED[i].3.into(),
+            }
+        };
+        let at = |i: usize| now - FIRED[i].2 * 60;
+        let mut sent = |store: &mut Store, i: usize, id: u32| {
+            store
+                .record_notices(&[(notice(i), NoticeState::Sent)], at(i))
+                .expect("notice");
+            store
+                .record_popup(&[notice(i).article_id], at(i), Some(id))
+                .expect("popup");
+        };
+        sent(&mut store, 0, 1);
+        // The breaking story, then its update replacing pop-up 2.
+        let breaking = Notice {
+            story_id: -1,
+            ..notice(1)
+        };
+        store
+            .record_notices(&[(breaking.clone(), NoticeState::Sent)], at(1))
+            .expect("notice");
+        store
+            .record_popup(&[breaking.article_id], at(1), Some(2))
+            .expect("popup");
+        store
+            .record_update(&notice(2), at(2), 2, Some(3))
+            .expect("update");
+        // Two over the hour's budget, summed up together; one still held;
+        // one seen in the window.
+        for i in [3, 4] {
+            store
+                .record_notices(&[(notice(i), NoticeState::Held)], at(i))
+                .expect("held");
+        }
+        store
+            .record_popup(
+                &[notice(3).article_id, notice(4).article_id],
+                at(4) + 600,
+                Some(4),
+            )
+            .expect("summary");
+        store
+            .record_notices(&[(notice(5), NoticeState::Held)], at(5))
+            .expect("held");
+        store
+            .record_notices(&[(notice(6), NoticeState::Seen)], at(6))
+            .expect("seen");
+
+        let mut app = App::with_store(Config::default(), None, Ok(store), None);
+        app.set_tokens(tokens);
+        app.height = size.1;
+        app.width = size.0;
+        let _ = app.update(Message::Key(Action::Notifications));
+        let _ = app.update(Message::History(palette::Input::Down));
+        snapshot(&app, size, path);
+    }
+
     fn add_feed(store: &Store, title: &str, folder: Option<i64>) -> i64 {
         let slug: String = title
             .to_lowercase()
