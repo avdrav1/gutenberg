@@ -21,9 +21,9 @@ use rusqlite::{params, Connection, OptionalExtension};
 
 pub use migrate::LATEST as SCHEMA_VERSION;
 pub use model::{
-    Arrival, ArticleKey, ArticleRow, DueSource, FetchState, Filter, Folder, NewArticle, NewSource,
-    Notice, NoticeState, Signal, Source, SourceKind, SourceTarget, StoryArticle, StoryCandidate,
-    Validators, View, ViewCounts,
+    Arrival, ArticleKey, ArticleRow, DueSource, Fate, FetchState, Filter, Folder, NewArticle,
+    NewSource, Notice, NoticeState, Notified, Signal, Source, SourceKind, SourceTarget,
+    StoryArticle, StoryCandidate, Validators, View, ViewCounts,
 };
 pub use text::plain;
 
@@ -775,6 +775,49 @@ impl Store {
                 title: row.get(2)?,
                 source: row.get(3)?,
                 reason: row.get(4)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Every notification, newest first, with what became of it. A sent
+    /// row is a summary's when its pop-up held other stories, and an update
+    /// when an earlier row of its story had that pop-up first.
+    pub fn notification_history(&self) -> Result<Vec<Notified>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT n.article_id, a.title, s.title, n.reason, n.at,
+               CASE
+                 WHEN n.state = 'held' THEN 'held'
+                 WHEN n.state = 'seen' OR n.popup IS NULL THEN 'seen'
+                 WHEN EXISTS (SELECT 1 FROM notified m
+                              WHERE m.popup = n.popup AND m.story_id <> n.story_id)
+                   THEN 'summary'
+                 WHEN EXISTS (SELECT 1 FROM notified m
+                              WHERE m.popup = n.popup AND m.story_id = n.story_id
+                                AND (m.at < n.at OR (m.at = n.at AND m.article_id < n.article_id)))
+                   THEN 'updated'
+                 ELSE 'shown'
+               END
+             FROM notified n
+             JOIN article a ON a.id = n.article_id
+             JOIN source s ON s.id = a.source_id
+             ORDER BY n.at DESC, n.article_id DESC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            let fate: String = row.get(5)?;
+            Ok(Notified {
+                article_id: row.get(0)?,
+                title: row.get(1)?,
+                source: row.get(2)?,
+                reason: row.get(3)?,
+                at: row.get(4)?,
+                fate: match fate.as_str() {
+                    "held" => Fate::Held,
+                    "seen" => Fate::Seen,
+                    "summary" => Fate::Summary,
+                    "updated" => Fate::Updated,
+                    _ => Fate::Shown,
+                },
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)

@@ -150,6 +150,36 @@ pub struct StoryArticle {
     pub noticed: bool,
 }
 
+/// A row of the notification history (S10.5), from
+/// [`Store::notification_history`](crate::Store::notification_history).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Notified {
+    pub article_id: i64,
+    pub title: String,
+    /// The source's title.
+    pub source: String,
+    /// As the pop-up said it: `rule: CVE`, `6 outlets in 40 min`.
+    pub reason: String,
+    /// When it fired: matched, or for an update, when the story grew.
+    pub at: i64,
+    pub fate: Fate,
+}
+
+/// What became of a notification, as the history says it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Fate {
+    /// A pop-up of its own.
+    Shown,
+    /// Its story's pop-up, replaced to say it grew ("now 8 outlets").
+    Updated,
+    /// One of several stories in a summary pop-up.
+    Summary,
+    /// Over the hour's budget or in quiet hours, waiting for a summary.
+    Held,
+    /// The window had focus, so the list showed it; no pop-up.
+    Seen,
+}
+
 /// What became of a [`Notice`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NoticeState {
